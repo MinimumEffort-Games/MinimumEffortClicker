@@ -211,20 +211,3 @@ internal sealed class ConditionEditor : Window
         };
     }
 }
-
-public partial class SequenceEditor
-{
-    private void AddCondition_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new ConditionEditor(this, runtime, null);
-        if (dialog.ShowDialog() == true) Add(SequenceStep.WaitUntil(dialog.Result!.Kind switch
-        { ConditionKind.WindowActive => "Wait for target window", ConditionKind.PixelColor => "Wait for pixel colour", ConditionKind.RegionColor => "Wait for colour in area", ConditionKind.ColorDisappears => "Wait for colour to disappear", ConditionKind.ImageAppears => "Wait for image", ConditionKind.ImageDisappears => "Wait for image to disappear", _ => "Wait for region change" }, dialog.Result));
-    }
-    private void EditCondition_Click(object sender, RoutedEventArgs e)
-    {
-        int index = StepsList.SelectedIndex;
-        if (index < 0 || history.Current.Steps[index].Condition is not { } condition) return;
-        var dialog = new ConditionEditor(this, runtime, condition);
-        if (dialog.ShowDialog() == true) Edit(s => SequenceEdits.Replace(s, index, 1, [s.Steps[index] with { Condition = dialog.Result }], points), "Condition updated in the draft.");
-    }
-}

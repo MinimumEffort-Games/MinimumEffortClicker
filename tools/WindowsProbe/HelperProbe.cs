@@ -132,34 +132,6 @@ internal static class HelperProbe
             Require(afterText.Text == beforeText.Text + "é中😀" && runtime.Snapshot.InputsSent == 8 && !runtime.Snapshot.CleanupPending,
                 $"Explicit Unicode fixture receipt or cleanup mismatch: before units {beforeText.Text?.Length}, after units {afterText.Text?.Length}; received {string.Join(",", (afterText.Text ?? "").TakeLast(8).Select(c => ((int)c).ToString("X4")))}.");
             report.Checks.Add("Explicit Unicode text delivered accented, CJK and surrogate-pair fixture characters in order; eight transitions, no owned input. Fixture text is excluded from diagnostics.");
-            report.Stage = "Overlay editing reservation and placement recovery";
-            var beforeOverlayEditing = await Request(pipe, "state");
-            runtime.BeginOverlayEditing(_ => app.Dispatcher.BeginInvoke(() => { overlay.SetEditing(false); runtime.EndOverlayEditing(); }));
-            await app.Dispatcher.InvokeAsync(() =>
-            {
-                overlay.Configure(new(Expanded: true, Opacity: 0.7, Scale: 1.25, X: -999999, Y: -999999));
-                overlay.Place(restoreSaved: true);
-                Require(ProbeNative.GetWindowRect(runtime.OverlayHandle, out var rect) && rect.Right > 0 && rect.Bottom > 0, "Off-screen overlay was not recovered.");
-                overlay.SetEditing(true);
-                Require((ProbeNative.GetWindowLongPtr(runtime.OverlayHandle, -20).ToInt64() & 0x20) == 0, "Unlocked overlay remained click-through.");
-            });
-            Require(!runtime.TryStart(clicks), "Playback started while overlay was unlocked.");
-            expectedStop = true;
-            Require(ProbeNative.SendProbeStopKey(), "Overlay F9 failed.");
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            expectedStop = false;
-            await app.Dispatcher.InvokeAsync(() =>
-            {
-                Require(!overlay.IsEditing && (ProbeNative.GetWindowLongPtr(runtime.OverlayHandle, -20).ToInt64() & 0x08000020) == 0x08000020, "F9 did not restore locked native styles.");
-                overlay.Configure(new());
-                ProbeNative.SetWindowPos(runtime.OverlayHandle, -1, receiver.X - 100, receiver.Y - 20, 280, 86, 0x50);
-            });
-            var afterOverlayEditing = await Request(pipe, "state");
-            Require(afterOverlayEditing.Count == beforeOverlayEditing.Count
-                && afterOverlayEditing.ButtonDownEvents == beforeOverlayEditing.ButtonDownEvents
-                && afterOverlayEditing.KeyDownEvents == beforeOverlayEditing.KeyDownEvents
-                && ProbeNative.GetForegroundWindow() == (nint)receiver.Window, "Overlay editing sent input or stole focus.");
-            report.Checks.Add("Overlay adjustment blocked playback; off-screen placement recovered; F9 restored native click-through/no-activation and remained stopped.");
             await Task.Delay(50, deadline.Token);
             receiver = await Request(pipe, "state");
 
@@ -648,7 +620,7 @@ internal static class HelperProbe
         {
             runtime.Stop("Probe ending.");
             try { await WaitFor(() => !runtime.Snapshot.Busy, CancellationToken.None, TimeSpan.FromSeconds(2)); } catch (TimeoutException) { }
-            if (overlay is not null) await app.Dispatcher.InvokeAsync(() => { overlay.SetEditing(false); overlay.Close(); });
+            if (overlay is not null) await app.Dispatcher.InvokeAsync(() => { overlay.Close(); });
             if (target is not null)
             {
                 try { await Request(pipe, "close"); } catch (Exception) { }

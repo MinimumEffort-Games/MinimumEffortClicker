@@ -44,8 +44,8 @@
             <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Orientation="Horizontal"><ListBox x:Name="Navigation" SelectedIndex="0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimary}" SelectionChanged="Navigation_Changed" AutomationProperties.Name="Navigation tabs" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
                 <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem" BasedOn="{StaticResource StandardListItem}"><Setter Property="Padding" Value="18,8"/><Setter Property="Margin" Value="0,0,6,0"/></Style></ListBox.ItemContainerStyle>
-                <ListBoxItem Content="Actions" Tag="0"/><ListBoxItem Content="Toggles" Tag="4"/><ListBoxItem Content="Screenshot" Tag="6"/><ListBoxItem Content="Settings" Tag="3"/>
-            </ListBox><Button Click="BrandWebsite_Click" ToolTip="Minimum Effort website" AutomationProperties.Name="Minimum Effort website" Background="Transparent" BorderThickness="0" Margin="16,0,0,0" Padding="4"><Border Width="110" Height="34" Background="{DynamicResource TextPrimary}"><Border.OpacityMask><ImageBrush ImageSource="Assets/Logo.png" Viewbox="0,0.24,1,0.42" ViewboxUnits="RelativeToBoundingBox" Stretch="Uniform"/></Border.OpacityMask></Border></Button></StackPanel><CheckBox Grid.Column="1" x:Name="OverlayBox" Content="Show overlay" IsChecked="True" VerticalAlignment="Center" Checked="Overlay_Changed" Unchecked="Overlay_Changed" Margin="16,0,0,0"/></Grid>
+                <ListBoxItem Content="Actions" Tag="QuickPage"/><ListBoxItem Content="Toggles" Tag="TogglePage"/><ListBoxItem Content="Screenshot" Tag="ScreenshotPage"/><ListBoxItem Content="Settings" Tag="SettingsPage"/>
+            </ListBox><Button Click="BrandWebsite_Click" ToolTip="Minimum Effort website" AutomationProperties.Name="Minimum Effort website" Background="Transparent" BorderThickness="0" Margin="16,0,0,0" Padding="4"><Border Width="110" Height="34" Background="{DynamicResource TextPrimary}"><Border.OpacityMask><ImageBrush ImageSource="Assets/Logo.png" Viewbox="0,0.24,1,0.42" ViewboxUnits="RelativeToBoundingBox" Stretch="Uniform"/></Border.OpacityMask></Border></Button><Button Content="Help" Click="Help_Click" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Help"/></StackPanel><CheckBox Grid.Column="1" x:Name="OverlayBox" Content="Show overlay" IsChecked="True" VerticalAlignment="Center" Checked="Overlay_Changed" Unchecked="Overlay_Changed" Margin="16,0,0,0"/></Grid>
         </Border>
         <Grid Grid.Row="1" Margin="16,12,16,12">
             <Grid.RowDefinitions>
@@ -172,47 +172,6 @@
 
 </StackPanel></StackPanel></ScrollViewer></Grid>
 
-                <Grid x:Name="ProfilesPage" Visibility="Collapsed">
-                    <ScrollViewer Padding="0,0,16,0" VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <TextBlock Text="Saved macros" Style="{StaticResource Heading}" />
-                            <TextBlock Text="Save clicks, key holds and recorded steps. Folders keep related macros together; they are not user accounts." Style="{StaticResource Secondary}" Margin="0,0,0,16" />
-                            <TextBlock Text="Folder name" />
-                            <TextBox x:Name="ProfileNameBox" Text="My helper" MaxLength="100" AutomationProperties.Name="Folder name" />
-                            <ListBox x:Name="ProfileList" DisplayMemberPath="Name" Height="110" SelectionChanged="ProfileSelection_Changed" Background="{DynamicResource RaisedSurface}" Foreground="{DynamicResource TextPrimary}" BorderBrush="{DynamicResource Border}" AutomationProperties.Name="Macro folders" />
-                            <CheckBox x:Name="ProfileEnabledBox" Content="Enable selected folder" Checked="Availability_Changed" Unchecked="Availability_Changed" ToolTip="Available does not mean running. Disabling stops playback." />
-                            <ListBox x:Name="MacroList" DisplayMemberPath="Name" Height="110" SelectionChanged="MacroSelection_Changed" MouseDoubleClick="MacroDoubleClick" Background="{DynamicResource RaisedSurface}" Foreground="{DynamicResource TextPrimary}" BorderBrush="{DynamicResource Border}" AutomationProperties.Name="Macros in selected folder" />
-                            <TextBlock Text="Macro name" Margin="0,12,0,0" />
-                            <TextBox x:Name="MacroNameBox" MaxLength="100" AutomationProperties.Name="Macro name" />
-                            <TextBlock x:Name="MacroSummary" Style="{StaticResource Secondary}" />
-                            <TextBlock Text="Local start / stop binding" Margin="0,12,0,0" />
-                            <Button x:Name="MacroKeyBox" Content="Choose a key…" Click="CaptureMacroKey_Click" AutomationProperties.Name="Macro hotkey"/>
-                            <Button Content="Clear shortcut" Click="ClearMacroKey_Click" HorizontalAlignment="Left"/><CheckBox x:Name="MacroHoldBox" Content="Run only while holding this macro hotkey" />
-                            <CheckBox x:Name="MacroEnabledBox" Content="Enable selected macro" Checked="Availability_Changed" Unchecked="Availability_Changed" ToolTip="Enable its folder and apply a hotkey first. Disabling stops playback." />
-                            <TextBlock Text="Opening the editor disables this macro. After saving, enable it again to use its hotkey. A paused macro’s hotkey stops it; use Resume to continue." Style="{StaticResource Secondary}" />
-                            <TextBlock x:Name="AvailabilityLabel" Text="Saved macro hotkeys start off." Style="{StaticResource Secondary}" />
-                            <WrapPanel Margin="0,14,0,0">
-                                <Button Content="Review enabled helpers together…" Click="RunCompatible_Click"/>
-                                <Button Content="Finish current sequence loop" Click="FinishSequenceLoop_Click"/>
-                                <Button Content="Apply names and binding" Click="ApplyMacro_Click" />
-                                <Button Content="Load into Actions" Click="LoadProfile_Click" />
-                                <Button Content="Open editor" Click="EditMacro_Click" />
-                                <Button Content="New sequence" Click="NewSequence_Click" />
-                                <Button Content="Add Actions as macro" Click="AddQuickMacro_Click" />
-                                <Button Content="Update macro from Actions" Click="UpdateQuickMacro_Click" />
-                                <Button Content="Duplicate macro" Click="DuplicateMacro_Click" />
-                                <Button Content="Delete macro" Click="DeleteMacro_Click" />
-                            </WrapPanel>
-                            <WrapPanel Margin="0,8,0,0">
-                                <Button Content="Import…" Click="Import_Click" />
-                                <Button Content="Export…" Click="Export_Click" />
-                                <Button Content="Delete folder" Click="DeleteProfile_Click" />
-                            </WrapPanel>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
-                <!-- Retain this empty slot for existing page identifiers. -->
-                <Grid Visibility="Collapsed"/>
                 <Grid x:Name="SettingsPage" Visibility="Collapsed">
                  <ScrollViewer Padding="0,0,16,0" VerticalScrollBarVisibility="Auto"><StackPanel>
                   <TextBlock Text="When closing the window" Style="{StaticResource Heading}"/>
@@ -228,7 +187,6 @@
                   <TextBlock Text="Applies to saved clicks on the next Start or Test. Scaling follows the same proportional position; it does not recognise buttons. Colour areas and drags still need recalibration." Style="{StaticResource Secondary}" TextWrapping="Wrap"/>
                   <TextBlock Text="Status overlay" Style="{StaticResource Heading}" Margin="0,18,0,8"/>
                   <CheckBox x:Name="IdleOverlayBox" Content="Keep an idle indicator visible" Checked="OverlayOptions_Changed" Unchecked="OverlayOptions_Changed"/>
-                  <CheckBox x:Name="AnchorOverlayBox" Visibility="Collapsed" Checked="OverlayOptions_Changed" Unchecked="OverlayOptions_Changed"/>
                   <TextBlock Text="Opacity"/><Slider x:Name="OverlayOpacity" Width="300" HorizontalAlignment="Left" Minimum="0.4" Maximum="1" Value="0.94" ValueChanged="OverlayOptions_Changed" AutomationProperties.Name="Overlay opacity"/>
                   <TextBlock Text="Size"/><Slider x:Name="OverlayScale" Width="300" HorizontalAlignment="Left" Minimum="0.75" Maximum="1.5" Value="1" ValueChanged="OverlayOptions_Changed" AutomationProperties.Name="Overlay size"/>
 
@@ -290,15 +248,7 @@
   </StackPanel></Border>
   <TextBlock Text="Autorun is an example toggle: hold W on/off for games without autorun." Style="{StaticResource Secondary}" Margin="0,6,0,0"/>
  </StackPanel></ScrollViewer>
-</Grid><Grid x:Name="WizardPage" Visibility="Collapsed"><StackPanel>
-                 <TextBlock Text="What would you like to do?" Style="{StaticResource Heading}"/>
-                 <TextBlock Text="Start with one task. Each guide takes you to the controls you need." Style="{StaticResource Secondary}" Margin="0,0,0,14"/>
-                 <Button Content="Repeat clicks or key presses" Click="GuideQuick_Click" Margin="0,0,0,10"/>
-                 <Button Content="Record a macro, then edit its steps" Click="GuideRecord_Click" Margin="0,0,0,10"/>
-                 <Button Content="Wait for an image or colour" Click="GuideVision_Click" Margin="0,0,0,10"/>
-                 <TextBlock Text="1. Choose your Click target.   2. Set up the action.   3. Try a short run.
-Everything stays stopped until you press Start or your hotkey." Style="{StaticResource Secondary}"/>
-                </StackPanel></Grid>
+</Grid>
                 <Grid x:Name="ScreenshotPage" Visibility="Collapsed"><ScrollViewer Padding="0,0,16,0" VerticalScrollBarVisibility="Auto"><StackPanel>
 
                     <TextBlock Text="Save a screenshot as a PNG. ME Clicker hides while you capture." Style="{StaticResource Secondary}" Margin="0,0,0,12"/>

@@ -10,11 +10,10 @@ The portable package includes these dependency notices and its actual runtime ve
 |---|---|---|---|
 | .NET SDK | 10.0.401 | MIT plus bundled third-party notices | Build tooling; not shipped as part of the app |
 | .NET / Windows Desktop runtime | 10.0.12 | MIT plus bundled third-party notices | Development apps and self-contained isolated probe bundle |
-| CommunityToolkit.Mvvm | 8.4.2 | MIT | App shell MVVM |
 | Microsoft.NET.Test.Sdk | 18.10.1 | MIT | Tests only |
 | MSTest.TestAdapter / MSTest.TestFramework | 4.5.1 | MIT | Tests only |
 
-`licenses/nuget-inventory.json` lists all **13** unique resolved NuGet packages, including transitive
+`licenses/nuget-inventory.json` lists all **12** unique resolved NuGet packages, including transitive
 test tooling, their declared licence expressions, exact repository commits, package hashes and
 available copied notices. All current package metadata declares MIT. Detailed bundled notices are
 retained under `licenses/nuget/`; .NET's full archive notices are under `licenses/dotnet/`.

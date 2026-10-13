@@ -2,38 +2,32 @@
   "version": 2,
   "dependencies": {
     "net10.0-windows10.0.22000": {
-      "CommunityToolkit.Mvvm": {
-        "type": "Direct",
-        "requested": "[8.4.2, )",
-        "resolved": "8.4.2",
-        "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="
-      },
       "minimumeffortclicker.core": {
         "type": "Project"
       },
       "minimumeffortclicker.engine": {
         "type": "Project",
         "dependencies": {
-          "MinimumEffortClicker.Core": "[1.0.0, )"
+          "MinimumEffortClicker.Core": "[0.5.0-preview.34.16, )"
         }
       },
       "minimumeffortclicker.storage": {
         "type": "Project",
         "dependencies": {
-          "MinimumEffortClicker.Core": "[1.0.0, )"
+          "MinimumEffortClicker.Core": "[0.5.0-preview.34.16, )"
         }
       },
       "minimumeffortclicker.vision": {
         "type": "Project",
         "dependencies": {
-          "MinimumEffortClicker.Core": "[1.0.0, )"
+          "MinimumEffortClicker.Core": "[0.5.0-preview.34.16, )"
         }
       },
       "minimumeffortclicker.windows": {
         "type": "Project",
         "dependencies": {
-          "MinimumEffortClicker.Engine": "[1.0.0, )",
-          "MinimumEffortClicker.Vision": "[1.0.0, )"
+          "MinimumEffortClicker.Engine": "[0.5.0-preview.34.16, )",
+          "MinimumEffortClicker.Vision": "[0.5.0-preview.34.16, )"
         }
       }
     },

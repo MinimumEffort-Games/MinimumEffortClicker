@@ -103,12 +103,6 @@ public partial class MainWindow
         ScreenshotFolderBox.Text = picker.FolderName; PersistPreferences();
     }
 
-    private void ScreenshotSettings_Click(object sender, RoutedEventArgs e)
-    {
-        Navigate(3);
-        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
-            () => ScreenshotHotkeyPanel.BringIntoView());
-    }
 
     private void ScreenshotOpenFolder_Click(object sender, RoutedEventArgs e)
     {
@@ -158,7 +152,7 @@ public partial class MainWindow
         }
         if (runtime is null || !initialized || closing || allowClose || screenshotBusy || Environment.TickCount64 - screenshotFinishedAt < 750) return;
         if ((!fromAction && quickOperation) || quickEditorOpen || bindingBusy || ioBusy || macroFileBusy || System.Windows.Interop.ComponentDispatcher.IsThreadModal
-            || overlay?.IsEditing == true || OwnedWindows.Cast<Window>().Any(w => w.IsVisible))
+            || OwnedWindows.Cast<Window>().Any(w => w.IsVisible))
         {
             ScreenshotStatus.Text = "Finish the open dialog, recording, test, or overlay adjustment before taking a screenshot.";
             if (fromAction) throw new InvalidOperationException(ScreenshotStatus.Text);

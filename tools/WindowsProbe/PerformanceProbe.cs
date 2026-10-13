@@ -75,6 +75,6 @@ internal static class PerformanceProbe
             Require(inputs == runtime.Snapshot.InputsSent, "Capture resource sample emitted input.");
             report.Checks.Add("Separate idle, 1/10/20/100 CPS, compact overlay and WGC samples completed with exact receiver counts and cleanup. CPU denominator is one logical core; receiver cost is separate. Short samples are not steady-state or whole-app acceptance.");
         }
-        finally { await app.Dispatcher.InvokeAsync(() => { overlay.SetEditing(false); overlay.Close(); }); }
+        finally { await app.Dispatcher.InvokeAsync(() => { overlay.Close(); }); }
     }
 }

@@ -37,19 +37,3 @@ public partial class MainWindow
         }
     }
 }
-public partial class SequenceEditor
-{
-    private void Editor_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        if (AuthoringScroll is null || PlaybackScroll is null) return;
-        // Keep a usable action list/inspector at minimum height; keyboard focus scrolls tools into view.
-        AuthoringScroll.MaxHeight = Math.Clamp(ActualHeight * 0.25, 120, 180);
-        PlaybackScroll.MaxHeight = Math.Clamp(ActualHeight * 0.25, 140, 180);
-    }
-    private void PausePlayback_Click(object sender, RoutedEventArgs e) => runtime.Pause();
-    private async void ResumePlayback_Click(object sender, RoutedEventArgs e)
-    {
-        ResumePlaybackButton.IsEnabled = false;
-        await runtime.ResumeAfterCountdownAsync(); RefreshRuntime();
-    }
-}

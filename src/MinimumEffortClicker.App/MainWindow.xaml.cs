@@ -24,8 +24,7 @@ public partial class MainWindow : Window
     private bool preferencesBusy;
     private List<ProfileDefinition> profiles = [];
     private readonly Dictionary<Guid, MacroBinding> macroBindings = [];
-    private readonly HashSet<Guid> enabledProfiles = [], enabledMacros = [];
-    private bool selectingProfile, bindingBusy;
+    private bool bindingBusy;
     private readonly LocalBindings bindingsStore;
     private StatusOverlay? overlay;
     private OverlayOptions overlayOptions = new();
@@ -48,7 +47,7 @@ public partial class MainWindow : Window
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();
         ToggleHeldKeyBox.Content = "W"; ToggleShortcutBox.Content = "Choose a key…";
-        ToggleKeyBox.Content = "F8"; StopKeyBox.Content = "F9"; MacroKeyBox.Content = "Choose a key…";
+        ToggleKeyBox.Content = "F8"; StopKeyBox.Content = "F9";
         if (previewOnly) return;
         runtime = new DesktopRuntime();
         runtime.CaptureScreenshot = stop => Dispatcher.InvokeAsync(() => TakeScreenshotAsync(fromAction: true, stop)).Task.Unwrap();
@@ -63,7 +62,7 @@ public partial class MainWindow : Window
             var intent = runtime.StopVersion;
             Dispatcher.BeginInvoke(() =>
             {
-                if (!closing && !allowClose && !screenshotBusy && !macroFileBusy && !ioBusy && intent == runtime.StopVersion && initialized && !quickOperation && !quickEditorOpen && !bindingBusy && !preferencesBusy && !System.Windows.Interop.ComponentDispatcher.IsThreadModal && overlay?.IsEditing != true && quickValid && runtime.CanStartActions)
+                if (!closing && !allowClose && !screenshotBusy && !macroFileBusy && !ioBusy && intent == runtime.StopVersion && initialized && !quickOperation && !quickEditorOpen && !bindingBusy && !preferencesBusy && !System.Windows.Interop.ComponentDispatcher.IsThreadModal && quickValid && runtime.CanStartActions)
                     Run_Click(this, new RoutedEventArgs());
             });
         };
@@ -89,14 +88,14 @@ public partial class MainWindow : Window
             var loaded = await Task.Run(store.Load);
             StartupMeasurement.Mark("Profiles loaded");
             if (allowClose || closing) return;
-            profiles = loaded.Profiles.ToList(); RefreshLibraryLists();
+            profiles = loaded.Profiles.ToList(); RefreshToggleList();
             if (profiles.Count == 0 && loaded.Warning is null)
             {
                 var autorun = new MacroDefinition(Guid.NewGuid(), "Autorun",
                     new(InputControl.Key(SequenceKeys.Supported["W"]), HelperMode.Hold, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(20), 0), IsToggle: true);
                 profiles.Add(new(ProfileDefinition.CurrentVersion, Guid.NewGuid(), "Toggles", [autorun]));
                 await Task.Run(() => store.Save(profiles));
-                RefreshLibraryLists();
+                RefreshToggleList();
             }
             foreach (var binding in await Task.Run(bindingsStore.Load)) macroBindings[binding.MacroId] = binding;
             RefreshToggleList();
@@ -116,7 +115,6 @@ public partial class MainWindow : Window
             OverlayBox.IsChecked = settings.Overlay;
             overlayOptions = settings.OverlayOptions ?? new();
             IdleOverlayBox.IsChecked = overlayOptions.KeepIdle;
-            AnchorOverlayBox.IsChecked = overlayOptions.AnchorTarget;
             OverlayOpacity.Value = overlayOptions.Opacity; OverlayScale.Value = overlayOptions.Scale;
             Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
@@ -167,12 +165,13 @@ public partial class MainWindow : Window
             timer.Stop(); overlayFollowTimer.Stop(); SystemEvents.SessionSwitch -= SessionChanged; SystemEvents.PowerModeChanged -= PowerChanged;
             SystemEvents.DisplaySettingsChanged -= DisplaysChanged;
             CancelPowerSchedule(); CloseShutdownNotice();
+            if (runtime is null) return; // --render-preview never creates a runtime.
             runtime.StopIssued -= CancelPowerSchedule;
             runtime.Control.RecordingRequested -= QuickRecordHotkey;
             screenshotCancellation?.Cancel();
             runtime.Control.ScreenshotRequested -= ScreenshotHotkey;
             runtime.Control.StopRequested -= CancelScreenshot;
-            runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.SetEditing(false); overlay?.Close();
+            runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Close();
         };
     }
 
@@ -209,7 +208,6 @@ public partial class MainWindow : Window
         string targetBorder = runtime.HasSelectedTarget ? "SuccessBorder" : "StopBorder";
         TargetCard.SetResourceReference(Border.BorderBrushProperty, targetBorder);
         ToggleTargetCard.SetResourceReference(Border.BorderBrushProperty, targetBorder);
-        RecordDiagnosticState(snapshot);
         RefreshPower(snapshot);
         System.Windows.Automation.AutomationProperties.SetHelpText(RunButton, snapshot.State);
         FailureDetailLabel.Visibility = snapshot.CleanupPending || snapshot.State is "Could not continue" or "Not started" or "Cleanup pending" ? Visibility.Visible : Visibility.Collapsed;
@@ -226,17 +224,17 @@ public partial class MainWindow : Window
         CleanupButton.Visibility = snapshot.CleanupPending ? Visibility.Visible : Visibility.Collapsed;
         HotkeyStatus.Text = runtime.Control.Available ? "" : runtime.Control.Error;
         timer.Interval = TimeSpan.FromMilliseconds(snapshot.Busy ? 100 : 1000);
-        if (snapshot.Busy && overlay?.IsEditing != true || shutdownSchedule.Armed) timer.Start(); else timer.Stop();
+        if (snapshot.Busy || shutdownSchedule.Armed) timer.Start(); else timer.Stop();
         bool capturing = snapshot.Busy && snapshot.State.StartsWith("Recording", StringComparison.Ordinal);
-        if (!screenshotBusy && (capturing || overlay?.IsEditing == true || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
+        if (!screenshotBusy && (capturing || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
         {
             EnsureOverlay();
-            overlay!.Configure(!snapshot.Busy && !overlay.IsEditing ? overlayOptions with { Expanded = false } : overlayOptions);
+            overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
             overlay.Update(snapshot, stopKey, MacroBindings.KeyLabel(appliedToggleKey), ToggleOverlayLines(snapshot), ShortcutKeys.Label(appliedRecordKey), !quickHistory.Current.Steps.Any());
             bool newlyShown = !overlay.IsVisible;
             if (newlyShown) overlay.Show();
             PositionOverlay(newlyShown);
-            if (!overlay.IsEditing && runtime.HasSelectedTarget) overlayFollowTimer.Start();
+            if (runtime.HasSelectedTarget) overlayFollowTimer.Start();
             else overlayFollowTimer.Stop();
             runtime.OverlayHandle = new WindowInteropHelper(overlay).Handle;
         }
@@ -245,9 +243,9 @@ public partial class MainWindow : Window
 
     private void PositionOverlay(bool newlyShown = false)
     {
-        if (runtime is null || overlay is not { IsVisible: true } || overlay.IsEditing || allowClose) return;
+        if (runtime is null || overlay is not { IsVisible: true } || allowClose) return;
         overlayPlacementCount++;
-        // Locked overlays follow their input scope, never the clicker window.
+        // The overlay follows the Click target, never the clicker window.
         try
         {
             var frame = runtime.GetTargetFrame();
@@ -261,22 +259,6 @@ public partial class MainWindow : Window
         if (!double.TryParse(box.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var value) || !double.IsFinite(value))
             throw new ArgumentException("Enter finite numeric timing values.");
         return value;
-    }
-    private static string Describe(HelperPlan plan)
-    {
-        string action = plan.Control.Kind switch
-        {
-            InputKind.ScanCode => (plan.Mode == HelperMode.Hold ? "Hold " : "Press ") + HelperPlan.SupportedKeys.First(x => x.Value == plan.Control.Code).Key,
-            InputKind.Scroll => plan.Control.Code > 0 ? "Scroll up" : "Scroll down",
-            InputKind.HorizontalScroll => plan.Control.Code > 0 ? "Scroll right" : "Scroll left",
-            _ => ((PointerButton)plan.Control.Code) + " click"
-        };
-        string repeat = plan.ActiveDuration is { } duration ? $"for {duration.TotalSeconds:0.###} seconds"
-            : plan.Count == 0 ? "until stopped" : plan.Count == 1 ? "once" : $"{plan.Count:N0} times";
-        string interval = plan.MaximumInterval is { } maximum
-            ? $"{plan.Interval.TotalMilliseconds:0.###}–{maximum.TotalMilliseconds:0.###} ms (random)"
-            : $"{plan.Interval.TotalMilliseconds:0.###} ms";
-        return plan.Mode == HelperMode.Hold ? $"{action} · {repeat}" : $"{action} · every {interval} · {repeat}";
     }
     private WindowState? desktopPlaybackFrom;
     private bool actionsStartPending;
@@ -342,27 +324,27 @@ public partial class MainWindow : Window
         }
     }
     private void Stop_Click(object sender, RoutedEventArgs e) { screenshotCancellation?.Cancel(); quickCancellation?.Cancel(); quickRecorder?.Stop(); runtime?.Stop(); }
-    private void StopActions_Click(object sender, RoutedEventArgs e) { if (quickOperation) Stop_Click(sender, e); else runtime?.StopActions(); }
     private void Cleanup_Click(object sender, RoutedEventArgs e) => runtime?.RetryCleanup();
     private void Overlay_Changed(object sender, RoutedEventArgs e) { if (initialized) { RefreshStatus(); PersistPreferences(); } }
     private void Navigation_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (Pages is null) return;
-        if (Navigation.SelectedItem is ListBoxItem item && int.TryParse(item.Tag?.ToString(), out int page)) ShowPage(page);
+        if (Navigation.SelectedItem is ListBoxItem { Tag: string page }) ShowPage(page);
     }
-    private int currentPage;
-    private void ShowPage(int page)
+    /// <summary>Name of the visible page grid; each navigation tab's Tag names its page.</summary>
+    private string currentPage = "QuickPage";
+    private void ShowPage(string page)
     {
         currentPage = page;
-        for (int i = 0; i < Pages.Children.Count; i++) Pages.Children[i].Visibility = i == page ? Visibility.Visible : Visibility.Collapsed;
+        foreach (UIElement child in Pages.Children)
+            child.Visibility = child is FrameworkElement { Name: var name } && name == page ? Visibility.Visible : Visibility.Collapsed;
     }
-    private void Navigate(int page)
+    private void Navigate(string page)
     {
-        var tab = Navigation.Items.Cast<ListBoxItem>().FirstOrDefault(i => i.Tag?.ToString() == page.ToString());
+        var tab = Navigation.Items.Cast<ListBoxItem>().FirstOrDefault(i => i.Tag as string == page);
         if (tab is not null) Navigation.SelectedItem = tab;
         ShowPage(page);
     }
-    private void MacroDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => LoadProfile_Click(sender, e);
     private void Theme_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (!initialized) return;
@@ -373,7 +355,6 @@ public partial class MainWindow : Window
     }
     private void LightTheme_Click(object sender, RoutedEventArgs e) => ThemeBox.SelectedIndex = 2;
     private void DarkTheme_Click(object sender, RoutedEventArgs e) => ThemeBox.SelectedIndex = 1;
-    private async void ApplyHotkeys_Click(object sender, RoutedEventArgs e) => await ApplyHotkeysAsync();
     private async Task ApplyHotkeysAsync()
     {
         if (runtime is null) return;
@@ -389,9 +370,8 @@ public partial class MainWindow : Window
         bindingBusy = true; Pages.IsEnabled = false;
         try
         {
-            enabledProfiles.Clear(); enabledMacros.Clear(); enabledToggles.Clear(); RefreshToggleList();
+            enabledToggles.Clear(); RefreshToggleList();
             await runtime.ConfigureHelpersAsync([]);
-            ProfileSelection_Changed(this, null!);
             bool success = await runtime.Control.ConfigureAsync(selectedStartKey, selectedStopKey);
             runtime.Control.HoldTrigger = false;
             stopKey = ShortcutKeys.Label(selectedStopKey);
@@ -451,7 +431,7 @@ public partial class MainWindow : Window
     {
         if (ioBusy) throw new InvalidOperationException("A profile operation is already in progress.");
         ioBusy = true;
-        try { await Task.Run(() => store.Save(updated)); profiles = updated; RefreshLibraryLists(); }
+        try { await Task.Run(() => store.Save(updated)); profiles = updated; RefreshToggleList(); }
         finally { ioBusy = false; }
     }
     private async void SaveProfile_Click(object sender, RoutedEventArgs e)
@@ -480,7 +460,6 @@ public partial class MainWindow : Window
             exportedPath = path;
             if (existing is not null && owner is not null)
             {
-                enabledMacros.Remove(existing.Id); await ApplyAvailability();
                 saved = owner with { Points = quickPoints, Macros = owner.Macros.Any(m => m.Id == macro.Id)
                     ? owner.Macros.Select(m => m.Id == existing.Id ? macro : m).ToArray() : [.. owner.Macros, macro] };
                 await SaveProfiles(profiles.Select(p => p.Id == owner.Id ? saved : p).ToList());
@@ -492,20 +471,12 @@ public partial class MainWindow : Window
                 await SaveProfiles([.. profiles, saved]);
             }
             loadedQuickProfile = saved.Id; loadedQuickMacro = macro.Id;
-            ProfileList.SelectedItem = saved; MacroList.SelectedItem = macro;
             loadedMacroFile = path; loadedFileProfile = file;
             MacroSaveStatus.Text = $"Saved ‘{name}’."; MacroSaveStatus.ToolTip = path;
             ReasonLabel.Text = "Macro saved. Use Load Macro to open it for editing or playback.";
         }
         catch (Exception ex) { MacroSaveStatus.Text = exportedPath is null ? "Could not save: " + ex.Message : $"File saved at {exportedPath}, but the local library update failed: {ex.Message}"; }
         finally { macroFileBusy = false; RefreshStatus(); }
-    }
-    private void LoadProfile_Click(object sender, RoutedEventArgs e)
-    {
-        if (ProfileList.SelectedItem is not ProfileDefinition profile || MacroList.SelectedItem is not MacroDefinition macro) return;
-        if (runtime?.Snapshot.Busy == true || quickOperation) { ReasonLabel.Text = "Stop the active run before loading a macro."; return; }
-        try { LoadActionMacro(profile, macro); loadedMacroFile = null; loadedFileProfile = null; }
-        catch (Exception ex) { loadingQuick = false; ReasonLabel.Text = "Could not load into this list: " + ex.Message; }
     }
     private void LoadActionMacro(ProfileDefinition profile, MacroDefinition macro)
     {
@@ -518,44 +489,10 @@ public partial class MainWindow : Window
             RecordMovementBox.IsChecked = SequenceLibrary.AllSteps(definition).Any(s => s.Motion?.UsePreviousPause == true || s.Motion?.MoveDuration > TimeSpan.Zero);
             LoopBox.IsChecked = repetition.Count == 0 && repetition.ActiveDuration is null;
             loadingQuick = false;
-            ProfileNameBox.Text = profile.Name; ActionMacroNameBox.Text = macro.Name; loadedQuickMacro = macro.Id; loadedQuickProfile = profile.Id; MacroSaveStatus.Text = "";
-            Navigate(0); RefreshQuickList(); NewAction_Click(this, new RoutedEventArgs());
+            ActionMacroNameBox.Text = macro.Name; loadedQuickMacro = macro.Id; loadedQuickProfile = profile.Id; MacroSaveStatus.Text = "";
+            Navigate("QuickPage"); RefreshQuickList(); NewAction_Click(this, new RoutedEventArgs());
             ReasonLabel.Text = "Loaded. Press Start or the configured start / stop key when ready.";
     }
-    private async void Import_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new OpenFileDialog { Filter = "Minimum Effort profile|*.mecprofile", Multiselect = false };
-        if (dialog.ShowDialog(this) != true) return;
-        try
-        {
-            var profile = await Task.Run(() => HelperProfiles.Import(dialog.FileName));
-            if (AppDialog.Show(this, $"{profile.Name}\n\n{profile.Macros.Count} macros\n{string.Join("\n", profile.Macros.Take(8).Select(m => m.Name + ": " + DescribeMacro(m)))}\n\nImport disabled? No target or hotkeys will be assigned.", "Review import", MessageBoxButton.OKCancel) != MessageBoxResult.OK) return;
-            await SaveProfiles([.. profiles, profile]); ProfileList.SelectedItem = profile;
-            ReasonLabel.Text = "Imported disabled. Load into Actions to review and select your target.";
-        }
-        catch (Exception ex) { ReasonLabel.Text = "Import rejected: " + ex.Message; }
-    }
-    private async void Export_Click(object sender, RoutedEventArgs e)
-    {
-        if (ProfileList.SelectedItem is not ProfileDefinition profile) return;
-        var dialog = new SaveFileDialog { Filter = "Minimum Effort profile|*.mecprofile", DefaultExt = ".mecprofile", FileName = "helper.mecprofile" };
-        if (dialog.ShowDialog(this) != true) return;
-        try { await Task.Run(() => HelperProfiles.Export(dialog.FileName, profile)); ReasonLabel.Text = "Exported actions, conditions, coordinates and any captured templates. No window binding, hotkeys or device state included."; }
-        catch (Exception ex) { ReasonLabel.Text = ex.Message; }
-    }
-    private async void DeleteProfile_Click(object sender, RoutedEventArgs e)
-    {
-        if (ProfileList.SelectedItem is not ProfileDefinition profile || AppDialog.Show(this, $"Delete '{profile.Name}' and its {profile.Macros.Count} macros?", "Delete profile", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
-        try
-        {
-            enabledProfiles.Remove(profile.Id);
-            foreach (var macro in profile.Macros) { enabledMacros.Remove(macro.Id); macroBindings.Remove(macro.Id); }
-            await ApplyAvailability();
-            await SaveProfiles(profiles.Where(p => p.Id != profile.Id).ToList()); ReasonLabel.Text = "Folder deleted.";
-        }
-        catch (Exception ex) { ReasonLabel.Text = ex.Message; }
-    }
-
     private async void Window_Closing(object? sender, CancelEventArgs e)
     {
         if (allowClose || runtime is null) return;

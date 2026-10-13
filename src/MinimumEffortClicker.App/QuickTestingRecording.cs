@@ -94,7 +94,7 @@ public partial class MainWindow
     }
     private void QuickRecordHotkey() => Dispatcher.BeginInvoke(async () =>
     {
-        if (!quickEditorOpen && (quickOperation || currentPage == 0)) await RecordQuick();
+        if (!quickEditorOpen && (quickOperation || currentPage == "QuickPage")) await RecordQuick();
     });
     private async void QuickRecord_Click(object sender, RoutedEventArgs e) => await RecordQuick();
     private async Task RecordQuick()

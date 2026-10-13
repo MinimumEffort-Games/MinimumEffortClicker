@@ -1,19 +1,5 @@
 [
   {
-    "package": "CommunityToolkit.Mvvm",
-    "version": "8.4.2",
-    "licenseType": "expression",
-    "license": "MIT",
-    "licenseUrl": "https://licenses.nuget.org/MIT",
-    "repository": "https://github.com/CommunityToolkit/dotnet",
-    "commit": "35dfe7b12da0e64384bfaec7ebc0883196a89f9f",
-    "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg==",
-    "localNotices": [
-      "licenses/nuget/CommunityToolkit.Mvvm/8.4.2/License.md",
-      "licenses/nuget/CommunityToolkit.Mvvm/8.4.2/ThirdPartyNotices.txt"
-    ]
-  },
-  {
     "package": "Microsoft.ApplicationInsights",
     "version": "2.23.0",
     "licenseType": "expression",
