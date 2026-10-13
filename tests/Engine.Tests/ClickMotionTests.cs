@@ -120,4 +120,27 @@ public sealed class ClickMotionTests
         Assert.AreEqual(20, input.Accepted[1].Position!.X); Assert.AreEqual(30, input.Accepted[2].Position!.X);
         Assert.AreEqual(InputEdge.Up, input.Accepted[^1].Edge); Assert.IsFalse(engine.HasOwnedInput);
     }
+    [TestMethod]
+    public void LoopTravelsToTheFirstClickDuringTheClosingPauseInsteadOfJumping()
+    {
+        var clock = new FakeClock(); var input = new FakeInputSink(); var target = Guid.NewGuid();
+        var engine = new ClickExecutor(input, clock, new Wait(clock), new FakeForegroundProvider { Current = new(target, true) })
+        { NextRandom = () => 0, CursorPosition = p => input.Accepted.Where(i => i.Position is not null).Select(i => i.Position).LastOrDefault() ?? p with { X = 0, Y = 0 } };
+        var first = QuickActions.Click(PointerButton.Left, QuickClickKind.Single, Ms(20), Ms(0), Ms(60), new(100, 100, 800, 600, 96));
+        var second = QuickActions.Click(PointerButton.Left, QuickClickKind.Single, Ms(20), Ms(0), Ms(20), new(300, 100, 800, 600, 96));
+        var source = new SequenceDefinition([first, second, QuickActions.Pause(Ms(200))], Repetition: new(2));
+        var result = engine.Execute(SequenceCompiler.Compile(QuickActions.WithClickMovement(source, true)), target, default);
+        Assert.AreEqual(ClickRunOutcome.Completed, result.Outcome, result.Error);
+        Assert.AreEqual(2, result.CompletedCycles);
+        // Each loop is 320 ms. The closing 220 ms (20 ms after the second click plus the 200 ms pause) carries the pointer back to the first click.
+        Assert.AreEqual(Ms(640), clock.Elapsed);
+        var buttons = input.Accepted.Select((i, index) => (i, index)).Where(x => x.i.Control.Kind == InputKind.MouseButton).ToArray();
+        int secondLoopDown = buttons[4].index, firstLoopLastUp = buttons[3].index;
+        var travel = input.Accepted.Skip(firstLoopLastUp + 1).Take(secondLoopDown - firstLoopLastUp - 1).ToArray();
+        Assert.AreEqual(11, travel.Length);
+        Assert.IsTrue(travel.All(i => i.Control.Kind == InputKind.PointerMove));
+        Assert.AreEqual(300 - 200 / 11, travel[0].Position!.X); Assert.AreEqual(100, travel[^1].Position!.X);
+        Assert.AreEqual(travel[^1].Position, input.Accepted[secondLoopDown].Position);
+        Assert.IsFalse(engine.HasOwnedInput);
+    }
 }

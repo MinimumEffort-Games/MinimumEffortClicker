@@ -6,46 +6,102 @@ namespace MinimumEffortClicker.App;
 
 public partial class MainWindow
 {
-    private void Help_Click(object sender, RoutedEventArgs e) => ShowText("Minimum Effort Clicker · help", """
-        Everything starts stopped
-        Nothing runs until you press Start, a toggle shortcut, or the Actions start key. Loading a macro, importing, or switching windows never starts anything. F9 (Stop all) stops every action, toggle and recording at once and releases any key or button the clicker is holding.
+    /// <summary>Help text, one section per page. A line starting with "- " renders as a bullet; an empty line is a gap.</summary>
+    private static readonly (string Title, string[] Lines)[] HelpSections =
+    [
+        ("Nothing runs until you start it",
+        [
+            "The clicker does nothing on its own. It only runs when you press Start, press a toggle's shortcut, or press the Actions start key.",
+            "Loading a macro or switching windows never starts anything.",
+            "",
+            "F9 stops everything at once: actions, toggles and recording. It also lets go of any key or button the clicker is holding.",
+        ]),
+        ("Actions",
+        [
+            "The Actions page runs a list of clicks, key presses and pauses in order.",
+            "",
+            "- Click target: choose where the clicks go. Desktop uses screen positions. A window uses positions inside that window and follows it when it moves.",
+            "- Add Action: pick a click, key press, pause, wait for a colour, or screenshot. Fill in its settings and press Add Action.",
+            "- Start (F8): runs the list once. Tick Loop to repeat it until you stop it.",
+            "- Test action: runs only the selected row, after a short countdown.",
+            "",
+            "Select a row to edit it. The arrow, copy, delete and undo buttons arrange the list.",
+            "",
+            "Record (F10) starts recording right away. Click and type in your target, then press F10 again. Your clicks and keys are added to the list.",
+            "With Record pauses on, the time between them is kept as pauses you can edit.",
+            "With Simulate mouse movement on, the pointer travels to the next click during the pause before it instead of jumping. With Loop on, the pause at the end of the list is used for the trip back to the first click.",
+            "",
+            "Save Macro writes the list to a .mecprofile file in the Macros folder. Load Macro opens one.",
+            "A macro holds actions, timing and any captured colours or images. It never holds hotkeys or window details.",
+        ]),
+        ("Toggles",
+        [
+            "A toggle holds or spams one key or mouse button until you press its shortcut again.",
+            "",
+            "- Give it a name.",
+            "- Choose the key or button.",
+            "- Choose Hold or Spam.",
+            "- Pick a shortcut and save it.",
+            "",
+            "Tick Active to arm a toggle. Nothing happens until you press its shortcut while your Click target is in front.",
+            "Spam is built for fast tapping. The click limit on the Actions page does not apply to it.",
+        ]),
+        ("Screenshot",
+        [
+            "Saves a PNG of the whole screen or of an area you drag. The clicker hides itself while it captures.",
+            "",
+            "Choose the folder. You can also copy the image to the clipboard, group files into daily folders, and set a hotkey.",
+        ]),
+        ("Settings",
+        [
+            "- Close to tray: the window hides in the notification area instead of closing. Use the tray icon's Exit to quit.",
+            "- Appearance: light or dark.",
+            "- Scale click positions: when the target window is resized, saved positions scale with it.",
+            "- Overlay: a small status box beside the target shows what is running. Set its opacity and size here, or hide it.",
+            "- Keys: F8 starts and stops Actions, F9 stops everything, F10 records. Each needs its own key.",
+        ]),
+        ("If something is stuck",
+        [
+            "Cleanup pending means the clicker could not let go of a key or button because you were holding the same one yourself. Let go of it and press Release stuck input.",
+            "",
+            "Closing the app normally stops and releases everything. Ending it from Task Manager does not.",
+            "",
+            "Some apps and games ignore simulated input or forbid macros. Check their rules first.",
+        ]),
+        ("Your data",
+        [
+            "With a portable.mode file next to the app, everything is stored in the Data folder beside it. Otherwise it is in your local app data folder.",
+            "",
+            "No account, no internet, no tracking. This build is not signed, so Windows may show a warning the first time it runs.",
+        ]),
+    ];
 
-        Actions
-        Pick a Click target: Desktop uses physical screen coordinates; choosing a window uses coordinates inside that window and follows it when it moves. Choose an action (click, key press, pause, wait for a colour, screenshot), fill in its settings and press Add Action. Select a row to edit it; use the arrows, copy, delete and undo buttons to arrange the list. Test action runs only the selected action after a short countdown. Start (F8) runs the whole list once, or forever with Loop checked. F10 records your own clicks and keys into the list; Record pauses keeps the time between them as editable pauses.
-
-        Save Macro writes the list to a .mecprofile file in the Macros folder beside your data. Load Macro opens one. Files only contain actions, timing and any captured colours or templates; never hotkeys, window handles or device state.
-
-        Toggles
-        A toggle holds or spams one key or mouse button until you tap its shortcut again. Give it a name, choose the key to hold or tap, choose Hold or Spam, pick a shortcut, then save. Checked toggles are armed: nothing happens until you press the shortcut inside your Click target. Spam is deliberately not limited by the Actions click cap; it is made for fast tapping.
-
-        Screenshot
-        Save a PNG of the full screen or a dragged area. The clicker hides itself while capturing. Choose the folder, optionally copy to the clipboard and group files into daily folders, and set a global hotkey if you want one.
-
-        Settings
-        Closing the window can minimise to the notification area instead of exiting; use the tray icon's Exit to quit. Choose light or dark appearance. When a Click target window is resized, saved click positions scale with it by default. The status overlay sits beside the target and shows what is running; set its opacity and size here, or hide it with Show overlay. Global controls are F8 (Actions start/stop), F9 (Stop all) and F10 (record) by default; each needs a different key.
-
-        If something is stuck
-        Cleanup pending means the clicker could not release an input because you were physically holding the same key or button. Release it and press Release stuck input. Closing the app normally stops and releases everything; killing the process from Task Manager cannot. Some apps and games ignore synthetic input or ban macros; follow their rules.
-
-        Data
-        A build with portable.mode stores everything in the Data folder beside the executable; otherwise it lives in your local application data. No account, network service or telemetry is used. This build is unsigned; Windows may warn before it runs.
-        """);
-
-    private void ShowText(string title, string text)
+    private void Help_Click(object sender, RoutedEventArgs e)
     {
-        var box = new TextBox { Text = text, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 12, 0, 12) };
-        AutomationProperties.SetName(box, title);
+        const string title = "Minimum Effort Clicker · help";
+        var page = new StackPanel { Margin = new Thickness(4, 0, 18, 12) };
+        foreach (var (heading, lines) in HelpSections)
+        {
+            page.Children.Add(new TextBlock { Text = heading, FontSize = 18, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 18, 0, 8) });
+            foreach (string line in lines)
+            {
+                if (line.Length == 0) { page.Children.Add(new Border { Height = 8 }); continue; }
+                bool bullet = line.StartsWith("- ", StringComparison.Ordinal);
+                page.Children.Add(new TextBlock { Text = bullet ? "•  " + line[2..] : line, FontSize = 14, TextWrapping = TextWrapping.Wrap,
+                    LineHeight = 22, Margin = bullet ? new Thickness(12, 0, 0, 4) : new Thickness(0, 0, 0, 4) });
+            }
+        }
+        var scroll = new ScrollViewer { Content = page, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 0, 0, 12) };
+        AutomationProperties.SetName(scroll, title);
         var panel = new DockPanel { Margin = new Thickness(22) };
         var close = new Button { Content = "Close", IsCancel = true, HorizontalAlignment = HorizontalAlignment.Right };
-        var dialog = new Window { Title = title, Owner = this, Width = 720, Height = 620, MinWidth = 440, MinHeight = 340,
+        var dialog = new Window { Title = title, Owner = this, Width = 760, Height = 640, MinWidth = 440, MinHeight = 340,
             WindowStartupLocation = WindowStartupLocation.CenterOwner, Content = panel };
         dialog.SetResourceReference(BackgroundProperty, "AppBackground");
         dialog.SetResourceReference(ForegroundProperty, "TextPrimary");
-        foreach (var type in new[] { typeof(Button), typeof(TextBox) })
-            if (TryFindResource(type) is Style style) dialog.Resources[type] = style;
+        if (TryFindResource(typeof(Button)) is Style style) dialog.Resources[typeof(Button)] = style;
         close.Click += (_, _) => dialog.Close();
-        DockPanel.SetDock(close, Dock.Bottom); panel.Children.Add(close); panel.Children.Add(box);
+        DockPanel.SetDock(close, Dock.Bottom); panel.Children.Add(close); panel.Children.Add(scroll);
         dialog.ShowDialog();
     }
 }

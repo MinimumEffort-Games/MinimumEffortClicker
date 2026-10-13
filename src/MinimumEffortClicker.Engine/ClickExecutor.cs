@@ -281,10 +281,12 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
     private void ExecuteSequenceLoops(SequencePlan plan, Guid targetId, CancellationToken stop, Run run)
     {
             if (plan.Repetition.ActiveDuration is { } duration) Interlocked.Exchange(ref sequenceDeadline, (clock.Elapsed + duration).Ticks);
+            ClientPoint? carried = null;
             for (int loop = 0; plan.Repetition.Count == 0 || loop < plan.Repetition.Count; loop++)
             {
                 var loopStart = clock.Elapsed;
-                ExecuteSequenceSegment(plan, targetId, stop, run);
+                bool loopsAgain = plan.Repetition.Count == 0 || loop + 1 < plan.Repetition.Count;
+                ExecuteSequenceSegment(plan, targetId, stop, run, loopsAgain, ref carried);
                 lock (gate)
                 {
                     if (!CanContinue(run, targetId, stop)) return;
@@ -298,11 +300,17 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                 lock (gate) { if (!CanContinue(run, targetId, stop)) return; }
             }
     }
-    private void ExecuteSequenceSegment(SequencePlan plan, Guid targetId, CancellationToken stop, Run run)
+    /// <summary>
+    /// One pass over the list. <paramref name="carried"/> is the first click's position when the previous loop already moved the
+    /// pointer there during its closing pause; on return it holds the position prepared for the next loop, or null.
+    /// </summary>
+    private void ExecuteSequenceSegment(SequencePlan plan, Guid targetId, CancellationToken stop, Run run, bool loopsAgain, ref ClientPoint? carried)
     {
             plan = plan.SampleTiming(NextRandom);
             var clickPositions = new Dictionary<Guid, ClientPoint>();
             var stepPositions = new Dictionary<int, ClientPoint>();
+            if (carried is { } arrived && plan.Inputs.Count > 0) stepPositions[plan.Inputs[0].StepIndex] = arrived;
+            carried = null;
             var origin = clock.Elapsed;
             for (int index = 0, conditionIndex = 0, screenshotIndex = 0; index < plan.Inputs.Count || conditionIndex < plan.Conditions.Count || screenshotIndex < plan.Screenshots.Count;)
             {
@@ -380,22 +388,8 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                     clickPositions[item.ActionId] = position;
                     var movementStarted = clock.Elapsed;
                     var moveDuration = motion.UsePreviousPause ? due - movementStarted : motion.MoveDuration;
-                    if (!sameClick && moveDuration >= TimeSpan.FromMilliseconds(32) && CursorPosition?.Invoke(position) is { } start)
-                    {
-                        int count = (int)Math.Floor(moveDuration.TotalMilliseconds / (motion.UsePreviousPause ? 20 : 16));
-                        for (int part = 1; part <= count; part++)
-                        {
-                            WaitDeadline(movementStarted + TimeSpan.FromTicks(moveDuration.Ticks * part / count), stop);
-                            lock (gate)
-                            {
-                                if (!CanContinue(run, targetId, stop)) return;
-                                if (owned.Any(i => i.Kind == InputKind.MouseButton)) throw new InvalidOperationException("Release held mouse buttons before smooth movement.");
-                                var point = ClickMotion.Interpolate(start, position, (double)part / count);
-                                if (!sink.TrySend(new(new(InputKind.PointerMove, 0), InputEdge.Down, point))) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return; }
-                                run.Sent++;
-                            }
-                        }
-                    }
+                    if (!sameClick && moveDuration >= TimeSpan.FromMilliseconds(32) && CursorPosition?.Invoke(position) is { } start
+                        && !MovePointer(run, targetId, stop, start, position, movementStarted, moveDuration, motion.UsePreviousPause ? 20 : 16, item)) return;
                     if (!motion.UsePreviousPause) { var extra = clock.Elapsed - movementStarted; origin += extra; due += extra; }
                 }
                 else if (!item.Down && clickPositions.TryGetValue(item.ActionId, out var clickedAt)) position = clickedAt;
@@ -420,8 +414,42 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                 index++;
             }
             lock (gate) Publish(run, owned.Count == 0 ? "Waiting" : null, "Finish sequence");
-            WaitDeadline(origin + plan.Duration, stop);
+            var end = origin + plan.Duration;
+            // Loop is on and the list ends with a pause: that pause is the travel time to the first click of the next loop,
+            // so the pointer moves during it instead of jumping there when the next loop starts.
+            if (loopsAgain && plan.Inputs.Count > 0 && end - clock.Elapsed >= TimeSpan.FromMilliseconds(32)
+                && plan.Inputs[0] is { Down: true, Motion: { UsePreviousPause: true } lead, Position: { } first } leadIn && leadIn.PauseBefore == TimeSpan.Zero)
+            {
+                bool free; lock (gate) free = owned.Count == 0;
+                var position = PrepareClickPoint is { } prepare ? prepare(first, lead, NextRandom) : lead.Offset(first, NextRandom);
+                var started = clock.Elapsed;
+                if (free && CursorPosition?.Invoke(position) is { } start)
+                {
+                    if (!MovePointer(run, targetId, stop, start, position, started, end - started, 20, leadIn)) return;
+                    carried = position;
+                }
+            }
+            WaitDeadline(end, stop);
             lock (gate) { CanContinue(run, targetId, stop); }
+    }
+
+    /// <summary>Sends paced pointer moves from <paramref name="start"/> to <paramref name="position"/>, finishing at started + duration. False when the run ended.</summary>
+    private bool MovePointer(Run run, Guid targetId, CancellationToken stop, ClientPoint start, ClientPoint position, TimeSpan started, TimeSpan duration, int paceMilliseconds, ScheduledInput item)
+    {
+        int count = (int)Math.Floor(duration.TotalMilliseconds / paceMilliseconds);
+        for (int part = 1; part <= count; part++)
+        {
+            WaitDeadline(started + TimeSpan.FromTicks(duration.Ticks * part / count), stop);
+            lock (gate)
+            {
+                if (!CanContinue(run, targetId, stop)) return false;
+                if (owned.Any(i => i.Kind == InputKind.MouseButton)) throw new InvalidOperationException("Release held mouse buttons before smooth movement.");
+                var point = ClickMotion.Interpolate(start, position, (double)part / count);
+                if (!sink.TrySend(new(new(InputKind.PointerMove, 0), InputEdge.Down, point))) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return false; }
+                run.Sent++;
+            }
+        }
+        return true;
     }
 
     private static bool Before(TimeSpan first, int firstStep, TimeSpan second, int secondStep) =>

@@ -113,9 +113,15 @@ public partial class MainWindow
             if (runtime.IsDesktopMode && WindowState != WindowState.Minimized)
             { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
-            QuickRecordStatus.Text = $"Recording starts in 3 seconds. {ShortcutKeys.Label(appliedRecordKey)} or {stopKey} finishes.";
-            await Task.Delay(3000, cancellation.Token);
-            using var recorder = new DesktopRecorder(runtime, new(Keyboard: true, MouseButtons: true, PointerPath: true));
+            // Recording starts the moment the key is pressed; the idle time before the first click or key is dropped from the list.
+            // The target was just brought forward, so give the foreground switch a few short retries instead of a fixed countdown.
+            DesktopRecorder? started = null;
+            for (int attempt = 0; started is null; attempt++)
+            {
+                try { started = new DesktopRecorder(runtime, new(Keyboard: true, MouseButtons: true, PointerPath: true)); }
+                catch (InvalidOperationException) when (attempt < 10) { await Task.Delay(50, cancellation.Token); }
+            }
+            using var recorder = started;
             quickRecorder = recorder; RefreshStatus();
             QuickRecordStatus.Text = $"Recording clicks and keys… {ShortcutKeys.Label(appliedRecordKey)} or {stopKey} finishes.";
             string reason = await recorder.Finished;
@@ -130,7 +136,7 @@ public partial class MainWindow
             QuickRecordStatus.Text = $"Added {sequence.Steps.Count} actions. Select any row to edit. " + string.Join(" ", draft.Warnings);
             ReasonLabel.Text = reason;
         }
-        catch (OperationCanceledException) { QuickRecordStatus.Text = "Recording countdown cancelled."; }
+        catch (OperationCanceledException) { QuickRecordStatus.Text = "Recording cancelled."; }
         catch (Exception ex) { QuickRecordStatus.Text = "Recording ended: " + ex.Message; }
         finally
         {

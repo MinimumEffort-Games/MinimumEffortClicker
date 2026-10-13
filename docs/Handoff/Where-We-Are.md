@@ -16,6 +16,7 @@ Nothing has been changed yet. The build was not run here: the PC has SDK 10.0.40
 
 - 2026-10-13: PR #1 opened (https://github.com/MinimumEffort-Games/MinimumEffortClicker/pull/1); the reworked CI passed on it. Code-quality pass committed: operation gate, named default shortcuts and modifier scan codes, one timing sampler. Formatter and analyzer rollout measured and deferred (item 31).
 - 2026-10-13: First isolated-VM test session (Codex in Roy's VMware Windows 11 guest, report in `VM-Reports/2026-10-13-vmware20-1.md`): SDK, build, 254 tests, packaging (500 files, schema 16) and all four probe modes passed at 7fb4de3; Default probe idle 0% of a core, 69.5 MiB private, synthetic F9 to cleanup 1.2 ms; 100 CPS request delivered 253 clicks in 3.07 s. Manual page checks passed for Toggles, Screenshot, Settings, tray exit and post-exit input; Actions was partial because the tester's automation could not click inside the picker and its injected input is (correctly) excluded from recording. A schema 11 profile loaded with no retired actions in it. Follow-up committed: desktop shell window ("Program Manager") no longer offered as a Click target; RELEASE_STATUS test count corrected to 254. Still to confirm by hand in the VM: Set Location + Test action receipt in TestTarget, F10 recording of real mouse/keyboard, and the dropped-actions notice on a schema ≤15 file that contains a text/branch step.
+- 2026-10-13: Roy's hands-on VM pass confirmed record, save, load and actions work. Fixes from his feedback: with Loop on and the list ending in a pause, the pointer now travels back to the first click during that pause instead of jumping (regression test added, 255 tests); Help rewritten in plain language with headings and spacing; toggle list cells padded, Hotkey and Toggle columns centred; F10 starts recording immediately (no 3-second countdown; the idle time before the first click or key is dropped as before).
 
 ## Roy's open list
 
@@ -87,7 +88,7 @@ App / shell
 ## Jobs only Roy can do
 
 - Merge PR #1 into `main` when happy with it (CI is green; VM session passed).
-- In the VM, by hand with the real mouse and keyboard: Actions → Set Location inside TestTarget, Test action, confirm the count rises; F10, click and type a few keys, F10, confirm the recording lists them; Load Macro on `docs/Handoff/VM-Reports/samples/schema15-retired-steps.mecprofile` and confirm the status says 3 retired actions were removed (one Wait remains).
+- In the VM: Load Macro on `docs/Handoff/VM-Reports/samples/schema15-retired-steps.mecprofile` and confirm the status says 3 retired actions were removed (one Wait remains). Record, save, load and actions are already confirmed by hand.
 - Take four fresh screenshots of the new build for the README (Actions, Toggles, Screenshot, Settings).
 - Decide the next version number and tag it (`vX.Y.Z` must equal the version in `Directory.Build.props`) when the next preview should go out; the release notes already describe schema 16.
 - Steam: create the app page and pick the Steamworks scope; decide where a Steam build keeps its data (item 36).
