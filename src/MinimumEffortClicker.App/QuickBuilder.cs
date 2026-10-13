@@ -23,9 +23,11 @@ public partial class MainWindow
     private DesktopRecorder? quickRecorder;
     private readonly ObservableCollection<QuickChildRow> quickChildren = [];
     private readonly Dictionary<string, InputControl> quickInputs = SequenceKeys.Supported.ToDictionary(k => k.Key, k => InputControl.Key(k.Value));
-    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, Brush Background, Brush Foreground)
+    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, Brush Background, Brush Foreground, Style? TestStyle, string TestTip)
     {
         public bool UsesColour => Step.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears };
+        // Testing a pause would only wait, so pause rows have no Test button.
+        public Visibility TestVisibility => Step.Kind == StepKind.Wait ? Visibility.Collapsed : Visibility.Visible;
     }
     private static SolidColorBrush ColourBrush(int rgb) => new(Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
     private static Brush ColourText(int rgb)
@@ -144,7 +146,7 @@ public partial class MainWindow
         ScreenshotActionFields.Visibility = ModeBox.SelectedIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
         ScanIntervalFields.Visibility = ConditionFields.Visibility = ModeBox.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         ComplexFields.Visibility = complex ? Visibility.Visible : Visibility.Collapsed;
-        AddActionButton.IsEnabled = TestActionButton.IsEnabled = ModeBox.SelectedIndex >= 0 || complex;
+        AddActionButton.IsEnabled = ModeBox.SelectedIndex >= 0 || complex;
         AddActionButton.Content = editingQuick is null ? "Add Action" : "Save changes";
         PressLabel.Text = ClickKindBox.SelectedIndex == 2 && ModeBox.SelectedIndex == 0 || HoldKeyBox.IsChecked == true && ModeBox.SelectedIndex == 1 ? "Hold duration (ms)" : "Press duration (ms)";
         ShowTimingOptions();
@@ -299,9 +301,16 @@ public partial class MainWindow
     private void RefreshQuickList(int selected = -1, bool preserveEditor = false)
     {
         loadingQuick = true;
-        QuickActionList.ItemsSource = quickHistory.Current.Steps.Select((s, i) => new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
-            s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } colour ? ColourBrush(colour.Color) : Brushes.Transparent,
-            s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (Brush)FindResource("TextPrimary"))).ToArray();
+        var untested = TryFindResource(typeof(Button)) as Style;
+        var passedStyle = (Style)FindResource("GreenButton"); var failedStyle = (Style)FindResource("RedButton");
+        QuickActionList.ItemsSource = quickHistory.Current.Steps.Select((s, i) =>
+        {
+            var (passed, testTip) = RowTestResult(s);
+            return new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
+                s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } colour ? ColourBrush(colour.Color) : Brushes.Transparent,
+                s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (Brush)FindResource("TextPrimary"),
+                passed is true ? passedStyle : passed is false ? failedStyle : untested, testTip);
+        }).ToArray();
         QuickUndoButton.IsEnabled = quickHistory.CanUndo; QuickRedoButton.IsEnabled = quickHistory.CanRedo;
         if (preserveEditor)
         {

@@ -23,7 +23,7 @@ public partial class MainWindow
             "- Click target: choose where the clicks go. Desktop uses screen positions. A window uses positions inside that window and follows it when it moves.",
             "- Add Action: pick a click, key press, pause, wait for a colour, or screenshot. Fill in its settings and press Add Action.",
             "- Start (F8): runs the list once. Tick Loop to repeat it until you stop it.",
-            "- Test action: runs only the selected row, after a short countdown.",
+            "- Test (on each row): the clicker minimises and runs only that action. The button turns green when it worked and red when it did not. A click shows a ring where it landed. A colour or image wait is checked once: green means it is there right now.",
             "",
             "Select a row to edit it. The arrow, copy, delete and undo buttons arrange the list.",
             "",
