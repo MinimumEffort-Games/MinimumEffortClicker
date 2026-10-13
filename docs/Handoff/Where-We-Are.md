@@ -12,6 +12,8 @@ Nothing has been changed yet. The build was not run here: the PC has SDK 10.0.40
 
 - 2026-10-13: Launch prep committed (probe gate, packaging path, CI version, SDK roll-forward, docs); packaging script verified end to end (500 files, schema 16). Bug-fix batch committed: crash safety net, lock-free ownership reads for the hook thread, owned-hold sampling, scoped destroy hook, cloaked targets, orphan bindings, early-click preference overwrite, runtime flags instead of status strings, overlay options trimmed. 245 tests green; app starts.
 
+- 2026-10-13: Regression tests for the fixed bugs plus real-clock wait tests (254 tests). Public-repo files added: SECURITY.md, issue and PR templates, CHANGELOG.md, .editorconfig; the release workflow now publishes the artifact the build job tested instead of building twice.
+
 ## Roy's open list
 
 Struck items are done. Never resurrect them.
@@ -72,20 +74,20 @@ App / shell
 28. **Structure.** MainWindow is 18 partial files with about 20 ad-hoc busy flags (`quickOperation, macroFileBusy, ioBusy, bindingBusy, screenshotBusy, ...`) checked in different subsets per handler; `DeleteProfile_Click` already forgot `bindingBusy`. `PlaybackCommands.cs` and `ConditionEditor.cs` each hold partials of two classes. `ShellViewModel.cs` is an unreferenced stub and the only reason `CommunityToolkit.Mvvm` is referenced. One operation gate, one class per file, delete the stub and the package.
 29. **Duplicated logic.** `ClickExecutor.SampleDuration` equals `ScheduledTiming.Range`, and the same sample check is in `ClickMotion.cs:18`; the missed-slot catch-up in `ExecuteCore` duplicates `CombinedHelpers.CompleteCycle`; the "mark Completed, RemoveAll" pair appears three times in CombinedHelpers. Dead: `WaitForClick`'s `changed` parameter, `ClickRehearsal`, `DeadlineWait.WaitUntilOrChanged`.
 30. **Magic numbers.** Default keys 0x77/0x78/0x79 appear in four places; scan codes, mouse codes and Win32 style constants are literals across the UI layer. `ShortcutKeys.DefaultStart/Stop/Record`, named scan codes in Core, named constants in `ProbeNative`.
-31. **Readability.** 146 lines over 200 characters, many multi-statement lines. Add an `.editorconfig`, run `dotnet format`, and enable `AnalysisLevel=latest-recommended` plus `EnforceCodeStyleInBuild`. Move the 68 `DllImport`s to `LibraryImport` (source-generated, analyzer SYSLIB1054).
+31. **Readability.** 146 lines over 200 characters, many multi-statement lines. `.editorconfig` added 2026-10-13. Still open: run `dotnet format`, enable `AnalysisLevel=latest-recommended` plus `EnforceCodeStyleInBuild`, move the 68 `DllImport`s to `LibraryImport` (source-generated, analyzer SYSLIB1054).
 32. ~~Toolchain friendliness.~~ Done 2026-10-13: `global.json` rolls forward to the latest 10.0.4xx patch.
-33. **CI.** ~~Hard-coded version~~ fixed 2026-10-13. Still open: the tag run builds twice (build job, then release job); let release reuse the artifact. Add a PR check that `dotnet format --verify-no-changes` passes once 31 is done.
-34. **Docs for a public repo.** `THIRD_PARTY_NOTICES.md` is a changelog of R11/R17/R18/R19 paragraphs; rewrite as current state. Add `SECURITY.md` (how to report), issue and PR templates, a short `CHANGELOG.md`, screenshots in the README, and a one-paragraph "is this allowed in my game" section. Ship the Help text as a markdown file in `docs/` and load it, so it is readable on GitHub and editable without a rebuild.
-35. **Tests to add.** Mouse Repeat toggle vs ClickRateLimit (4); `Execute(session)` overlap (14); Pause with mouse Hold toggle (15); click limit then condition (16); null children with timing (17); rejoin before release (18); anything at all for `DeadlineWait` and `StopwatchClock`, which currently have zero tests.
+33. **CI.** ~~Hard-coded version~~ and ~~double build~~ fixed 2026-10-13: the release job publishes the artifact the build job tested. Still open: a PR check that `dotnet format --verify-no-changes` passes once 31 is done. The new workflow has not run on GitHub yet; the first push will show whether the artifact handoff works.
+34. **Docs for a public repo.** ~~Third-party notices~~, ~~SECURITY.md~~, ~~issue and PR templates~~, ~~CHANGELOG.md~~ done 2026-10-13. Still open: screenshots of the new build in the README (Roy, the old screenshots show the private-era data path), a one-paragraph "is this allowed in my game" section, and shipping the Help text as a markdown file in `docs/`.
+35. ~~Tests to add.~~ Done 2026-10-13 (spam vs cap is by design, so no test; the rest are in).
 36. **Steam.** Steam installs under `steamapps/common` and users expect data in `%LocalAppData%` or Steam Cloud, not beside the exe; `portable.mode` needs a non-portable sibling. Steam builds are signed by nobody by default, so SmartScreen is not an issue there, but the Microsoft Store/Smart App Control story still needs the SignPath or paid cert route for the GitHub download. Decide whether the Steam build gets Steamworks (overlay, cloud saves, achievements are all optional for a utility). Store page must state plainly that it is a desktop utility and that games with anti-cheat may ban macro use.
 
-## In-editor jobs only Roy can do
+## Jobs only Roy can do
 
-- Decide item 1: restore the library/editor tabs, or cut them for the first public release.
-- Decide item 5: who else should be able to run the VM probe, and under what gate.
-- Install .NET SDK 10.0.401 (or approve relaxing `global.json`) so the suite can run on this PC.
-- Confirm `docs/BRANDING.md` should be added (brand asset provenance) or the references removed.
-- Steam: create the app page and pick the Steamworks scope.
+- Push the `cleanup/match-ui` branch from GitHub Desktop (the command-line git on this PC is signed in as another account) and open a pull request into `main`; watch the first CI run of the reworked workflow.
+- Take four fresh screenshots of the new build for the README (Actions, Toggles, Screenshot, Settings).
+- Decide the next version number and tag it (`vX.Y.Z` must equal the version in `Directory.Build.props`) when the next preview should go out; the release notes already describe schema 16.
+- Steam: create the app page and pick the Steamworks scope; decide where a Steam build keeps its data (item 36).
+- Give the hook-loss detection (item 3) and the second Stop All route (item 9) a test session in the VM once they are built.
 
 ## What is good
 
