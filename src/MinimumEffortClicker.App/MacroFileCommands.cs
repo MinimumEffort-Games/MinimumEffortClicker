@@ -31,7 +31,7 @@ public partial class MainWindow
             Directory.CreateDirectory(MacroDirectory);
             var dialog = new OpenFileDialog { Title = "Load Macro", Filter = "Minimum Effort macros (*.mecprofile)|*.mecprofile", InitialDirectory = MacroDirectory, Multiselect = false };
             if (dialog.ShowDialog(this) != true) return;
-            var profile = await Task.Run(() => HelperProfiles.Open(dialog.FileName));
+            var (profile, dropped) = await Task.Run(() => { var opened = HelperProfiles.Open(dialog.FileName, out int removed); return (opened, removed); });
             if (closing || allowClose) return;
             var choices = profile.Macros.Where(m => !m.IsToggle).ToArray();
             if (choices.Length == 0) throw new ArgumentException("This file contains only toggles. Use the Toggles tab to set up a hold.");
@@ -39,7 +39,7 @@ public partial class MainWindow
             if (macro is null) return;
             LoadActionMacro(profile, macro);
             loadedMacroFile = dialog.FileName; loadedFileProfile = profile;
-            MacroSaveStatus.Text = $"Loaded ‘{macro.Name}’.";
+            MacroSaveStatus.Text = $"Loaded ‘{macro.Name}’." + (HelperProfiles.DroppedWarning(dropped) is { } warning ? " " + warning : "");
         }
         catch (Exception ex) { MacroSaveStatus.Text = "Could not load: " + ex.Message; }
         finally { macroFileBusy = false; loadingQuick = false; RefreshStatus(); }

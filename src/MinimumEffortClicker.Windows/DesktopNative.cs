@@ -48,7 +48,7 @@ internal static class DesktopNative
     internal static bool Send(InputTransition transition, ProbeNative.Point? position = null)
     {
         var control = transition.Control;
-        if (!Enum.IsDefined(control.Kind) || control.Kind == InputKind.LogicalKey) return false;
+        if (!Enum.IsDefined(control.Kind)) return false;
         bool up = transition.Edge == InputEdge.Up;
         Input input;
         Input? move = null;
@@ -65,9 +65,7 @@ internal static class DesktopNative
         }
         if (control.Kind == InputKind.PointerMove)
             return move is { } movement && SendInput(1, [movement], Marshal.SizeOf<Input>()) == 1;
-        if (control.Kind == InputKind.Unicode)
-            input = new() { Type = 1, Data = new() { Key = new() { Scan = checked((ushort)control.Code), Flags = 4u | (up ? 2u : 0u), Extra = ProbeNative.InputTag } } };
-        else if (control.Kind == InputKind.ScanCode)
+        if (control.Kind == InputKind.ScanCode)
             input = new() { Type = 1, Data = new() { Key = new() { Scan = (ushort)(control.Code & 0xFF),
                 Flags = 8u | (up ? 2u : 0u) | ((control.Code & 0x100) != 0 ? 1u : 0u), Extra = ProbeNative.InputTag } } };
         else

@@ -6,32 +6,15 @@ namespace Core.Tests;
 public sealed class SequenceTests
 {
     [TestMethod]
-    public void ExplicitTextPreservesUnicodeAndRejectsInvalidOrHiddenPayloads()
+    public void RemovedInputKindsAndStepKindsAreRejected()
     {
-        var text = SequenceStep.TypeText("Aé😀A");
-        var plan = SequenceCompiler.Compile(new([text]));
-        CollectionAssert.AreEqual(text.Text!.Select(c => (int)c).ToArray(), plan.Inputs.Where(i => i.Down).Select(i => i.Control.Code).ToArray());
-        Assert.IsTrue(plan.Inputs.All(i => i.Control.Kind == InputKind.Unicode && i.Name == "Unicode text"));
-        Assert.AreEqual(TimeSpan.FromMilliseconds(100), plan.Duration);
-        foreach (string invalid in new[] { "", "\ud800", "\udc00", "a\nb", new string('x', 1025) })
-            Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([SequenceStep.TypeText(invalid)])));
-        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([text with { Duration = TimeSpan.FromMilliseconds(1) }])));
-        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([SequenceStep.Wait(TimeSpan.Zero) with { Text = "hidden" }])));
-        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([SequenceStep.Input("raw", new(InputKind.Unicode, 65), TimeSpan.FromMilliseconds(10))])));
-        Assert.IsNotEmpty(new HelperPlan(new(InputKind.Unicode, 65), HelperMode.Repeat, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(10), 1).Validate());
-    }
-
-    [TestMethod]
-    public void TextExpansionIsBoundedAcrossReusableCallsAndDisabledActions()
-    {
-        var body = new ReusableSequence(Guid.NewGuid(), "text", [SequenceStep.TypeText(new string('x', 1024))]);
-        var source = new SequenceDefinition(Enumerable.Range(0, 10).Select(_ => SequenceStep.Call("call", body.Id)).ToArray(), Subsequences: [body]);
-        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(source));
-        var disabled = SequenceStep.TypeText("valid") with { Enabled = false };
+        // Numeric values 4 and 5 (Unicode text, logical key) and step kinds 4–6 were retired in schema 16.
+        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([SequenceStep.Input("raw", new((InputKind)4, 65), TimeSpan.FromMilliseconds(10))])));
+        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([SequenceStep.Wait(TimeSpan.Zero) with { Kind = (StepKind)6 }])));
+        Assert.IsNotEmpty(new HelperPlan(new((InputKind)5, 65), HelperMode.Repeat, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(10), 1).Validate());
+        var disabled = SequenceStep.Wait(TimeSpan.FromMilliseconds(5)) with { Enabled = false };
         Assert.IsEmpty(SequenceCompiler.Compile(new([disabled])).Inputs);
-        var history = new SequenceHistory(new([disabled]));
-        history.Commit(new([disabled with { Text = "edit", Duration = TimeSpan.FromMilliseconds(80) }]));
-        history.Undo(); Assert.AreEqual("valid", history.Current.Steps[0].Text);
+        Assert.AreEqual(TimeSpan.Zero, SequenceCompiler.Compile(new([disabled])).Duration);
     }
 
     private static readonly InputControl W = InputControl.Key(0x11), Space = InputControl.Key(0x39);

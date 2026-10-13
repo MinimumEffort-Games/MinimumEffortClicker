@@ -16,7 +16,6 @@ public sealed class HelperValidationTests
         Assert.IsEmpty(click.Validate());
         Assert.IsNotEmpty((click with { Control = InputControl.Key(0x11) }).Validate());
         Assert.IsNotEmpty((click with { Position = new(20, 30, 800, 600, 96, CoordinateSpace.Desktop) }).Validate());
-        Assert.ThrowsExactly<ArgumentException>(() => CompatibleHelpers.Compile([new(Guid.NewGuid(), "background", click)]));
         Assert.IsTrue((UserPreferences.Default with { ToggleKey = 0xC0 }).Valid);
     }
     [TestMethod]

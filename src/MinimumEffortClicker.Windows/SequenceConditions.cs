@@ -40,7 +40,7 @@ public sealed partial class DesktopRuntime
                         || ProbeNative.GetWindowThreadProcessId(selected.Handle, out uint pid) == 0 || pid != selected.ProcessId)
                         return new(ConditionObservationState.Unavailable, 0, sample++);
                     return new(TargetAvailable ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, sample++);
-                }), budget.Token, condition.CheckOnly, testing, observed, service);
+                }), budget.Token, testing, observed, service);
             }
             using var capture = new WindowRegionCapture(selected.Handle, condition.Region!, () => CursorFreeActive ? BackgroundTargetAvailable : TargetAvailable, requireForeground: !CursorFreeActive);
             RasterSample? baseline = null;
@@ -65,7 +65,7 @@ public sealed partial class DesktopRuntime
                     matches = RegionComparison.MatchesColorCondition(frame.Image, condition.Kind, condition.Color, condition.Tolerance);
                 }
                 return new(matches ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, frame.FrameId);
-            }), budget.Token, condition.CheckOnly, testing, observed, service);
+            }), budget.Token, testing, observed, service);
         }
         catch (OperationCanceledException) when (budget.IsCancellationRequested && !stop.IsCancellationRequested)
         { return new(ConditionOutcome.Stopped, 0, 0); }
@@ -83,7 +83,7 @@ public sealed partial class DesktopRuntime
         NotifyChanged();
         try
         {
-            var result = EvaluateCondition(condition with { CheckOnly = false }, cancelled.Token, true, observation =>
+            var result = EvaluateCondition(condition, cancelled.Token, true, observation =>
             {
                 lock (gate) activity = observation.State switch
                 {

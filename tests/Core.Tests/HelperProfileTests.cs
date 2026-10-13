@@ -14,28 +14,61 @@ public sealed class HelperProfileTests
     [TestCleanup] public void CleanUp() => Directory.Delete(directory, true);
 
     [TestMethod]
-    public void ExplicitTextAndLoopSettingsRoundTripWithoutChangingTheirSemantics()
+    public void LoopSettingsRoundTripWithoutChangingTheirSemantics()
     {
-        var sequence = new SequenceDefinition([SequenceStep.TypeText("café 中 😀")], Repetition: new(3, TimeSpan.FromSeconds(1)));
-        var profile = Profile() with { Macros = [new(Guid.NewGuid(), "Text", null, Sequence: sequence)] };
-        string file = Path.Combine(directory, "text.mecprofile"); HelperProfiles.Export(file, profile);
+        var sequence = new SequenceDefinition([SequenceStep.Wait(TimeSpan.FromMilliseconds(50))], Repetition: new(3, TimeSpan.FromSeconds(1)));
+        var profile = Profile() with { Macros = [new(Guid.NewGuid(), "Pause", null, Sequence: sequence)] };
+        string file = Path.Combine(directory, "loop.mecprofile"); HelperProfiles.Export(file, profile);
         var imported = HelperProfiles.Import(file).Macros[0].Sequence!;
-        Assert.AreEqual(sequence.Steps[0].Text, imported.Steps[0].Text);
         Assert.AreEqual(sequence.Repetition, imported.Repetition);
-        Assert.AreEqual(StepKind.Text, imported.Steps[0].Kind);
+        Assert.AreEqual(StepKind.Wait, imported.Steps[0].Kind);
         Assert.AreNotEqual(profile.Id, HelperProfiles.Import(file).Id);
     }
 
     [TestMethod]
-    public void DesktopAndLogicalModesRoundTripWithoutBecomingPhysicalKeys()
+    public void DesktopPointsRoundTripWithoutBecomingWindowRelative()
     {
         var point = new NamedPoint(Guid.NewGuid(), "Fixed", new(-400, 100, 800, 600, 96, CoordinateSpace.Desktop));
-        var sequence = new SequenceDefinition([SequenceStep.Input("Logical A", new(InputKind.LogicalKey, 'A'), TimeSpan.FromMilliseconds(30))]);
-        var profile = Profile() with { Points = [point], Macros = [new(Guid.NewGuid(), "Logical", null, Sequence: sequence)] };
+        var profile = Profile() with { Points = [point] };
         string file = Path.Combine(directory, "modes.mecprofile"); HelperProfiles.Export(file, profile);
         var imported = HelperProfiles.Import(file);
         Assert.AreEqual(CoordinateSpace.Desktop, imported.Points![0].Position.Space);
-        Assert.AreEqual(InputKind.LogicalKey, imported.Macros[0].Sequence!.Steps[0].Control!.Value.Kind);
+    }
+
+    [TestMethod]
+    public void VersionFifteenTextSubsequenceAndBranchStepsAreDroppedWithACount()
+    {
+        // A schema-15 file as the previous release wrote it: a text step, a subsequence call, a branch, and a plain pause.
+        var pause = SequenceStep.Wait(TimeSpan.FromMilliseconds(50));
+        var profile = Profile() with { Macros = [new(Guid.NewGuid(), "Mixed", null, Sequence: new([pause]))] };
+        string file = Path.Combine(directory, "v15.mecprofile"); HelperProfiles.Export(file, profile);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(file))!.AsObject();
+        json["schemaVersion"] = 15;
+        var sequence = json["macros"]![0]!["sequence"]!.AsObject();
+        var steps = sequence["steps"]!.AsArray();
+        var template = steps[0]!.AsObject();
+        var bodyId = Guid.NewGuid();
+        foreach (var (kind, extra) in new (int, string)[] { (6, "text"), (4, "subsequenceId"), (5, "flow") })
+        {
+            var removed = System.Text.Json.Nodes.JsonNode.Parse(template.ToJsonString())!.AsObject();
+            removed["id"] = Guid.NewGuid(); removed["kind"] = kind;
+            removed["subsequenceId"] = null; removed["flow"] = null; removed["text"] = null;
+            removed[extra] = extra == "text" ? "hello" : extra == "subsequenceId" ? bodyId : new System.Text.Json.Nodes.JsonObject { ["kind"] = 0, ["bodyId"] = bodyId, ["elseId"] = null, ["maximumIterations"] = 1 };
+            steps.Add(removed);
+        }
+        template["subsequenceId"] = null; template["flow"] = null; template["text"] = null;
+        sequence["subsequences"] = new System.Text.Json.Nodes.JsonArray(new System.Text.Json.Nodes.JsonObject { ["id"] = bodyId, ["name"] = "Body", ["steps"] = new System.Text.Json.Nodes.JsonArray() });
+        File.WriteAllText(file, json.ToJsonString());
+        var imported = HelperProfiles.Open(file, out int dropped);
+        Assert.AreEqual(3, dropped);
+        Assert.AreEqual(ProfileDefinition.CurrentVersion, imported.SchemaVersion);
+        Assert.HasCount(1, imported.Macros[0].Sequence!.Steps);
+        Assert.AreEqual(StepKind.Wait, imported.Macros[0].Sequence!.Steps[0].Kind);
+        // The library load reports the same removal once.
+        File.WriteAllText(Path.Combine(directory, "profiles.json"), "[" + File.ReadAllText(file) + "]");
+        var load = new HelperProfiles(directory).Load();
+        Assert.IsNotNull(load.Warning); StringAssert.Contains(load.Warning, "3");
+        Assert.HasCount(1, load.Profiles[0].Macros[0].Sequence!.Steps);
     }
 
     [TestMethod]

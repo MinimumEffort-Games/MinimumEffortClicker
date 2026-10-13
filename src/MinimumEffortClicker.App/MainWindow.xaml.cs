@@ -486,7 +486,7 @@ public partial class MainWindow : Window
             quickHistory = history;
             var repetition = definition.Repetition ?? new();
             loadingQuick = true;
-            RecordMovementBox.IsChecked = SequenceLibrary.AllSteps(definition).Any(s => s.Motion?.UsePreviousPause == true || s.Motion?.MoveDuration > TimeSpan.Zero);
+            RecordMovementBox.IsChecked = definition.Steps.Any(s => s.Motion?.UsePreviousPause == true || s.Motion?.MoveDuration > TimeSpan.Zero);
             LoopBox.IsChecked = repetition.Count == 0 && repetition.ActiveDuration is null;
             loadingQuick = false;
             ActionMacroNameBox.Text = macro.Name; loadedQuickMacro = macro.Id; loadedQuickProfile = profile.Id; MacroSaveStatus.Text = "";

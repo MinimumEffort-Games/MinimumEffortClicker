@@ -101,14 +101,13 @@ public sealed class ActionTimingTests
         finally { Directory.Delete(directory, true); }
     }
     [TestMethod]
-    public void ReusableBodyRetainsRandomTimingAndDeliveryRestrictions()
+    public void CursorFreeClickRetainsRandomTimingAndDeliveryRestrictions()
     {
-        var id = Guid.NewGuid();
         var step = Click() with { Timing = new(Ms(40), Ms(80)), LeaveCursorFree = true };
-        var source = new SequenceDefinition([SequenceStep.Call("Call", id)], Subsequences: [new(id, "Body", [step])]);
+        var source = new SequenceDefinition([step]);
         var plan = SequenceCompiler.Compile(source).SampleTiming(() => 0.5);
         Assert.AreEqual(Ms(30), plan.Inputs[1].Offset); Assert.IsTrue(plan.LeaveCursorFree);
-        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(source with { Steps = [SequenceStep.Call("Call", id), Click()] }));
+        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(source with { Steps = [step, Click()] }));
     }
 }
 

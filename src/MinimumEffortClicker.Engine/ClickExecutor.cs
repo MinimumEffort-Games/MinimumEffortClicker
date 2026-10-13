@@ -8,7 +8,7 @@ public sealed record ClickRunResult(ClickRunOutcome Outcome, int CompletedCycles
 public sealed record ExecutionProgress(int CompletedCycles, string CurrentAction, string NextAction, IReadOnlyList<InputControl> Held);
 
 /// <summary>
-/// First M1 finite-click executor. Call Execute on the scheduler worker, never the UI thread.
+/// Runs helpers, action lists and toggle sessions on the scheduler worker, never the UI thread.
 /// The composition owner must supply an available stop route and cancel on target/session/physical
 /// input invalidation. Each down also rechecks foreground identity. This class installs no OS hooks.
 /// One invocation is active at a time; a new run always requires a new explicit Execute call.
@@ -38,15 +38,6 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
     private long completionLimit = long.MaxValue;
     private long activeTimeLimit = long.MaxValue;
     private long sequenceDeadline = long.MaxValue;
-    private CancellationTokenSource? finishSequence;
-    public bool RequestFinishSequenceLoop()
-    {
-        lock (gate)
-        {
-            if (!executing || finishSequence is null) return false;
-            finishSequence.Cancel(); return true;
-        }
-    }
     public TimeSpan RemainingRunTime
     {
         get
@@ -84,12 +75,12 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
         run.Completed++;
         if (Interlocked.Increment(ref totalCompletedLoops) >= CompletionLimit) run.Outcome = ClickRunOutcome.Cancelled;
     }
-    private bool WaitForClick(InputControl control, CancellationToken stop, CancellationToken? changed = null)
+    private bool WaitForClick(InputControl control, CancellationToken stop)
     {
         if (control.Kind != InputKind.MouseButton) return true;
         TimeSpan due;
         lock (gate) due = lastClick is { } last ? last + clickRateLimit.MinimumGap : clock.Elapsed;
-        return WaitDeadline(due, stop, changed);
+        return WaitDeadline(due, stop);
     }
     private bool WaitDeadline(TimeSpan due, CancellationToken stop, CancellationToken? changed = null)
     {
@@ -149,8 +140,8 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
         lock (gate)
         {
             stop.ThrowIfCancellationRequested();
-            // Replaying a partial click/drag or UTF-16 packet can duplicate side effects.
-            if (owned.Any(i => i.Kind is InputKind.MouseButton or InputKind.Unicode))
+            // Replaying a partial click or drag can duplicate side effects. Hold toggles are re-pressed on resume.
+            if (owned.Any(i => i.Kind == InputKind.MouseButton && !(sessionHeld.Values.Contains(i) && actionSession?.KeepHold(i) == true)))
             {
                 run.Outcome = ClickRunOutcome.Paused;
                 run.Error = "Interaction interrupted. Inputs released; review and explicitly restart the selected step or stop. Delivered effects cannot be undone.";
@@ -160,12 +151,12 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
             if (!Release(run)) { run.Outcome = ClickRunOutcome.CleanupFailed; throw new InterruptedPlaybackException(); }
             clock.Pause(); Publish(run, "Paused", "Manual resume required");
         }
+        bool announced = false;
         try
         {
-            control.Acknowledge(); PlaybackPaused?.Invoke(true);
+            control.Acknowledge(); PlaybackPaused?.Invoke(true); announced = true;
             control.WaitForResume(stop); stop.ThrowIfCancellationRequested();
             if (!TargetMatches(activeTarget)) { run.Outcome = ClickRunOutcome.TargetUnavailable; throw new InterruptedPlaybackException(); }
-            PlaybackPaused?.Invoke(false);
             lock (gate)
             {
                 stop.ThrowIfCancellationRequested();
@@ -180,7 +171,12 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
             }
             control.CompleteResume();
         }
-        finally { clock.Resume(); }
+        finally
+        {
+            clock.Resume();
+            // Every paused=true is paired with a paused=false, even when the pause ends by cancellation.
+            if (announced) PlaybackPaused?.Invoke(false);
+        }
     }
 
     private ConditionResult ObserveCondition(ConditionDefinition definition, CancellationToken stop)
@@ -225,23 +221,11 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
         public string? Error;
     }
 
-    public ClickRunResult Execute(ClickPlan plan, Guid targetId, CancellationToken stop)
-    {
-        ArgumentNullException.ThrowIfNull(plan);
-        return ExecuteCore(new(InputControl.Mouse(plan.Button), HelperMode.Repeat, plan.Interval, plan.PressDuration, plan.Count), targetId, stop);
-    }
-
     public ClickRunResult Execute(HelperPlan plan, Guid targetId, CancellationToken stop)
     {
         ArgumentNullException.ThrowIfNull(plan);
         var errors = plan.Validate();
         if (errors.Count != 0) throw new ArgumentException(string.Join(" ", errors), nameof(plan));
-        return ExecuteCore(plan, targetId, stop);
-    }
-
-    private ClickRunResult ExecuteCore(HelperPlan plan, Guid targetId, CancellationToken stop)
-    {
-        ArgumentNullException.ThrowIfNull(plan);
         return ExecuteSession(targetId, stop, run =>
         {
             string action = RecordingNormalizer.Label(plan.Control);
@@ -284,6 +268,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                     if (plan.MaximumInterval is not null) next = now + interval;
                     else
                     {
+                        // Skip every missed repeat slot rather than issuing a catch-up burst.
                         long slots = (now - origin).Ticks / plan.Interval.Ticks + 1;
                         next = origin + TimeSpan.FromTicks(checked(slots * plan.Interval.Ticks));
                     }
@@ -295,13 +280,10 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
     public ClickRunResult Execute(SequencePlan plan, Guid targetId, CancellationToken stop)
     {
         ArgumentNullException.ThrowIfNull(plan);
-        if (plan.AllInputs().Any(i => i.Control.Kind == InputKind.LogicalKey)) throw new ArgumentException("Bind logical keys to the reviewed target layout before playback.");
         return ExecuteSession(targetId, stop, run => ExecuteSequenceLoops(plan, targetId, stop, run));
     }
     private void ExecuteSequenceLoops(SequencePlan plan, Guid targetId, CancellationToken stop, Run run)
     {
-            var finish = new CancellationTokenSource();
-            lock (gate) finishSequence = finish;
             if (plan.Repetition.ActiveDuration is { } duration) Interlocked.Exchange(ref sequenceDeadline, (clock.Elapsed + duration).Ticks);
             for (int loop = 0; plan.Repetition.Count == 0 || loop < plan.Repetition.Count; loop++)
             {
@@ -312,11 +294,11 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                     if (!CanContinue(run, targetId, stop)) return;
                     CompleteLoop(run); Publish(run);
                 }
-                if (run.Outcome is not null || finish.IsCancellationRequested || plan.Repetition.Count > 0 && loop + 1 >= plan.Repetition.Count) return;
+                if (run.Outcome is not null || plan.Repetition.Count > 0 && loop + 1 >= plan.Repetition.Count) return;
                 // Even an empty or immediately-true loop has a bounded wake rate.
                 var next = clock.Elapsed + plan.Repetition.DelayBetweenLoops;
                 if (next < loopStart + TimeSpan.FromMilliseconds(10)) next = loopStart + TimeSpan.FromMilliseconds(10);
-                if (!WaitDeadline(next, stop, finish.Token)) return;
+                WaitDeadline(next, stop);
                 lock (gate) { if (!CanContinue(run, targetId, stop)) return; }
             }
     }
@@ -370,41 +352,14 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                     WaitDeadline(origin + condition.Offset, stop);
                     lock (gate)
                     {
-                        if (stop.IsCancellationRequested || RemainingRunTime == TimeSpan.Zero || TotalCompletedLoops >= CompletionLimit)
+                        // The same budget checks as CanContinue, without the foreground check: a window wait may observe an inactive target.
+                        if (stop.IsCancellationRequested || RemainingRunTime == TimeSpan.Zero || TotalCompletedLoops >= CompletionLimit || TotalCompletedClicks >= ClickCompletionLimit)
                         { run.Outcome = ClickRunOutcome.Cancelled; return; }
                         if (owned.Any(i => !sessionHeld.Values.Contains(i))) throw new InvalidOperationException("Conditions cannot wait with action inputs held.");
                         Publish(run, "Waiting: " + condition.Name, "Continue only after a fresh match");
                     }
                     var beforeCondition = clock.Elapsed;
                     var result = ObserveCondition(condition.Definition, stop);
-                    if (condition.Flow is { } flow && result.Outcome is ConditionOutcome.Matched or ConditionOutcome.NotMatched)
-                    {
-                        if (flow.Kind == FlowKind.IfElse)
-                        {
-                            var selected = result.Outcome == ConditionOutcome.Matched ? flow.Body : flow.Otherwise;
-                            if (selected is not null) ExecuteSequenceSegment(selected, targetId, stop, run);
-                            if (run.Outcome is not null) return;
-                        }
-                        else
-                        {
-                            int iterations = 0;
-                            while (result.Outcome == ConditionOutcome.NotMatched && iterations++ < flow.MaximumIterations)
-                            {
-                                lock (gate) { if (!CanContinue(run, targetId, stop)) return; }
-                                ExecuteSequenceSegment(flow.Body, targetId, stop, run);
-                                if (run.Outcome is not null) return;
-                                stop.ThrowIfCancellationRequested();
-                                result = ObserveCondition(condition.Definition, stop);
-                            }
-                            if (result.Outcome != ConditionOutcome.Matched)
-                            {
-                                run.Outcome = result.Outcome == ConditionOutcome.Paused ? ClickRunOutcome.Paused : ClickRunOutcome.Cancelled;
-                                run.Error = $"Repeat '{condition.Name}' ended: {result.Outcome}; {Math.Min(iterations, flow.MaximumIterations)} bounded iterations. Review before restarting.";
-                                return;
-                            }
-                        }
-                        result = new(ConditionOutcome.Matched, result.Samples, result.Attempts);
-                    }
                     origin += clock.Elapsed - beforeCondition;
                     if (result.Outcome != ConditionOutcome.Matched)
                     {
@@ -440,7 +395,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                                 if (!CanContinue(run, targetId, stop)) return;
                                 if (owned.Any(i => i.Kind == InputKind.MouseButton)) throw new InvalidOperationException("Release held mouse buttons before smooth movement.");
                                 var point = ClickMotion.Interpolate(start, position, (double)part / count);
-                                if (!sink.TrySend(new(new(InputKind.PointerMove, 0), InputEdge.Down, point))) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {plan.SourceStep(item.StepIndex) + 1}: {item.Name}"; return; }
+                                if (!sink.TrySend(new(new(InputKind.PointerMove, 0), InputEdge.Down, point))) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return; }
                                 run.Sent++;
                             }
                         }
@@ -457,12 +412,12 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                     var before = clock.Elapsed;
                     if (item.Down)
                     {
-                        if (!sink.TrySend(new(item.Control, InputEdge.Down, position, item.ClickCount))) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {plan.SourceStep(item.StepIndex) + 1}: {item.Name}"; return; }
+                        if (!sink.TrySend(new(item.Control, InputEdge.Down, position, item.ClickCount))) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return; }
                         AcceptedClick(item.Control);
                         if (item.Control.Kind is not (InputKind.Scroll or InputKind.HorizontalScroll or InputKind.PointerMove)) owned.Add(item.Control);
                         run.Sent++;
                     }
-                    else if (!Release(run, item.Control, position)) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {plan.SourceStep(item.StepIndex) + 1}: {item.Name}"; return; }
+                    else if (!Release(run, item.Control, position)) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return; }
                     Publish(run, item.Name);
                     origin += clock.Elapsed - before;
                 }
@@ -534,7 +489,6 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                 Publish(run, run.Outcome == ClickRunOutcome.CleanupFailed ? "Cleanup pending" : "Stopped", "None");
                 executing = false;
                 playback?.End(); playback = null; activeRun = null;
-                finishSequence?.Dispose(); finishSequence = null;
                 Interlocked.Exchange(ref sequenceDeadline, long.MaxValue);
                 lock (timeGate) { activeTicks += clock.Elapsed.Ticks - activeSince; activeSince = -1; }
             }

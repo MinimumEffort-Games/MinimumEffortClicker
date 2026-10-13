@@ -57,13 +57,10 @@ internal static class RecoveryProbe
             await WaitFor(() => runtime.Current?.IsAvailable == true, cutoff.Token);
             await Task.Delay(200, cutoff.Token);
             Require(runtime.CanResume && runtime.Snapshot.InputsSent == 2, "Restore resumed without authorization.");
-            var pendingResume = runtime.ResumeAfterCountdownAsync();
-            Require(!runtime.CanResume, "Duplicate resume countdown remained available.");
             runtime.Stop("Cancel the resume handoff.");
-            Require(!await pendingResume.WaitAsync(TimeSpan.FromSeconds(1)), "Cancelled resume returned success.");
             await WaitFor(() => !runtime.Snapshot.Busy, cutoff.Token);
             Require(runtime.Snapshot.InputsSent == 2 && !runtime.CanResume && !runtime.Snapshot.CleanupPending, "Cancelled countdown resumed input.");
-            report.Checks.Add("Target minimize released W; minimized resume was refused; restore sent nothing; Stop cancelled the three-second resume handoff and discarded continuation.");
+            report.Checks.Add("Target minimize released W; minimized resume was refused; restore sent nothing; Stop while paused discarded the continuation.");
 
             report.Stage = "Target exit invalidates its identity and releases input";
             Require(runtime.TryStart(hold), runtime.Snapshot.Reason);

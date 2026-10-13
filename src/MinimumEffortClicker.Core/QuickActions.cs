@@ -9,16 +9,14 @@ public static class QuickActions
     {
         SequenceStep Apply(SequenceStep step) => !IsOrdinaryClick(step) ? step : step with
         { Motion = enabled || step.Motion?.OffsetPixels > 0 ? new(OffsetPixels: step.Motion?.OffsetPixels ?? 0, UsePreviousPause: enabled) : null };
-        return source with { Steps = source.Steps.Select(Apply).ToArray(),
-            Subsequences = source.Subsequences?.Select(body => body with { Steps = body.Steps.Select(Apply).ToArray() }).ToArray() };
+        return source with { Steps = source.Steps.Select(Apply).ToArray() };
     }
     /// <summary>List-wide authoring policy. Copies the document; native compatibility is still compiler-validated.</summary>
     public static SequenceDefinition WithCursorFree(SequenceDefinition source, bool enabled)
     {
         SequenceStep Apply(SequenceStep step) => step with
         { LeaveCursorFree = enabled && step.Kind is StepKind.Input or StepKind.TimedGroup };
-        return source with { Steps = source.Steps.Select(Apply).ToArray(),
-            Subsequences = source.Subsequences?.Select(body => body with { Steps = body.Steps.Select(Apply).ToArray() }).ToArray() };
+        return source with { Steps = source.Steps.Select(Apply).ToArray() };
     }
     public static SequenceDefinition RecordedActions(SequenceDefinition recording, bool includePauses, bool movement = false)
     {
@@ -27,8 +25,7 @@ public static class QuickActions
             .Select(s => s.Kind == StepKind.Wait ? s with { Name = "Pause" } : movement && includePauses && IsOrdinaryClick(s) ? s with { Motion = new(UsePreviousPause: true) } : s).ToArray(), Repetition = new() };
         var plan = SequenceCompiler.Compile(result);
         // A mouse-only recording must not depend on the receiver's keyboard layout.
-        return plan.AllInputs().Any(i => i.Control.Kind is InputKind.ScanCode or InputKind.LogicalKey)
-            ? result : result with { KeyboardLayout = null };
+        return plan.Inputs.Any(i => i.Control.Kind == InputKind.ScanCode) ? result : result with { KeyboardLayout = null };
     }
     public static bool IsOrdinaryClick(SequenceStep step)
     {

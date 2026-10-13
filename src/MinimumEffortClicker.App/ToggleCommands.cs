@@ -131,7 +131,7 @@ public partial class MainWindow
         try
         {
             var helpers = SavedToggles.Where(m => enabledToggles.Contains(m.Id)).Select(m => new ArmedHelper(macroBindings.GetValueOrDefault(m.Id)
-                ?? throw new ArgumentException($"Assign a shortcut for '{m.Name}' first."), m.Plan, null, m.Name, true)).ToArray();
+                ?? throw new ArgumentException($"Assign a shortcut for '{m.Name}' first."), m.Plan!, m.Name)).ToArray();
             MacroBindings.Validate(helpers.Select(h => h.Binding).ToArray(), appliedToggleKey, appliedStopKey);
             if (!await runtime.ConfigureHelpersAsync(helpers)) throw new InvalidOperationException("A toggle shortcut is already in use. Choose another key.");
         }

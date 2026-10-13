@@ -17,7 +17,7 @@ public sealed record ImageTemplate(int Width, int Height, string Bgra)
     }
 }
 public sealed record ConditionDefinition(ConditionKind Kind, ConditionPolicy Policy, CaptureRegion? Region = null,
-    int Color = 0, byte Tolerance = 8, double ChangedFraction = 0.1, ImageTemplate? Template = null, bool CheckOnly = false)
+    int Color = 0, byte Tolerance = 8, double ChangedFraction = 0.1, ImageTemplate? Template = null)
 {
     public void Validate()
     {
@@ -45,7 +45,4 @@ public sealed record ConditionDefinition(ConditionKind Kind, ConditionPolicy Pol
         }
     }
 }
-public enum FlowKind { IfElse, RepeatUntil }
-public sealed record ConditionalFlow(FlowKind Kind, Guid BodyId, Guid? ElseId = null, int MaximumIterations = 1);
-public sealed record CompiledFlow(FlowKind Kind, SequencePlan Body, SequencePlan? Otherwise, int MaximumIterations);
-public sealed record ScheduledCondition(TimeSpan Offset, int StepIndex, string Name, ConditionDefinition Definition, CompiledFlow? Flow = null);
+public sealed record ScheduledCondition(TimeSpan Offset, int StepIndex, string Name, ConditionDefinition Definition);

@@ -16,8 +16,7 @@ public static class SequenceEdits
         SequenceCompiler.Compile(result, points); return result;
     }
     public static SequenceDefinition Snapshot(SequenceDefinition source) => source with { Steps = Array.AsReadOnly(source.Steps.Select(s =>
-        s with { Children = s.Children is null ? null : Array.AsReadOnly(s.Children.ToArray()) }).ToArray()),
-        Subsequences = source.Subsequences is null ? null : Array.AsReadOnly(source.Subsequences.Select(b => b with { Steps = Snapshot(new(b.Steps)).Steps }).ToArray()) };
+        s with { Children = s.Children is null ? null : Array.AsReadOnly(s.Children.ToArray()) }).ToArray()) };
 }
 
 /// <summary>Bounded draft history. Editing never mutates a compiled active run.</summary>
@@ -38,5 +37,5 @@ public sealed class SequenceHistory
     }
     public void Undo() { if (!CanUndo) return; redo.Add(Current); Current = undo[^1]; undo.RemoveAt(undo.Count - 1); }
     public void Redo() { if (!CanRedo) return; undo.Add(Current); Current = redo[^1]; redo.RemoveAt(redo.Count - 1); }
-    private static int Weight(SequenceDefinition definition) => SequenceLibrary.AllSteps(definition).Sum(s => 1 + (s.Children?.Count ?? 0) + (s.Text?.Length ?? 0) + (s.Condition?.Template?.Bgra.Length ?? 0) / 64);
+    private static int Weight(SequenceDefinition definition) => definition.Steps.Sum(s => 1 + (s.Children?.Count ?? 0) + (s.Condition?.Template?.Bgra.Length ?? 0) / 64);
 }
