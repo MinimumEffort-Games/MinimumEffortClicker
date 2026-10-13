@@ -52,6 +52,8 @@ public partial class MainWindow
                 // Let the minimise animation finish so the clicker is not in the picture.
                 await Task.Delay(300, cancellation.Token);
                 (passed, detail) = await CheckConditionOnce(condition, cancellation.Token);
+                // GNOME ignores a restore that arrives while the window is still minimising and only shows "is ready".
+                await Task.Delay(500, cancellation.Token);
             }
             else
             {
