@@ -298,6 +298,40 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             catch (InvalidOperationException) { return false; }
         }
     }
+    /// <summary>The selected window still exists in the same process; it may be behind other windows or minimised.</summary>
+    private bool TargetIdentityAvailable
+    {
+        get
+        {
+            var selected = target;
+            try
+            {
+                return !targetInvalidated && selected is not null && targetProcess is { HasExited: false } && ProbeNative.IsWindow(selected.Handle)
+                    && ProbeNative.GetWindowThreadProcessId(selected.Handle, out uint pid) != 0 && pid == selected.ProcessId;
+            }
+            catch (InvalidOperationException) { return false; }
+        }
+    }
+    /// <summary>
+    /// Why the Click target is not usable in front, in words the user can act on. Apps such as the Unity editor have more
+    /// than one window; when one of the app's other windows is in front, that window is named.
+    /// </summary>
+    internal string TargetNotInFrontReason()
+    {
+        var selected = target;
+        if (selected is null) return "Choose a Click target first.";
+        if (!TargetIdentityAvailable) return "The Click target window closed. Choose it again from the list.";
+        if (ProbeNative.IsIconic(selected.Handle)) return $"\"{selected.Title}\" is minimised. Restore it, then try again.";
+        var front = ProbeNative.GetForegroundWindow();
+        if (front != 0 && front != selected.Handle && ProbeNative.GetWindowThreadProcessId(front, out uint frontPid) != 0 && frontPid == selected.ProcessId)
+        {
+            var title = new StringBuilder(256);
+            DesktopNative.GetWindowText(front, title, title.Capacity);
+            string name = title.Length > 0 ? title.ToString() : "another window";
+            return $"\"{name}\" from the same app is in front, not the Click target \"{selected.Title}\". If your clicks belong in \"{name}\", choose it as the Click target.";
+        }
+        return $"\"{selected.Title}\" is not the window in front. Bring it to the front, then try again.";
+    }
     public ForegroundTarget? Current => new(targetId, CursorFreeActive ? BackgroundTargetAvailable : TargetAvailable);
     public void SetClickRateLimit(int clicksPerSecond)
     {
@@ -361,7 +395,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             string? problem = errors.FirstOrDefault();
             if (!Control.Available) problem = Control.Error ?? "Stop route unavailable.";
             else if (executor.HasOwnedInput) problem = "Cleanup is pending. Release physical input, then retry cleanup.";
-            else if (target is null && !IsDesktopMode || countdown is null && !(request.LeaveCursorFree ? BackgroundTargetAvailable : TargetAvailable) && !StartsWithWindowWait(request.Sequence)) problem = "The selected target must be open, restored and in the foreground.";
+            else if (target is null && !IsDesktopMode || countdown is null && !(request.LeaveCursorFree ? BackgroundTargetAvailable : TargetAvailable) && !StartsWithWindowWait(request.Sequence)) problem = target is null ? "Choose a Click target first." : request.LeaveCursorFree ? "The Click target must be open and not minimised." : TargetNotInFrontReason();
             if (IsDesktopMode)
             {
                 try
@@ -590,9 +624,13 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     }
 
     internal bool CaptureTargetAvailable => TargetAvailable;
-    public void BeginTargetPreview(Action<string> finish)
+    /// <summary>
+    /// Starts an input-free preview. <paramref name="needsFront"/> is for previews where the user works on the real
+    /// window (the click-location picker) or that observe it live; a still picture of the window does not need it in front.
+    /// </summary>
+    public void BeginTargetPreview(Action<string> finish, bool needsFront = true)
     {
-        BeginCapture(finish, finish);
+        BeginCapture(finish, finish, needsFront);
         lock (gate) { previewing = true; activity = "Named points"; state = "Target preview"; reason = "Input-free target preview. Stop All cancels."; }
         NotifyChanged();
     }
@@ -615,13 +653,22 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             return thread == 0 ? null : unchecked((uint)DesktopNative.GetKeyboardLayout(thread).ToInt64()).ToString("X8");
         }
     }
-    internal void BeginCapture(Action<string> stopCapture, Action<string> pauseCapture)
+    internal void BeginCapture(Action<string> stopCapture, Action<string> pauseCapture, bool needsFront = true)
     {
         lock (gate)
         {
-            if (disposed || busy || recording || executor.HasOwnedInput || !Control.Available || !TargetAvailable)
-                throw new InvalidOperationException("Capture requires stopped playback, finished cleanup, an available Stop All key and the selected target in front. Bring the target forward before the countdown ends, then retry.");
-            ValidateCaptureResume();
+            // One reason per refusal, so the user knows which one to fix.
+            string? refusal = disposed ? "The clicker is closing."
+                : busy ? "Stop playback before picking or recording."
+                : recording ? "Finish the recording or picker that is already open."
+                : executor.HasOwnedInput ? "Cleanup is pending. Release your keys and mouse buttons, then press Release stuck input."
+                : !Control.Available ? "The Stop All key is not available. Choose a working key under Settings, Global controls."
+                : IsDesktopMode ? null
+                : needsFront ? (TargetAvailable ? null : TargetNotInFrontReason())
+                : TargetIdentityAvailable ? null : TargetNotInFrontReason();
+            if (refusal is not null) throw new InvalidOperationException(refusal);
+            // Recording and live checks also need the user's hands off the keys; a still picture does not.
+            if (needsFront) ValidateCaptureResume();
             recording = true; captureStop = stopCapture; capturePause = pauseCapture; started = Stopwatch.GetTimestamp();
             activity = "Recording draft";
             inputsSent = 0; completed = 0; elapsed = TimeSpan.Zero; state = "Recording"; reason = "Capture in the selected foreground window. Stop All ends capture.";
@@ -632,7 +679,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     {
         lock (gate)
         {
-            if (disposed || busy || !Control.Available || !TargetAvailable) throw new InvalidOperationException("Bring the selected target forward before resuming capture.");
+            if (disposed || busy || !Control.Available) throw new InvalidOperationException("Stop playback and check the Stop All key before recording.");
+            if (!TargetAvailable) throw new InvalidOperationException(TargetNotInFrontReason());
             if (Control.ModifiersDown) throw new InvalidOperationException("Release modifiers before recording.");
             foreach (int code in SequenceKeys.Supported.Values)
             {

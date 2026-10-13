@@ -150,9 +150,8 @@ internal sealed class ConditionEditor : Window
                 }
                 else
                 {
-                    if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
+                    // Read from the window itself; it can stay behind this dialog.
                     error.Text = "Capturing from the selected app. Stop All cancels.";
-                    await Task.Delay(TimeSpan.FromMilliseconds(350), countdown.Token);
                     sample = await Task.Run(() => runtime.CaptureTemplate(selectedRegion, countdown.Token), countdown.Token);
                 }
                 countdown.Token.ThrowIfCancellationRequested();
@@ -160,7 +159,7 @@ internal sealed class ConditionEditor : Window
                 error.Text = "Template captured into this draft. Playback remains stopped.";
             }
             catch (OperationCanceledException) { error.Text = "Template capture cancelled."; }
-            catch (Exception ex) { error.Text = ex.Message; }
+            catch (Exception ex) { error.Text = ex.Message; AppLog.Failure("Capture image template", ex); if (!closed) Activate(); }
             finally
             {
                 runtime.Control.StopRequested -= StopCapture; pending = null;
@@ -189,13 +188,10 @@ internal sealed class ConditionEditor : Window
                 }
                 else
                 {
-                    if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
-                    await Task.Delay(350, selection.Token);
-                    var frame = runtime.GetTargetFrame();
-                    var snapshot = await Task.Run(() => runtime.CaptureAuthoringPreview(selection.Token), selection.Token);
+                    // The picture is read from the window itself, so nothing moves and this dialog stays in front.
+                    var (snapshot, frame) = await Task.Run(() => runtime.CaptureTargetPicture(selection.Token), selection.Token);
                     selection.Token.ThrowIfCancellationRequested();
                     if (closed) return;
-                    Activate();
                     picker = new RegionPicker(this, snapshot, frame, side);
                 }
                 using var abortPicker = selection.Token.Register(() => Dispatcher.BeginInvoke(() => picker.Close()));
@@ -214,7 +210,7 @@ internal sealed class ConditionEditor : Window
                 }
             }
             catch (OperationCanceledException) { error.Text = "Selection cancelled."; }
-            catch (Exception ex) { error.Text = ex.Message; }
+            catch (Exception ex) { error.Text = ex.Message; AppLog.Failure(colourOnly ? "Eyedropper" : "Select area", ex); if (!closed) Activate(); }
             finally { runtime.Control.StopRequested -= StopSelection; pending = null; if (!closed) { panel.IsEnabled = save.IsEnabled = true; RefreshFields(); } }
         }
         selectArea.Click += async (_, _) => await SelectArea(false);
