@@ -31,7 +31,7 @@ public partial class MainWindow : Window
     private int refreshPending;
     private (string State, string Reason)? lastRuntimeStatus;
     private string stopKey = "F9";
-    private int appliedToggleKey = 0x77, appliedStopKey = 0x78;
+    private int appliedToggleKey = ShortcutKeys.DefaultStartKey, appliedStopKey = ShortcutKeys.DefaultStopKey;
     private bool appliedHoldTrigger;
 
     public MainWindow(bool previewOnly = false)

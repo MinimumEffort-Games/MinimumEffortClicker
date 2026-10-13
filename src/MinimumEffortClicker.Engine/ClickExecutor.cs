@@ -124,13 +124,6 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
 
     // Injectable for deterministic tests; sampled only by the single scheduler worker.
     public Func<double> NextRandom { get; set; } = Random.Shared.NextDouble;
-    private TimeSpan SampleDuration(TimeSpan minimum, TimeSpan? maximum)
-    {
-        if (maximum is null || maximum == minimum) return minimum;
-        var sample = NextRandom();
-        if (!double.IsFinite(sample) || sample < 0 || sample >= 1) throw new InvalidOperationException("Invalid timing sample.");
-        return minimum + TimeSpan.FromTicks((long)((maximum.Value - minimum).Ticks * sample));
-    }
 
     private sealed class InterruptedPlaybackException : Exception;
     private void PauseCheckpoint(CancellationToken stop)
@@ -250,7 +243,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                     if (plan.Mode != HelperMode.Scroll) owned.Add(plan.Control);
                     run.Sent++;
                     Publish(run, action, plan.Mode == HelperMode.Scroll ? "Next cycle" : "Release " + action);
-                    releaseAt = plan.Mode == HelperMode.Hold ? end : clock.Elapsed + SampleDuration(plan.PressDuration, plan.MaximumPressDuration);
+                    releaseAt = plan.Mode == HelperMode.Hold ? end : clock.Elapsed + TimingSample.Range(plan.PressDuration, plan.MaximumPressDuration, NextRandom);
                     if (releaseAt > end) releaseAt = end;
                 }
                 if (plan.Mode != HelperMode.Scroll) WaitDeadline(releaseAt, stop);
@@ -263,7 +256,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                 }
                 if (run.Outcome is not null) break;
                 if (plan.Mode == HelperMode.Hold || plan.Count > 0 && cycle == plan.Count - 1) break;
-                var interval = SampleDuration(plan.Interval, plan.MaximumInterval);
+                var interval = TimingSample.Range(plan.Interval, plan.MaximumInterval, NextRandom);
                 next += interval;
                 var now = clock.Elapsed;
                 if (next < now)

@@ -52,12 +52,12 @@ public static class ProbeNative
 
     /// <summary>Only the isolated probe calls this, to exercise its registered F9 route.</summary>
     public static bool SendProbeStopKey()
-        => SendProbeKey(0x78, InputTag);
+        => SendProbeKey(ShortcutKeys.DefaultStopKey, InputTag);
     /// <summary>Isolated fixture for the external stop hook while playback owns a modifier.</summary>
-    public static bool SendProbeExternalStopKey() => SendProbeKey(0x78, 0x4D455454);
+    public static bool SendProbeExternalStopKey() => SendProbeKey(ShortcutKeys.DefaultStopKey, 0x4D455454);
 
     /// <summary>Bounded M1 VM fixture only; distinct tag models an external trigger, never playback.</summary>
-    public static bool SendProbeToggleKey() => SendProbeKey(0x77, 0x4D455454);
+    public static bool SendProbeToggleKey() => SendProbeKey(ShortcutKeys.DefaultStartKey, 0x4D455454);
     public static bool SendProbeMacroKey() => SendProbeKey(0x75, 0x4D455454); // F6, bounded opt-in fixture.
 
     private static bool SendProbeKey(ushort key, nuint tag)
@@ -100,7 +100,7 @@ public sealed class ProbeStopHotkey : IDisposable
         {
             threadId = ProbeNative.GetCurrentThreadId();
             ProbeNative.PeekMessage(out _, 0, 0, 0, 0);
-            bool registered = ProbeNative.RegisterHotKey(0, 1, 0x4000, 0x78);
+            bool registered = ProbeNative.RegisterHotKey(0, 1, 0x4000, ShortcutKeys.DefaultStopKey);
             if (!registered) failure = new Win32Exception(Marshal.GetLastWin32Error(), "F9 stop hotkey is unavailable; probe cannot run.");
             ready.Set();
             if (!registered) return;

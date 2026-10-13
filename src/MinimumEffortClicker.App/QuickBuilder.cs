@@ -235,9 +235,9 @@ public partial class MainWindow
                 step = QuickActions.Click(MouseChoice, (QuickClickKind)ClickKindBox.SelectedIndex, Milliseconds(PressBox), Milliseconds(DoubleGapBox), after, useCursorLocation ? null : ReadQuickPoint()); break;
             case 1:
                 var keys = new List<int>();
-                if (CtrlBox.IsChecked == true) keys.Add(0x1D);
-                if (ShiftBox.IsChecked == true) keys.Add(0x2A);
-                if (AltBox.IsChecked == true) keys.Add(0x38);
+                if (CtrlBox.IsChecked == true) keys.Add(SequenceKeys.LeftCtrl);
+                if (ShiftBox.IsChecked == true) keys.Add(SequenceKeys.LeftShift);
+                if (AltBox.IsChecked == true) keys.Add(SequenceKeys.LeftAlt);
                 keys.Add(SequenceKeys.Supported[(string)KeyBox.SelectedItem]);
                 step = QuickActions.Keys(keys, Milliseconds(PressBox), after, HoldKeyBox.IsChecked == true); break;
             case 2: step = QuickActions.Pause(TimeSpan.FromMilliseconds(Number(PauseDurationBox) * (PauseUnitBox.SelectedIndex == 1 ? 1000 : 1))); break;
@@ -338,10 +338,10 @@ public partial class MainWindow
                     quickPoint = actions[0].Position; useCursorLocation = quickPoint is null; ShowQuickCoordinates();
                     AfterBox.Text = Ms(s.Duration - actions.Max(c => c.Offset + c.Duration));
                 }
-                else if (uncomplicated && actions.All(c => c.Control.Kind == InputKind.ScanCode && c.Offset == TimeSpan.Zero && c.Duration == actions[0].Duration) && actions.Count(c => !SequenceKeys.IsModifier(c.Control)) == 1 && actions.Where(c => SequenceKeys.IsModifier(c.Control)).All(c => c.Control.Code is 0x1D or 0x2A or 0x38))
+                else if (uncomplicated && actions.All(c => c.Control.Kind == InputKind.ScanCode && c.Offset == TimeSpan.Zero && c.Duration == actions[0].Duration) && actions.Count(c => !SequenceKeys.IsModifier(c.Control)) == 1 && actions.Where(c => SequenceKeys.IsModifier(c.Control)).All(c => c.Control.Code is SequenceKeys.LeftCtrl or SequenceKeys.LeftShift or SequenceKeys.LeftAlt))
                 {
                     ModeBox.SelectedIndex = 1; KeyBox.SelectedItem = SequenceKeys.Supported.First(k => k.Value == actions.First(c => !SequenceKeys.IsModifier(c.Control)).Control.Code).Key;
-                    CtrlBox.IsChecked = actions.Any(c => c.Control.Code == 0x1D); ShiftBox.IsChecked = actions.Any(c => c.Control.Code == 0x2A); AltBox.IsChecked = actions.Any(c => c.Control.Code == 0x38);
+                    CtrlBox.IsChecked = actions.Any(c => c.Control.Code == SequenceKeys.LeftCtrl); ShiftBox.IsChecked = actions.Any(c => c.Control.Code == SequenceKeys.LeftShift); AltBox.IsChecked = actions.Any(c => c.Control.Code == SequenceKeys.LeftAlt);
                     HoldKeyBox.IsChecked = s.Name.StartsWith("Hold ", StringComparison.Ordinal) || actions[0].Duration.TotalMilliseconds >= 500; PressBox.Text = Ms(actions[0].Duration); AfterBox.Text = Ms(s.Duration - actions[0].Duration);
                 }
                 else

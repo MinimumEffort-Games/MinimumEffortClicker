@@ -26,7 +26,7 @@ public sealed class DesktopControl : IDisposable
     private nint keyboardHook, mouseHook, destroyHook;
     private readonly TriggerLatch trigger = new();
     private readonly Dictionary<int, (MacroBinding Binding, TriggerLatch Latch)> macroTriggers = [];
-    private int toggleKey = 0x77, stopKey = 0x78;
+    private int toggleKey = ShortcutKeys.DefaultStartKey, stopKey = ShortcutKeys.DefaultStopKey;
     private volatile bool disposed;
     public bool Available { get; private set; }
     public string? Error { get; private set; }

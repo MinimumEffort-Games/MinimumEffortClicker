@@ -39,16 +39,9 @@ internal sealed record ScheduledTiming(int Step, TimeSpan Offset, TimeSpan Durat
         : Span + ((Settings.MaximumPressDuration ?? Press) - Press) * (SecondClick is null ? 1 : 2) + (Settings.MaximumPause ?? Duration - Span);
     internal (TimeSpan PressDelta, TimeSpan DurationDelta) Sample(Func<double> random)
     {
-        var pressDelta = Range(Press, Settings.MaximumPressDuration, random) - Press;
-        var duration = Settings.Interval is { } interval ? Range(interval, Settings.MaximumInterval, random)
-            : Span + pressDelta * (SecondClick is null ? 1 : 2) + Range(Duration - Span, Settings.MaximumPause, random);
+        var pressDelta = TimingSample.Range(Press, Settings.MaximumPressDuration, random) - Press;
+        var duration = Settings.Interval is { } interval ? TimingSample.Range(interval, Settings.MaximumInterval, random)
+            : Span + pressDelta * (SecondClick is null ? 1 : 2) + TimingSample.Range(Duration - Span, Settings.MaximumPause, random);
         return (pressDelta, duration - Duration);
-    }
-    private static TimeSpan Range(TimeSpan minimum, TimeSpan? maximum, Func<double> random)
-    {
-        if (maximum is null || maximum == minimum) return minimum;
-        var sample = random();
-        if (!double.IsFinite(sample) || sample < 0 || sample >= 1) throw new InvalidOperationException("Invalid timing sample.");
-        return minimum + TimeSpan.FromTicks((long)((maximum.Value - minimum).Ticks * sample));
     }
 }

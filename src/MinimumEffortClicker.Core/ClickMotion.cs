@@ -13,12 +13,7 @@ public sealed record ClickMotion(TimeSpan MoveDuration = default, int OffsetPixe
     {
         Validate();
         if (OffsetPixels == 0) return point;
-        int Sample()
-        {
-            double value = random();
-            if (!double.IsFinite(value) || value < 0 || value >= 1) throw new InvalidOperationException("Invalid position sample.");
-            return (int)(value * (OffsetPixels * 2 + 1)) - OffsetPixels;
-        }
+        int Sample() => (int)(TimingSample.Unit(random) * (OffsetPixels * 2 + 1)) - OffsetPixels;
         return point with { X = Math.Clamp(point.X + Sample(), originX, originX + point.Width - 1),
             Y = Math.Clamp(point.Y + Sample(), originY, originY + point.Height - 1) };
     }

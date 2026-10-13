@@ -63,7 +63,7 @@ public partial class MainWindow
             AbortTestButton.Visibility = Visibility.Collapsed; RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus();
         }
     }
-    private int appliedRecordKey = 0x79, selectedRecordKey = 0x79;
+    private int appliedRecordKey = ShortcutKeys.DefaultRecordKey, selectedRecordKey = ShortcutKeys.DefaultRecordKey;
 
     private async Task SetQuickRecordKey()
     {

@@ -3,6 +3,8 @@ namespace MinimumEffortClicker.Core;
 /// <summary>Physical scan positions for sequence authoring. Labels describe US positions, not typed text.</summary>
 public static class SequenceKeys
 {
+    /// <summary>Scan codes of the modifiers the Actions page can add to a key press, and the default held key.</summary>
+    public const int LeftCtrl = 0x1D, LeftShift = 0x2A, LeftAlt = 0x38, W = 0x11;
     public static bool IsModifier(InputControl input) => input.Kind == InputKind.ScanCode && input.Code is 0x1D or 0x11D or 0x2A or 0x36 or 0x38 or 0x138;
     public static IReadOnlyDictionary<string, int> Supported { get; } = Build();
     private static IReadOnlyDictionary<string, int> Build()
