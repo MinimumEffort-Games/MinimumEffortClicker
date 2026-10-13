@@ -26,13 +26,6 @@ public partial class MainWindow
     private static string InputLabel(InputControl input)
     { var label = RecordingNormalizer.Label(input); return label.StartsWith("Hold ", StringComparison.Ordinal) ? label[5..] : label; }
 
-    private void RefreshLibraryLists()
-    {
-        var selection = (ProfileList.SelectedItem as ProfileDefinition)?.Id;
-        ProfileList.ItemsSource = profiles.Where(p => p.Macros.Any(m => !m.IsToggle)).ToArray();
-        ProfileList.SelectedItem = profiles.FirstOrDefault(p => p.Id == selection);
-        RefreshToggleList();
-    }
     private void RefreshToggleList()
     {
         if (ToggleList is null) return;
@@ -66,7 +59,7 @@ public partial class MainWindow
     }
     private async void SaveToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime is null || bindingBusy || ioBusy) return;
+        if (runtime is null || operations.Any(Operation.Binding | Operation.Library)) return;
         if (runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) { ReasonLabel.Text = "Stop playback and finish cleanup before changing toggles."; return; }
         Pages.IsEnabled = false;
         try
@@ -76,7 +69,7 @@ public partial class MainWindow
             var binding = new MacroBinding(id, key, false);
             MacroBindings.Validate([binding], appliedToggleKey, appliedStopKey);
             if (macroBindings.Values.Any(b => b.MacroId != id && b.Key == key))
-                throw new ArgumentException("That shortcut is assigned to another toggle or macro. Choose a different key.");
+                throw new ArgumentException("That shortcut is assigned to another toggle. Choose a different key.");
             var held = InputLabel(selectedHeldInput);
             if (MinimumEffortClicker.Windows.DesktopRuntime.InputMatchesKey(selectedHeldInput, key))
                 throw new ArgumentException("Choose a shortcut different from the input being held.");
@@ -106,13 +99,13 @@ public partial class MainWindow
     }
     private async void ToggleEnabled_Changed(object sender, RoutedEventArgs e)
     {
-        if (!initialized || refreshingToggles || bindingBusy || ioBusy || sender is not CheckBox { DataContext: ToggleRow row } box) return;
+        if (!initialized || refreshingToggles || operations.Any(Operation.Binding | Operation.Library) || sender is not CheckBox { DataContext: ToggleRow row } box) return;
         if (box.IsChecked == true) enabledToggles.Add(row.Id); else enabledToggles.Remove(row.Id);
         await ApplyAvailability();
     }
     private async void DeleteToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (editingToggle is not { } id || runtime is null || bindingBusy || ioBusy) return;
+        if (editingToggle is not { } id || runtime is null || operations.Any(Operation.Binding | Operation.Library)) return;
         if (runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) { ReasonLabel.Text = "Stop playback before removing a toggle."; return; }
         var owner = profiles.FirstOrDefault(p => p.Macros.Any(m => m.Id == id));
         if (owner is null) return;
@@ -129,6 +122,26 @@ public partial class MainWindow
         }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
         finally { Pages.IsEnabled = true; }
+    }
+    /// <summary>Arm the checked toggles' shortcuts in the runtime. Arming never starts anything; a shortcut press does.</summary>
+    private async Task ApplyAvailability()
+    {
+        if (runtime is null || operations.Has(Operation.Binding)) return;
+        operations.Begin(Operation.Binding); TogglePage.IsEnabled = false;
+        try
+        {
+            var helpers = SavedToggles.Where(m => enabledToggles.Contains(m.Id)).Select(m => new ArmedHelper(macroBindings.GetValueOrDefault(m.Id)
+                ?? throw new ArgumentException($"Assign a shortcut for '{m.Name}' first."), m.Plan!, m.Name)).ToArray();
+            MacroBindings.Validate(helpers.Select(h => h.Binding).ToArray(), appliedToggleKey, appliedStopKey);
+            if (!await runtime.ConfigureHelpersAsync(helpers)) throw new InvalidOperationException("A toggle shortcut is already in use. Choose another key.");
+        }
+        catch (Exception ex)
+        {
+            enabledToggles.Clear();
+            await runtime.ConfigureHelpersAsync([]);
+            ReasonLabel.Text = "Toggles disabled: " + ex.Message;
+        }
+        finally { operations.End(Operation.Binding); TogglePage.IsEnabled = true; RefreshToggleList(); }
     }
     private string[] ToggleOverlayLines(RuntimeSnapshot snapshot)
     {

@@ -1,11 +1,12 @@
 namespace MinimumEffortClicker.Core;
 
-public enum StepKind { Input, Wait, TimedGroup, Condition, Subsequence, ConditionalFlow, Text, Screenshot }
+/// <summary>Numeric values are stored in profile files; keep them stable when members change.</summary>
+public enum StepKind { Input = 0, Wait = 1, TimedGroup = 2, Condition = 3, Screenshot = 7 }
 public sealed record TimedAction(Guid Id, TimeSpan Offset, InputControl Control, TimeSpan Duration,
     ClientPoint? Position = null, ClientPoint? EndPosition = null, Guid? TargetId = null)
 { public int ClickCount { get; init; } = 1; }
 public sealed record SequenceStep(Guid Id, string Name, bool Enabled, StepKind Kind, TimeSpan Duration,
-    InputControl? Control, IReadOnlyList<TimedAction>? Children, ClientPoint? Position = null, ClientPoint? EndPosition = null, string Notes = "", Guid? TargetId = null, ConditionDefinition? Condition = null, Guid? SubsequenceId = null, ConditionalFlow? Flow = null, string? Text = null)
+    InputControl? Control, IReadOnlyList<TimedAction>? Children, ClientPoint? Position = null, ClientPoint? EndPosition = null, string Notes = "", Guid? TargetId = null, ConditionDefinition? Condition = null)
 {
     public ActionTiming? Timing { get; init; }
     public bool LeaveCursorFree { get; init; }
@@ -16,16 +17,12 @@ public sealed record SequenceStep(Guid Id, string Name, bool Enabled, StepKind K
     public static readonly TimeSpan MinimumScreenshotPause = TimeSpan.FromSeconds(1);
     public static SequenceStep Screenshot(TimeSpan? pauseAfterSave = null) => new(Guid.NewGuid(), "Take fullscreen screenshot", true,
         StepKind.Screenshot, pauseAfterSave ?? MinimumScreenshotPause, null, null);
-    public static SequenceStep TypeText(string text) => new(Guid.NewGuid(), "Type Unicode text", true, StepKind.Text,
-        TimeSpan.FromMilliseconds(text.Length * 20), null, null, Text: text);
     public static SequenceStep WaitUntil(string name, ConditionDefinition condition) => new(Guid.NewGuid(), name, true, StepKind.Condition, TimeSpan.Zero, null, null, Condition: condition);
-    public static SequenceStep Call(string name, Guid id) => new(Guid.NewGuid(), name, true, StepKind.Subsequence, TimeSpan.Zero, null, null, SubsequenceId: id);
     public static SequenceStep Group(string name, TimeSpan duration, IReadOnlyList<TimedAction> children) =>
         new(Guid.NewGuid(), name, true, StepKind.TimedGroup, duration, null, children.ToArray());
     public override string ToString() => Name;
 }
-public sealed record ReusableSequence(Guid Id, string Name, IReadOnlyList<SequenceStep> Steps);
-public sealed record SequenceDefinition(IReadOnlyList<SequenceStep> Steps, string? KeyboardLayout = null, IReadOnlyList<ReusableSequence>? Subsequences = null, SequenceRepetition? Repetition = null);
+public sealed record SequenceDefinition(IReadOnlyList<SequenceStep> Steps, string? KeyboardLayout = null, SequenceRepetition? Repetition = null);
 public sealed record SequenceRepetition(int Count = 1, TimeSpan DelayBetweenLoops = default, TimeSpan? ActiveDuration = null)
 {
     public void Validate()
@@ -52,12 +49,20 @@ public sealed class SequencePlan
     public IReadOnlyList<ScheduledCondition> Conditions { get; }
     public IReadOnlyList<ScheduledScreenshot> Screenshots { get; internal init; } = [];
     internal IReadOnlyList<ScheduledTiming> Timings { get; init; } = [];
-    public bool LeaveCursorFree => AllInputs().Any(i => i.LeaveCursorFree);
+    public bool LeaveCursorFree => Inputs.Any(i => i.LeaveCursorFree);
     public void ValidateDesktopMode(int width, int height, int dpi)
     {
         if (LeaveCursorFree) throw new ArgumentException("Leave cursor free requires a selected Click target.");
-        if (AllConditions().Any()) throw new ArgumentException("Wait Until requires a selected Click target.");
-        foreach (var input in AllInputs())
+        foreach (var condition in Conditions)
+        {
+            if (condition.Definition.Region is not { } region)
+                throw new ArgumentException("A \"window is active\" wait needs a selected Click target.");
+            if (region.Origin.Space != CoordinateSpace.Desktop)
+                throw new ArgumentException($"Wait \"{condition.Name}\" looks inside a window. Select that Click target, or pick its area again on a monitor.");
+            if (!region.Origin.Matches(width, height, dpi))
+                throw new ArgumentException($"The monitor layout changed since wait \"{condition.Name}\" was set up. Pick its area again.");
+        }
+        foreach (var input in Inputs)
         {
             if (input.Position is not { } point) continue;
             if (point.Space != CoordinateSpace.Desktop)
@@ -88,9 +93,8 @@ public sealed class SequencePlan
             if (!point.IsValid) throw new ArgumentException($"Saved click at {p.X}, {p.Y} is outside this window. Use Set Location to choose a new point.");
             return i with { Position = point };
         });
-        return new(inputs, Duration, KeyboardLayout, Conditions.Select(c => c.Flow is { } flow ? c with { Flow = flow with
-            { Body = flow.Body.AdaptClickPoints(width, height, dpi, scaleWithWindow), Otherwise = flow.Otherwise?.AdaptClickPoints(width, height, dpi, scaleWithWindow) } } : c))
-        { Screenshots = Screenshots, Timings = Timings, Repetition = Repetition, SourceSteps = SourceSteps, WorstCaseDuration = WorstCaseDuration, ExecutionActionCount = ExecutionActionCount };
+        return new(inputs, Duration, KeyboardLayout, Conditions)
+        { Screenshots = Screenshots, Timings = Timings, Repetition = Repetition, WorstCaseDuration = WorstCaseDuration, ExecutionActionCount = ExecutionActionCount };
     }
     public SequencePlan SampleTiming(Func<double> random)
     {
@@ -109,41 +113,11 @@ public sealed class SequencePlan
             return i with { Offset = offset, PauseBefore = i.PauseBefore + tailDelta + TimeSpan.FromTicks(i.PauseSteps.Where(sampled.ContainsKey).Sum(step => sampled[step].Delta.DurationDelta.Ticks)) };
         }).ToArray();
         return new(inputs, Duration + shift, KeyboardLayout, Conditions.Select(c => c with { Offset = c.Offset + shifts[c.StepIndex] }))
-        { Screenshots = Array.AsReadOnly(Screenshots.Select(s => s with { Offset = s.Offset + shifts[s.StepIndex] }).ToArray()), Repetition = Repetition, SourceSteps = SourceSteps, WorstCaseDuration = WorstCaseDuration, ExecutionActionCount = ExecutionActionCount };
+        { Screenshots = Array.AsReadOnly(Screenshots.Select(s => s with { Offset = s.Offset + shifts[s.StepIndex] }).ToArray()), Repetition = Repetition, WorstCaseDuration = WorstCaseDuration, ExecutionActionCount = ExecutionActionCount };
     }
-    internal IReadOnlyList<int>? SourceSteps { get; init; }
-    public int SourceStep(int compiledStep) => SourceSteps is null ? compiledStep : SourceSteps[compiledStep];
     public TimeSpan WorstCaseDuration { get; internal init; }
     public int ExecutionActionCount { get; internal init; }
     public SequenceRepetition Repetition { get; internal set; } = new();
-    public IEnumerable<ScheduledInput> AllInputs() => Inputs.Concat(Conditions.Where(c => c.Flow is not null).SelectMany(c => c.Flow!.Body.AllInputs().Concat(c.Flow.Otherwise?.AllInputs() ?? [])));
-    public IEnumerable<ScheduledCondition> AllConditions() => Conditions.Concat(Conditions.Where(c => c.Flow is not null).SelectMany(c => c.Flow!.Body.AllConditions().Concat(c.Flow.Otherwise?.AllConditions() ?? [])));
-    public SequencePlan BindLogicalKeys(Func<int, int> resolve, string layout)
-    {
-        if (layout.Length != 8 || !layout.All(Uri.IsHexDigit) || KeyboardLayout is { } recorded && !string.Equals(recorded, layout, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Review the sequence under its recorded keyboard layout before resolving logical keys.");
-        var resolved = new Dictionary<int, int>();
-        var mapped = Inputs.Select(i =>
-        {
-            if (i.Control.Kind != InputKind.LogicalKey) return i;
-            if (!resolved.TryGetValue(i.Control.Code, out int scan)) resolved.Add(i.Control.Code, scan = resolve(i.Control.Code));
-            var key = InputControl.Key(scan);
-            if (!SequenceKeys.Supported.Values.Contains(key.Code) || SequenceKeys.IsModifier(key))
-                throw new ArgumentException("The selected layout cannot resolve this logical key to a supported non-modifier position.");
-            return i with { Control = key };
-        }).ToArray();
-        var held = new HashSet<InputControl>();
-        foreach (var input in mapped)
-        {
-            if (input.Control.Kind is InputKind.Scroll or InputKind.HorizontalScroll or InputKind.PointerMove) continue;
-            if (input.Down ? !held.Add(input.Control) : !held.Remove(input.Control))
-                throw new ArgumentException("Logical and physical actions overlap on the same key under the selected layout.");
-        }
-        var conditions = Conditions.Select(c => c.Flow is { } flow ? c with { Flow = flow with {
-            Body = flow.Body.BindLogicalKeys(resolve, layout), Otherwise = flow.Otherwise?.BindLogicalKeys(resolve, layout) } } : c);
-        return new(mapped, Duration, layout, conditions) { Screenshots = Screenshots, Repetition = Repetition, SourceSteps = SourceSteps, Timings = Timings,
-            WorstCaseDuration = WorstCaseDuration, ExecutionActionCount = ExecutionActionCount };
-    }
 }
 
 public static class SequenceCompiler
@@ -195,15 +169,14 @@ public static class SequenceCompiler
     {
         ArgumentNullException.ThrowIfNull(definition);
         var repetition = definition.Repetition ?? new(); repetition.Validate();
-        var plan = SequenceLibrary.Compile(definition, points);
-        if (plan.LeaveCursorFree && plan.AllInputs().Any(i => !i.LeaveCursorFree))
+        var plan = CompileSteps(definition, points);
+        if (plan.LeaveCursorFree && plan.Inputs.Any(i => !i.LeaveCursorFree))
             throw new ArgumentException("A cursor-free list can contain cursor-free clicks and pauses. Enable cursor-free on every click, and keep keyboard actions in a separate macro.");
         plan.Repetition = repetition;
         return plan;
     }
-    internal static SequencePlan CompileFlat(SequenceDefinition definition, IReadOnlyList<NamedPoint>? points = null)
+    private static SequencePlan CompileSteps(SequenceDefinition definition, IReadOnlyList<NamedPoint>? points)
     {
-        ArgumentNullException.ThrowIfNull(definition);
         var namedPoints = NamedPoint.Index(points);
         if (definition.KeyboardLayout is { } layout && (layout.Length != 8 || !layout.All(Uri.IsHexDigit))) throw new ArgumentException("Invalid keyboard-layout context.");
         if (definition.Steps is null || definition.Steps.Count > MaximumActions) throw new ArgumentException("Sequence exceeds 10,000 actions.");
@@ -219,9 +192,9 @@ public static class SequenceCompiler
                 || step.Notes is null || step.Notes.Length > 4000 || !Enum.IsDefined(step.Kind) || step.Duration < TimeSpan.Zero || step.Duration > MaximumDuration)
                 throw new ArgumentException("Invalid or duplicate sequence action.");
             if (++actions > MaximumActions) throw new ArgumentException("Sequence exceeds 10,000 actions.");
-            if (step.SubsequenceId is not null || step.Kind is StepKind.Subsequence or StepKind.ConditionalFlow || step.Flow is not null) throw new ArgumentException("Unresolved subsequence or flow reference.");
             if (step.Kind != StepKind.Condition && step.Condition is not null) throw new ArgumentException("Only a condition step may contain a condition.");
-            if (step.Kind != StepKind.Text && step.Text is not null) throw new ArgumentException("Only an explicit text action may contain typed text.");
+            if (step.Kind == StepKind.TimedGroup && step.Children is { } groupChildren && groupChildren.Any(c => c is null))
+                throw new ArgumentException("Invalid or oversized timed group.");
             int eventStart = events.Count;
             var timing = step.Timing is null ? null : ScheduledTiming.Create(step, stepIndex, cursor);
             if (step.LeaveCursorFree && step.Kind is not (StepKind.Input or StepKind.TimedGroup)) throw new ArgumentException("Only a click can leave the cursor free.");
@@ -233,24 +206,6 @@ public static class SequenceCompiler
                         || step.Position is not null || step.EndPosition is not null || step.TargetId is not null)
                         throw new ArgumentException("A screenshot needs at least 1,000 ms pause after saving and cannot contain input.");
                     if (step.Enabled) screenshots.Add(new(cursor, stepIndex, step.Name));
-                    break;
-                case StepKind.Text:
-                    if (step.Text is null || step.Text.Length is < 1 or > 1024 || step.Control is not null || step.Children is not null
-                        || step.Position is not null || step.EndPosition is not null || step.TargetId is not null
-                        || step.Duration < TimeSpan.FromMilliseconds(step.Text.Length * 10))
-                        throw new ArgumentException("Text requires 1–1,024 UTF-16 units and at least 10 ms per unit; use physical key actions for Enter or Tab.");
-                    for (int unit = 0; unit < step.Text.Length; unit++)
-                    {
-                        char character = step.Text[unit];
-                        if (char.IsControl(character) || char.IsHighSurrogate(character) && (unit + 1 == step.Text.Length || !char.IsLowSurrogate(step.Text[unit + 1]))
-                            || char.IsLowSurrogate(character) && (unit == 0 || !char.IsHighSurrogate(step.Text[unit - 1])))
-                            throw new ArgumentException("Text must contain valid Unicode without control characters.");
-                        if (++actions > MaximumActions) throw new ArgumentException("Text expansion exceeds 10,000 actions.");
-                        var offset = cursor + TimeSpan.FromTicks(step.Duration.Ticks * unit / step.Text.Length);
-                        var textControl = new InputControl(InputKind.Unicode, character);
-                        events.Add(new(offset, step.Id, textControl, true, Name: "Unicode text", StepIndex: stepIndex));
-                        events.Add(new(offset + TimeSpan.FromMilliseconds(1), step.Id, textControl, false, Name: "Unicode text", StepIndex: stepIndex));
-                    }
                     break;
                 case StepKind.Condition:
                     if (step.Condition is null || step.Duration != TimeSpan.Zero || step.Control is not null || step.Children is not null
@@ -368,13 +323,12 @@ public static class SequenceCompiler
             {
                 InputKind.PointerMove => input.Code == 0 && position is not null,
                 InputKind.Scroll or InputKind.HorizontalScroll => input.Code is >= -12000 and <= 12000 && input.Code != 0,
-                InputKind.LogicalKey => SequenceKeys.Logical.Values.Contains(input.Code),
                 InputKind.ScanCode => SequenceKeys.Supported.Values.Contains(input.Code),
                 _ => validation.Count == 0
             };
             if (!validControl || duration < TimeSpan.Zero || !instant && duration == TimeSpan.Zero || instant && duration != TimeSpan.Zero
                 || position is { IsValid: false } || endPosition is { IsValid: false }
-                || input.Kind is InputKind.ScanCode or InputKind.LogicalKey && (position is not null || endPosition is not null)
+                || input.Kind is InputKind.ScanCode && (position is not null || endPosition is not null)
                 || endPosition is not null && (input.Kind != InputKind.MouseButton || position is null
                     || position.Space != endPosition.Space || !position.Matches(endPosition.Width, endPosition.Height, endPosition.Dpi)))
                 throw new ArgumentException("Input action has an invalid control or duration.");

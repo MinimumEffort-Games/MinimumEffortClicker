@@ -6,9 +6,9 @@ namespace MinimumEffortClicker.Storage;
 
 public sealed record UserPreferences(int SchemaVersion, int Appearance, int ToggleKey, int StopKey, bool HoldTrigger, bool Overlay,
     OverlayOptions? OverlayOptions = null, bool MainTopmost = false, int ClicksPerSecond = 20, bool KeepAwake = false, bool ScaleClickPositions = true,
-    bool CloseToTray = true, bool TrayNoticeShown = false, ScreenshotSettings? Screenshots = null, int RecordKey = 0x79)
+    bool CloseToTray = true, bool TrayNoticeShown = false, ScreenshotSettings? Screenshots = null, int RecordKey = ShortcutKeys.DefaultRecordKey)
 {
-    public static UserPreferences Default => new(1, 0, 0x77, 0x78, false, true);
+    public static UserPreferences Default => new(1, 0, ShortcutKeys.DefaultStartKey, ShortcutKeys.DefaultStopKey, false, true);
     public bool Valid => SchemaVersion == 1 && Appearance is >= 0 and <= 2 && ShortcutKeys.Supported(ToggleKey)
         && ShortcutKeys.Supported(StopKey) && ToggleKey != StopKey && (OverlayOptions?.Valid ?? true)
         && (Screenshots?.Valid ?? true) && ClicksPerSecond is >= 1 and <= 100 && ShortcutKeys.Supported(RecordKey);
@@ -18,7 +18,7 @@ public sealed class Preferences(string directory)
 {
     private static readonly JsonSerializerOptions Options = new()
     {
-        WriteIndented = true, MaxDepth = 8, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        WriteIndented = true, MaxDepth = 8, UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip, // Older versions may have written fields that no longer exist.
         IgnoreReadOnlyProperties = true
     };
     public UserPreferences Load()

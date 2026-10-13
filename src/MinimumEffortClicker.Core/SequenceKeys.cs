@@ -3,16 +3,10 @@ namespace MinimumEffortClicker.Core;
 /// <summary>Physical scan positions for sequence authoring. Labels describe US positions, not typed text.</summary>
 public static class SequenceKeys
 {
+    /// <summary>Scan codes of the modifiers the Actions page can add to a key press, and the default held key.</summary>
+    public const int LeftCtrl = 0x1D, LeftShift = 0x2A, LeftAlt = 0x38, W = 0x11;
     public static bool IsModifier(InputControl input) => input.Kind == InputKind.ScanCode && input.Code is 0x1D or 0x11D or 0x2A or 0x36 or 0x38 or 0x138;
     public static IReadOnlyDictionary<string, int> Supported { get; } = Build();
-    public static IReadOnlyDictionary<string, int> Logical { get; } = BuildLogical();
-    private static IReadOnlyDictionary<string, int> BuildLogical()
-    {
-        var keys = Enumerable.Range('A', 26).Concat(Enumerable.Range('0', 10)).ToDictionary(c => "Logical " + (char)c, c => c);
-        foreach (var (name, code) in new (string, int)[] { ("Space", 0x20), ("Enter", 0x0D), ("Tab", 0x09), ("Escape", 0x1B), ("Backspace", 0x08), ("Left", 0x25), ("Up", 0x26), ("Right", 0x27), ("Down", 0x28) })
-            keys["Logical " + name] = code;
-        return keys.AsReadOnly();
-    }
     private static IReadOnlyDictionary<string, int> Build()
     {
         var keys = HelperPlan.SupportedKeys.ToDictionary(p => p.Key, p => p.Value);

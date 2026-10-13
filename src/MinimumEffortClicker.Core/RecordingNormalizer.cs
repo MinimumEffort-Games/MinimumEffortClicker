@@ -81,8 +81,6 @@ public static class RecordingNormalizer
         InputKind.ScanCode => "Hold " + SequenceKeys.Supported.FirstOrDefault(x => x.Value == input.Code).Key,
         InputKind.MouseButton => "Hold " + (PointerButton)input.Code,
         InputKind.PointerMove => "Move pointer",
-        InputKind.Unicode => "Unicode text",
-        InputKind.LogicalKey => SequenceKeys.Logical.FirstOrDefault(k => k.Value == input.Code).Key ?? "Logical key",
         InputKind.HorizontalScroll => input.Code > 0 ? "Scroll right" : "Scroll left",
         _ => input.Code > 0 ? "Scroll up" : "Scroll down"
     };

@@ -18,7 +18,7 @@ public sealed class ActionToggleSession : IDisposable
     public Guid ActionId { get { lock (gate) return action?.MacroId ?? Guid.Empty; } }
     public string? ActionName { get { lock (gate) return action?.Name; } }
     public Guid[] ActiveIds { get { lock (gate) return holds.Keys.ToArray(); } }
-    public InputControl[] ActiveControls { get { lock (gate) return holds.Values.Select(h => h.Plan.Control).Concat(action?.Plan.AllInputs().Select(i => i.Control) ?? []).Distinct().ToArray(); } }
+    public InputControl[] ActiveControls { get { lock (gate) return holds.Values.Select(h => h.Plan.Control).Concat(action?.Plan.Inputs.Select(i => i.Control) ?? []).Distinct().ToArray(); } }
     public CancellationToken Changed { get { lock (gate) return changed.Token; } }
     internal bool KeepHold(InputControl input) { lock (gate) return holds.Any(h => h.Value.Plan.Mode == HelperMode.Hold && h.Value.Plan.Control == input && !stopping.Contains(h.Key)); }
     public bool Toggle(NamedHelper helper)
@@ -31,14 +31,14 @@ public sealed class ActionToggleSession : IDisposable
             if (helper.Plan is not { Mode: HelperMode.Hold or HelperMode.Repeat, Count: 0, ActiveDuration: null, Control.Kind: InputKind.ScanCode or InputKind.MouseButton }
                 || helper.Plan.Validate().Count != 0 || helper.Plan.Position is not null || helper.Plan.LeaveCursorFree)
                 throw new ArgumentException("Choose a valid until-stopped hold or repeat.");
-            if (holds.Values.Any(h => Conflicts(h.Plan.Control, helper.Plan.Control)) || action?.Plan.AllInputs().Any(i => Conflicts(i.Control, helper.Plan.Control)) == true)
+            if (holds.Values.Any(h => Conflicts(h.Plan.Control, helper.Plan.Control)) || action?.Plan.Inputs.Any(i => Conflicts(i.Control, helper.Plan.Control)) == true)
                 throw new ArgumentException("This hold conflicts with Actions or another toggle. Modifiers affect other held keys; pointer actions share the cursor.");
             holds.Add(helper.Id, helper); changed.Cancel(); return true;
         }
     }
     private static bool Conflicts(InputControl a, InputControl b) => a == b || a.Kind is not InputKind.ScanCode && b.Kind is not InputKind.ScanCode
-        || SequenceKeys.IsModifier(a) && b.Kind is InputKind.ScanCode or InputKind.Unicode
-        || SequenceKeys.IsModifier(b) && a.Kind is InputKind.ScanCode or InputKind.Unicode;
+        || SequenceKeys.IsModifier(a) && b.Kind == InputKind.ScanCode
+        || SequenceKeys.IsModifier(b) && a.Kind == InputKind.ScanCode;
     public bool Start(SequencePlan plan, string name, TimeSpan countdown, Guid macroId = default)
     {
         lock (gate)
@@ -46,7 +46,7 @@ public sealed class ActionToggleSession : IDisposable
             if (closed || action is not null) return false;
             if (plan.LeaveCursorFree && holds.Count != 0) throw new ArgumentException("Stop active toggles before starting cursor-free Actions.");
             if (countdown < TimeSpan.Zero || countdown > TimeSpan.FromMinutes(1)) throw new ArgumentException("Choose a countdown up to 60 seconds.");
-            if (plan.AllInputs().Any(i => holds.Values.Any(h => Conflicts(i.Control, h.Plan.Control))))
+            if (plan.Inputs.Any(i => holds.Values.Any(h => Conflicts(i.Control, h.Plan.Control))))
                 throw new ArgumentException("Actions conflicts with an active toggle. Stop that toggle first. Modifiers affect other held keys; pointer actions share the cursor.");
             action = new(plan, name, macroId, countdown, new()); taken = false; changed.Cancel(); return true;
         }

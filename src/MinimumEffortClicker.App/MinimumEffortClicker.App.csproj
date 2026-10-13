@@ -20,7 +20,6 @@
     <ProjectReference Include="../MinimumEffortClicker.Engine/MinimumEffortClicker.Engine.csproj" />
     <ProjectReference Include="../MinimumEffortClicker.Windows/MinimumEffortClicker.Windows.csproj" />
     <ProjectReference Include="../MinimumEffortClicker.Storage/MinimumEffortClicker.Storage.csproj" />
-    <PackageReference Include="CommunityToolkit.Mvvm" />
   </ItemGroup>
 </Project>
 

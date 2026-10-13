@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows;
 using MinimumEffortClicker.Core;
 using MinimumEffortClicker.Engine;
@@ -9,11 +8,10 @@ public partial class MainWindow
 {
     private static readonly PointerButton[] MouseChoices = [PointerButton.Left, PointerButton.Middle, PointerButton.Right, PointerButton.XButton1, PointerButton.XButton2];
     private PointerButton MouseChoice { get => MouseChoices[Math.Max(0, ButtonBox.SelectedIndex)]; set => ButtonBox.SelectedIndex = Array.IndexOf(MouseChoices, value); }
-    private string? guidedEditor;
     private ClientPoint? quickPoint;
     private async void PingLocation_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime is null || runtime.Snapshot.Busy || quickOperation) return;
+        if (runtime is null || runtime.Snapshot.Busy || operations.Has(Operation.Quick)) return;
         try
         {
             var step = ReadQuickAction();
@@ -30,8 +28,8 @@ public partial class MainWindow
 
     private async void PickQuickPoint_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime is null || runtime.Snapshot.Busy || quickOperation) return;
-        quickOperation = true;
+        if (runtime is null || runtime.Snapshot.Busy || operations.Has(Operation.Quick)) return;
+        operations.Begin(Operation.Quick);
         WindowState? minimizedFrom = null;
         using var cancellation = new CancellationTokenSource(); quickCancellation = cancellation;
         void Cancel(string reason) { _ = cancellation.CancelAsync(); }
@@ -52,7 +50,7 @@ public partial class MainWindow
             Activate();
         }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
-        finally { runtime.Control.StopRequested -= Cancel; quickCancellation = null; quickOperation = false; RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus(); }
+        finally { runtime.Control.StopRequested -= Cancel; quickCancellation = null; operations.End(Operation.Quick); RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus(); }
     }
 
     private void RestoreDesktopOperationWindow(WindowState? previous)
@@ -62,24 +60,4 @@ public partial class MainWindow
         WindowState = previous.Value;
         Activate();
     }
-
-    private void Wizard_Click(object sender, RoutedEventArgs e) => Navigate(0);
-    private void GuideQuick_Click(object sender, RoutedEventArgs e)
-    {
-        Navigate(0);
-        ReasonLabel.Text = "Choose a Click target, choose an action, then Add Action. Select any list row to edit it. Start runs the list in order.";
-    }
-    private async void GuideRecord_Click(object sender, RoutedEventArgs e) => await StartGuidedEditor("record");
-    private async void GuideVision_Click(object sender, RoutedEventArgs e) => await StartGuidedEditor("vision");
-    private async Task StartGuidedEditor(string guide)
-    {
-        if (runtime is null) return;
-        var wizard = new SetupWizard(this, runtime, guide);
-        if (wizard.ShowDialog() != true) return;
-        RefreshTargetChoices();
-        guidedEditor = guide;
-        try { await OpenSequence(new([])); }
-        finally { guidedEditor = null; }
-    }
-
 }

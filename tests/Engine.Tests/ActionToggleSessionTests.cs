@@ -208,6 +208,40 @@ public sealed class ActionToggleSessionTests
         Assert.IsFalse(f.Executor.HasOwnedInput);
     }
     [TestMethod]
+    public void ASecondSessionRunIsRejectedWithoutDisturbingTheActiveSession()
+    {
+        var f = new Fixture(); using var session = new ActionToggleSession(); using var other = new ActionToggleSession();
+        using var stop = new CancellationTokenSource(); session.Toggle(Hold(W));
+        bool tried = false;
+        f.Waits.Before = _ =>
+        {
+            if (tried) { stop.Cancel(); return; }
+            tried = true;
+            Assert.ThrowsExactly<InvalidOperationException>(() => f.Executor.Execute(other, f.TargetId, default));
+            Assert.IsTrue(f.Executor.Owns(W));
+            Assert.IsTrue(session.Toggle(Hold(E))); // The live session still accepts work after the rejected call.
+        };
+        var result = f.Executor.Execute(session, f.TargetId, stop.Token);
+        Assert.AreEqual(ClickRunOutcome.Cancelled, result.Outcome, result.Error);
+        Assert.AreEqual(1, f.Input.Accepted.Count(i => i.Control == E && i.Edge == InputEdge.Down));
+        Assert.IsFalse(f.Executor.HasOwnedInput);
+    }
+    [TestMethod]
+    public void PauseWithAMouseHoldToggleKeepsTheSessionAndRepressesOnResume()
+    {
+        var f = new Fixture(); using var session = new ActionToggleSession(); using var playback = new PlaybackControl();
+        f.Executor.Playback = playback; var hold = Hold(InputControl.Mouse(PointerButton.Right)); session.Toggle(hold); session.Start(Tap(E), "E", TimeSpan.Zero);
+        bool paused = false;
+        f.Waits.Before = _ => { if (!paused && f.Executor.Owns(E)) { paused = true; playback.RequestPause(); } };
+        f.Executor.PlaybackPaused = value => { if (value) playback.RequestResume(); };
+        f.Executor.SessionActionChanged = (_, started) => { if (!started) session.Toggle(hold); };
+        var result = f.Executor.Execute(session, f.TargetId, default);
+        Assert.AreEqual(ClickRunOutcome.Completed, result.Outcome, result.Error); Assert.IsTrue(paused);
+        // Pressed, released for the pause, pressed again on resume: a hold toggle is not a partial click.
+        Assert.AreEqual(2, f.Input.Accepted.Count(i => i.Control.Kind == InputKind.MouseButton && i.Edge == InputEdge.Down));
+        Assert.IsFalse(f.Executor.HasOwnedInput);
+    }
+    [TestMethod]
     public async Task ActionOnlyStopCleansItsKeyEvenWhenSchedulerIsBlocked()
     {
         var f = new Fixture(); using var session = new ActionToggleSession(); using var stop = new CancellationTokenSource();

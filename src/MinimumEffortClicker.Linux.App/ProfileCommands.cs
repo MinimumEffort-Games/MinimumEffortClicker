@@ -12,27 +12,6 @@ namespace MinimumEffortClicker.App;
 
 public partial class MainWindow
 {
-    private void FinishSequenceLoop_Click(object sender, RoutedEventArgs e)
-    { ReasonLabel.Text = runtime?.FinishSequenceLoop() == true ? "Finishing this sequence loop. Stop All still stops immediately." : "This command needs an actively playing sequence; it never starts playback."; }
-    private void RunCompatible_Click(object sender, RoutedEventArgs e)
-    {
-        if (runtime is null || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending || bindingBusy || ioBusy)
-        { ReasonLabel.Text = "Stop the current run and finish cleanup before starting helpers together."; return; }
-        try
-        {
-            var selected = profiles.Where(p => enabledProfiles.Contains(p.Id)).SelectMany(p => p.Macros.Select(m => (Profile: p, Macro: m)))
-                .Where(x => enabledMacros.Contains(x.Macro.Id)).ToArray();
-            if (selected.Any(x => x.Macro.Sequence is not null)) throw new ArgumentException("Recorded sequences require exclusive playback. Disable them before running simple helpers together.");
-            if (selected.Any(x => macroBindings.GetValueOrDefault(x.Macro.Id)?.HoldTrigger == true))
-                throw new ArgumentException("Run-together needs toggle bindings. Run hold-trigger helpers individually, or change their binding mode first.");
-            var set = CompatibleHelpers.Compile(selected.Select(x => new NamedHelper(x.Macro.Id, x.Profile.Name + " · " + x.Macro.Name, x.Macro.Plan!)));
-            if (AppDialog.Show(this, string.Join("\n\n", selected.Select(x => x.Macro.Name + ": " + Describe(x.Macro.Plan!)))
-                + "\n\nRun these helpers together after ten seconds? Switch to the selected target. Stop All or disabling a helper stops the entire set. A member’s toggle hotkey stops that member; stopped members never rejoin automatically.",
-                "Review compatible helpers", MessageBoxButton.OKCancel, MessageBoxImage.Information, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
-            if (!runtime.TryStart(set, TimeSpan.FromSeconds(10))) ReasonLabel.Text = "The helper set did not start. " + runtime.Snapshot.Reason;
-        }
-        catch (Exception ex) { ReasonLabel.Text = ex.Message; }
-    }
     private async void DeleteLibrary_Click(object sender, RoutedEventArgs e)
     {
         if (runtime is null || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending || ioBusy || bindingBusy)

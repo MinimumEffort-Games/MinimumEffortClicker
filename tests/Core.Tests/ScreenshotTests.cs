@@ -83,18 +83,17 @@ public sealed class ScreenshotTests
     {
         var pause = SequenceStep.Wait(TimeSpan.FromMilliseconds(20)) with { Timing = new(MaximumPause: TimeSpan.FromMilliseconds(60)) };
         var plan = SequenceCompiler.Compile(new([pause, SequenceStep.Screenshot(), SequenceStep.Input("W", InputControl.Key(0x11), TimeSpan.FromMilliseconds(20))]));
-        plan = plan.BindLogicalKeys(_ => 0x11, "00000409").AdaptClickPoints(800, 600, 96, true).SampleTiming(() => 0.5);
+        plan = plan.AdaptClickPoints(800, 600, 96, true).SampleTiming(() => 0.5);
         Assert.AreEqual(TimeSpan.FromMilliseconds(40), plan.Screenshots.Single().Offset);
         Assert.AreEqual(TimeSpan.FromMilliseconds(1040), plan.Inputs[0].Offset);
-        Assert.AreEqual(1, SequenceTimeline.Create(plan)[0].StepIndex);
+        Assert.AreEqual(1, plan.Screenshots.Single().StepIndex);
         Assert.AreEqual(TimeSpan.FromMilliseconds(1060), plan.Duration);
     }
 
     [TestMethod]
-    public void ScreenshotsSurviveReusableSequenceExpansionAndHistory()
+    public void RepeatedScreenshotsKeepTheirOrderAndHistory()
     {
-        var body = new ReusableSequence(Guid.NewGuid(), "Capture", [SequenceStep.Screenshot()]);
-        var source = new SequenceDefinition([SequenceStep.Call("Capture twice", body.Id), SequenceStep.Call("Again", body.Id)], Subsequences: [body]);
+        var source = new SequenceDefinition([SequenceStep.Screenshot(), SequenceStep.Screenshot()]);
         var plan = SequenceCompiler.Compile(source);
         Assert.HasCount(2, plan.Screenshots);
         Assert.AreEqual(TimeSpan.FromSeconds(1), plan.Screenshots[1].Offset);

@@ -1,6 +1,7 @@
 namespace MinimumEffortClicker.Core;
 
-public enum InputKind { MouseButton, ScanCode, Scroll, PointerMove, Unicode, LogicalKey, HorizontalScroll }
+/// <summary>Numeric values are stored in profile files; keep them stable when members change.</summary>
+public enum InputKind { MouseButton = 0, ScanCode = 1, Scroll = 2, PointerMove = 3, HorizontalScroll = 6 }
 public readonly record struct InputControl(InputKind Kind, int Code)
 {
     public static InputControl Mouse(PointerButton button) => new(InputKind.MouseButton, (int)button);
@@ -12,6 +13,7 @@ public enum HelperMode { Repeat, Hold, Scroll }
 public sealed record HelperPlan(InputControl Control, HelperMode Mode, TimeSpan Interval,
     TimeSpan PressDuration, int Count, TimeSpan? ActiveDuration = null)
 {
+    public const int MaximumCount = 1_000_000;
     public ClientPoint? Position { get; init; }
     public bool LeaveCursorFree { get; init; }
     public TimeSpan? MaximumInterval { get; init; }
@@ -19,14 +21,14 @@ public sealed record HelperPlan(InputControl Control, HelperMode Mode, TimeSpan 
     public IReadOnlyList<string> Validate()
     {
         var errors = new List<string>();
-        if (!Enum.IsDefined(Mode) || !Enum.IsDefined(Control.Kind) || Control.Kind is InputKind.PointerMove or InputKind.Unicode or InputKind.LogicalKey) errors.Add("Choose a supported action.");
+        if (!Enum.IsDefined(Mode) || !Enum.IsDefined(Control.Kind) || Control.Kind == InputKind.PointerMove) errors.Add("Choose a supported action.");
         if (Control.Kind == InputKind.MouseButton && !Enum.IsDefined((PointerButton)Control.Code)) errors.Add("Choose a mouse button.");
         if (Control.Kind == InputKind.ScanCode && !SequenceKeys.Supported.Values.Contains(Control.Code)) errors.Add("Choose a supported key.");
         if ((Mode == HelperMode.Scroll) != (Control.Kind is InputKind.Scroll or InputKind.HorizontalScroll) ||
             Control.Kind is InputKind.Scroll or InputKind.HorizontalScroll && Control.Code is not (-120 or 120)) errors.Add("Choose a supported scroll direction.");
         if (Interval < TimeSpan.FromMilliseconds(10) || Interval > TimeSpan.FromDays(1)) errors.Add("Interval must be 10 ms to one day.");
         if (PressDuration <= TimeSpan.Zero || PressDuration > Interval) errors.Add("Press duration must be positive and no longer than the interval.");
-        if (Count is < 0 or > ClickPlan.MaximumCount) errors.Add("Repeat count must be 1 to 1,000,000, or explicitly until stopped.");
+        if (Count is < 0 or > MaximumCount) errors.Add("Repeat count must be 1 to 1,000,000, or explicitly until stopped.");
         if (Mode == HelperMode.Hold && Count != (ActiveDuration is null ? 0 : 1)) errors.Add("A hold must have one bounded duration or explicitly last until stopped.");
         if (Mode != HelperMode.Hold && ActiveDuration is not null && Count != 0) errors.Add("Choose either a repeat count or an active duration.");
         if (ActiveDuration is { } duration && (duration <= TimeSpan.Zero || duration > TimeSpan.FromDays(1))) errors.Add("Duration must be positive and at most one day.");

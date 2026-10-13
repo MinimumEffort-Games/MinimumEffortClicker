@@ -18,11 +18,15 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        // Multiple independent preconditions prevent an accidental host launch from sending input.
+        // Independent preconditions stop an accidental launch on a real desktop from sending input:
+        // the explicit flag, MEC_ISOLATED_VM=1 set inside the guest, a hypervisor in the BIOS strings, and a standard user.
         using var bios = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\BIOS");
         string manufacturer = bios?.GetValue("SystemManufacturer") as string ?? "";
-        if (args.Length is not (2 or 3) || args.Length == 3 && args[2] is not ("--m1" or "--recovery" or "--performance" or "--spam-performance") || args[0] != "--isolated-vm" || !manufacturer.Contains("VMware", StringComparison.OrdinalIgnoreCase)
-            || !string.Equals(Environment.UserName, "GPT", StringComparison.OrdinalIgnoreCase)) return 2;
+        string product = bios?.GetValue("SystemProductName") as string ?? "";
+        bool virtualMachine = new[] { "VMware", "VirtualBox", "innotek", "QEMU", "Parallels", "Xen" }.Any(v => manufacturer.Contains(v, StringComparison.OrdinalIgnoreCase))
+            || product.Contains("Virtual", StringComparison.OrdinalIgnoreCase);
+        if (args.Length is not (2 or 3) || args.Length == 3 && args[2] is not ("--m1" or "--recovery" or "--performance" or "--spam-performance") || args[0] != "--isolated-vm"
+            || Environment.GetEnvironmentVariable("MEC_ISOLATED_VM") != "1" || !virtualMachine) return 2;
         if (new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator)) return 2;
         // Two probes would share a cursor and F9 route. Refuse concurrent sessions before opening UI.
         using var session = new Mutex(false, @"Local\MinimumEffortClicker.M0Probe");

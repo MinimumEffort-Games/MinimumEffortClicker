@@ -51,10 +51,44 @@ public sealed class DesktopModeTests
     }
 
     [TestMethod]
-    public void ConditionsRequireSelectedWindow()
+    public void AWindowActiveWaitRequiresSelectedWindow()
     {
         var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(5)));
         var plan = SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Wait", condition)]));
         Assert.ThrowsExactly<ArgumentException>(() => plan.ValidateDesktopMode(1920, 1080, 96));
+    }
+
+    private static ConditionDefinition Colour(ClientPoint origin) => new(ConditionKind.PixelColor,
+        new(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(5)), new CaptureRegion(origin, 1, 1), 0xFF0000, 8);
+
+    [TestMethod]
+    public void AColourWaitOnAnyMonitorRunsInDesktopMode()
+    {
+        // Three 2560-wide monitors with the left one at -2560: the virtual screen is 7680 × 1440.
+        var left = Colour(new ClientPoint(-2000, 300, 7680, 1440, 96, CoordinateSpace.Desktop));
+        var right = Colour(new ClientPoint(4000, 900, 7680, 1440, 96, CoordinateSpace.Desktop));
+        var plan = SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Left", left), SequenceStep.WaitUntil("Right", right)]));
+        plan.ValidateDesktopMode(7680, 1440, 96);
+    }
+
+    [TestMethod]
+    public void AColourWaitPickedInAWindowIsNotUsedInDesktopMode()
+    {
+        var plan = SequenceCompiler.Compile(new([SequenceStep.WaitUntil("In window", Colour(new ClientPoint(10, 10, 1280, 720, 96)))]));
+        Assert.ThrowsExactly<ArgumentException>(() => plan.ValidateDesktopMode(1280, 720, 96));
+    }
+
+    [TestMethod]
+    public void ADesktopColourWaitNeedsTheSameMonitorLayout()
+    {
+        var plan = SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Desk", Colour(new ClientPoint(100, 100, 7680, 1440, 96, CoordinateSpace.Desktop)))]));
+        Assert.ThrowsExactly<ArgumentException>(() => plan.ValidateDesktopMode(5120, 1440, 96));
+    }
+
+    [TestMethod]
+    public void ADesktopAreaMayStartLeftOfTheMainMonitorButStaysWithinTheSizeLimit()
+    {
+        new CaptureRegion(new ClientPoint(-2560, 0, 7680, 1440, 96, CoordinateSpace.Desktop), 256, 256).Validate();
+        Assert.ThrowsExactly<ArgumentException>(() => new CaptureRegion(new ClientPoint(0, 0, 7680, 1440, 96, CoordinateSpace.Desktop), 257, 10).Validate());
     }
 }

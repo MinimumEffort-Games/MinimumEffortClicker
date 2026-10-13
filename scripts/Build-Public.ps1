@@ -1,10 +1,12 @@
-param([Parameter(Mandatory)][string]$Destination, [switch]$Zip)
+# Builds the portable ZIP. Default destination: artifacts/package/MinimumEffortClicker-<version>-win-x64 (git-ignored).
+param([string]$Destination, [switch]$Zip)
 . "$PSScriptRoot/Common.ps1"
+$appVersion = [string]$buildProperties.Project.PropertyGroup.Version
+if (!$Destination) { $Destination = Join-Path $ProjectRoot "artifacts/package/MinimumEffortClicker-$appVersion-win-x64" }
 $packagePath = [IO.Path]::GetFullPath($Destination)
-$deliveryRoot = [IO.Path]::GetFullPath((Join-Path $env:USERPROFILE 'Desktop/Clicker'))
-if (!$packagePath.StartsWith($deliveryRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'Keep delivered public builds inside Desktop/Clicker.'
-}
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $packagePath) | Out-Null
+$schemaMatch = Select-String -LiteralPath (Join-Path $ProjectRoot 'src/MinimumEffortClicker.Core/ProfileDefinition.cs') -Pattern 'CurrentVersion = (\d+)'
+$profileSchema = [int]$schemaMatch.Matches[0].Groups[1].Value
 if (Test-Path -LiteralPath $packagePath) { throw 'Choose a fresh destination; existing data/builds are never overwritten.' }
 if (Test-Path -LiteralPath ($packagePath + '.zip')) { throw 'Archive already exists; choose a fresh destination.' }
 if (!(Test-Path -LiteralPath (Join-Path $ProjectRoot 'LICENSE'))) { throw 'An approved source licence is required.' }
@@ -39,7 +41,7 @@ try {
     $version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $packagePath 'MinimumEffortClicker.App.dll')).ProductVersion
     $runtimeConfig = Get-Content -LiteralPath (Join-Path $packagePath 'MinimumEffortClicker.App.runtimeconfig.json') -Raw | ConvertFrom-Json
     $manifest = [ordered]@{
-        buildUtc = [DateTimeOffset]::UtcNow; version = $version; schema = 15
+        buildUtc = [DateTimeOffset]::UtcNow; version = $version; schema = $profileSchema
         kind = 'Unsigned public preview'; sourceCommit = $sourceCommit
         runtime = @($runtimeConfig.runtimeOptions.includedFrameworks | Select-Object name,version)
         portable = $true; signing = 'Unsigned; no publisher Authenticode certificate'

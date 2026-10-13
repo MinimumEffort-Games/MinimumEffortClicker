@@ -6,7 +6,7 @@ public partial class MainWindow
 {
     private async void PausePlayback_Click(object sender, RoutedEventArgs e)
     {
-        if (quickOperation || runtime is null) return;
+        if (operations.Has(Operation.Quick) || runtime is null) return;
         if (runtime.CanResume) await ResumeActionsAsync(); else runtime.Pause();
     }
     private async Task ResumeActionsAsync()
@@ -16,7 +16,7 @@ public partial class MainWindow
         bool accepted = false;
         using var stop = new CancellationTokenSource();
         long intent = runtime.StopVersion;
-        quickOperation = true; quickCancellation = stop;
+        operations.Begin(Operation.Quick); quickCancellation = stop;
         try
         {
             if (runtime.IsDesktopMode) { previous = WindowState; WindowState = WindowState.Minimized; }
@@ -31,25 +31,9 @@ public partial class MainWindow
         catch (OperationCanceledException) { }
         finally
         {
-            quickOperation = false; quickCancellation = null;
+            operations.End(Operation.Quick); quickCancellation = null;
             if (!accepted) RestoreDesktopOperationWindow(previous);
             RefreshStatus();
         }
-    }
-}
-public partial class SequenceEditor
-{
-    private void Editor_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        if (AuthoringScroll is null || PlaybackScroll is null) return;
-        // Keep a usable action list/inspector at minimum height; keyboard focus scrolls tools into view.
-        AuthoringScroll.MaxHeight = Math.Clamp(ActualHeight * 0.25, 120, 180);
-        PlaybackScroll.MaxHeight = Math.Clamp(ActualHeight * 0.25, 140, 180);
-    }
-    private void PausePlayback_Click(object sender, RoutedEventArgs e) => runtime.Pause();
-    private async void ResumePlayback_Click(object sender, RoutedEventArgs e)
-    {
-        ResumePlaybackButton.IsEnabled = false;
-        await runtime.ResumeAfterCountdownAsync(); RefreshRuntime();
     }
 }

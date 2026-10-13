@@ -10,14 +10,13 @@ public sealed class ListCursorFreeTests
         TimeSpan.FromMilliseconds(20), TimeSpan.Zero, TimeSpan.FromMilliseconds(20), Point);
 
     [TestMethod]
-    public void AppliesToExistingClicksAndReusableBodiesWithoutChangingOriginal()
+    public void AppliesToExistingClicksWithoutChangingOriginal()
     {
-        var body = new ReusableSequence(Guid.NewGuid(), "Body", [Click(), SequenceStep.Wait(TimeSpan.FromMilliseconds(100))]);
-        var source = new SequenceDefinition([Click(), SequenceStep.Call("Call", body.Id), SequenceStep.Screenshot()], Subsequences: [body]);
+        var source = new SequenceDefinition([Click(), SequenceStep.Wait(TimeSpan.FromMilliseconds(100)), Click(), SequenceStep.Screenshot()]);
         var updated = QuickActions.WithCursorFree(source, true);
         var plan = SequenceCompiler.Compile(updated);
-        Assert.IsTrue(plan.AllInputs().All(i => i.LeaveCursorFree));
-        Assert.IsFalse(SequenceLibrary.AllSteps(source).Any(s => s.LeaveCursorFree));
+        Assert.IsTrue(plan.Inputs.All(i => i.LeaveCursorFree));
+        Assert.IsFalse(source.Steps.Any(s => s.LeaveCursorFree));
         Assert.IsFalse(SequenceCompiler.Compile(QuickActions.WithCursorFree(updated, false)).LeaveCursorFree);
     }
 

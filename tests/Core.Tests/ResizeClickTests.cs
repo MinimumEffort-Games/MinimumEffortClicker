@@ -70,10 +70,9 @@ public sealed class ResizeClickTests
     }
 
     [TestMethod]
-    public void ReusableActionsAreScaledAndRuntimePolicyIsNeverWrittenIntoMacroCoordinates()
+    public void ScaledActionsNeverWriteRuntimePolicyIntoMacroCoordinates()
     {
-        var id = Guid.NewGuid();
-        var definition = new SequenceDefinition([SequenceStep.Call("Reusable", id)], Subsequences: [new(id, "Part", [Click()])]);
+        var definition = new SequenceDefinition([Click()]);
         var point = SequenceCompiler.Compile(definition).AdaptClickPoints(1200, 900, 96, true).Inputs[0].Position!;
         Assert.AreEqual((300, 225), point.Resolve(0, 0, 1200, 900, 96));
         Assert.AreEqual(800, point.Width);

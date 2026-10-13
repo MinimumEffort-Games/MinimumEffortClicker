@@ -46,7 +46,7 @@ internal static class RecoveryProbe
             }
             var hold = new HelperPlan(InputControl.Key(0x11), HelperMode.Hold, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(20), 0);
 
-            report.Stage = "Minimized target pauses and restores without output";
+            report.Stage = "Minimized target pauses and resumes by itself after restore";
             Require(runtime.TryStart(hold), runtime.Snapshot.Reason);
             await WaitFor(() => runtime.Snapshot.InputsSent == 1, cutoff.Token);
             await Request(pipe, "minimize");
@@ -56,14 +56,20 @@ internal static class RecoveryProbe
             await Request(pipe, "focus");
             await WaitFor(() => runtime.Current?.IsAvailable == true, cutoff.Token);
             await Task.Delay(200, cutoff.Token);
-            Require(runtime.CanResume && runtime.Snapshot.InputsSent == 2, "Restore resumed without authorization.");
-            var pendingResume = runtime.ResumeAfterCountdownAsync();
-            Require(!runtime.CanResume, "Duplicate resume countdown remained available.");
-            runtime.Stop("Cancel the resume handoff.");
-            Require(!await pendingResume.WaitAsync(TimeSpan.FromSeconds(1)), "Cancelled resume returned success.");
+            Require(runtime.Snapshot.InputsSent == 2, "Restore resumed before the target settled in front.");
+            await WaitFor(() => runtime.Snapshot.InputsSent == 3, cutoff.Token);
+
+            report.Stage = "Stop while paused discards the continuation";
+            await Request(pipe, "minimize");
+            await WaitFor(() => runtime.CanResume, cutoff.Token);
+            Require(runtime.Snapshot.InputsSent == 4, "Second minimize did not release W.");
+            runtime.Stop("Cancel the paused run.");
             await WaitFor(() => !runtime.Snapshot.Busy, cutoff.Token);
-            Require(runtime.Snapshot.InputsSent == 2 && !runtime.CanResume && !runtime.Snapshot.CleanupPending, "Cancelled countdown resumed input.");
-            report.Checks.Add("Target minimize released W; minimized resume was refused; restore sent nothing; Stop cancelled the three-second resume handoff and discarded continuation.");
+            await Request(pipe, "focus");
+            await WaitFor(() => runtime.Current?.IsAvailable == true, cutoff.Token);
+            await Task.Delay(800, cutoff.Token);
+            Require(runtime.Snapshot.InputsSent == 4 && !runtime.CanResume && !runtime.Snapshot.CleanupPending, "A stopped run resumed after restore.");
+            report.Checks.Add("Target minimize released W; minimized resume was refused; restore pressed W again by itself after the target settled; Stop while paused discarded the continuation and a later restore sent nothing.");
 
             report.Stage = "Target exit invalidates its identity and releases input";
             Require(runtime.TryStart(hold), runtime.Snapshot.Reason);

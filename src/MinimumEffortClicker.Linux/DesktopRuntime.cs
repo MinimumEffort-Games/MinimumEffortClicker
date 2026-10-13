@@ -26,18 +26,16 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     private readonly StopwatchClock clock = new();
     private CancellationTokenSource? cancellation;
     private Task cancellationCallbacks = Task.CompletedTask;
-    private sealed record RunRequest(HelperPlan? Helper, SequencePlan? Sequence, CompatibleHelpers? Combined = null, string? Label = null, NamedHelper? ToggleHold = null)
+    private sealed record RunRequest(HelperPlan? Helper, SequencePlan? Sequence, string? Label = null, NamedHelper? ToggleHold = null)
     { public bool LeaveCursorFree => Helper?.LeaveCursorFree == true || Sequence?.LeaveCursorFree == true; }
     private RunRequest? pending;
     private RunRequest? runningRequest;
     private PlaybackControl? playbackControl;
-    private bool resumeCountdown;
-    public bool CanResume { get { lock (gate) return !resumeCountdown && playbackControl?.CanResume == true; } }
+    public bool CanResume { get { lock (gate) return playbackControl?.CanResume == true; } }
     private bool PlaybackIsPaused { get { lock (gate) return playbackControl?.IsPaused == true; } }
     private string activity = "Minimum Effort";
     private string? inputRejection;
     private bool RejectInput(string message) { inputRejection = message; return false; }
-    private HelperSetControl? helperSetControl;
     private ActionToggleSession? actionToggleSession;
     public bool CanStartActions { get { lock (gate) return !recording && (!busy ? !executor.HasOwnedInput : actionToggleSession is { ActionBusy: false } && playbackControl?.IsPaused != true); } }
     public bool ActionsBusy { get { lock (gate) return actionToggleSession?.ActionBusy ?? busy; } }
@@ -47,7 +45,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         if (!Control.Available || ShutdownPending || !CoordinatesAvailable(plan)) throw new ArgumentException("Restore the target and its saved size before starting Actions.");
         if (plan.KeyboardLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The target keyboard layout differs from this recording.");
         if (Control.UnownedModifiersDown(ownsInput)) throw new ArgumentException("Release physical modifiers before starting Actions.");
-        foreach (var control in plan.AllInputs().Select(i => i.Control).Distinct())
+        foreach (var control in plan.Inputs.Select(i => i.Control).Distinct())
         { if (Control.UsesRegisteredInput(control)) throw new ArgumentException("An action presses a registered function-key shortcut. Change that shortcut or action first."); Control.SampleBeforeRun(control); if (Control.IsPhysicalDown(control)) throw new ArgumentException("Release the action keys/buttons before starting."); }
     }
     private InputControl[] activeControls = [];
@@ -323,7 +321,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     busy && !countingDown ? progress.CurrentAction : state, busy && !countingDown ? progress.NextAction : "None",
                     progress.Held.Count == 0 ? "None" : string.Join(", ", progress.Held.Select(RecordingNormalizer.Label)), activity, executor.TotalCompletedLoops,
                     executor.TotalActiveTime, busy && !countingDown && playbackControl?.IsPaused != true && cancellation?.IsCancellationRequested == false,
-                    busy ? actionToggleSession?.ActiveIds ?? helperSetControl?.ActiveIds ?? (runningMacro == Guid.Empty ? [] : [runningMacro]) : [],
+                    busy ? actionToggleSession?.ActiveIds ?? (runningMacro == Guid.Empty ? [] : [runningMacro]) : [],
                     actionToggleSession?.ActionBusy ?? busy && runningRequest?.Sequence is not null, executor.TotalCompletedClicks);
             }
         }
@@ -339,25 +337,12 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         if (IsDesktopMode) plan.ValidateDesktopMode(frame.Width, frame.Height, frame.Dpi);
         return TryStart(new RunRequest(null, plan.AdaptClickPoints(frame.Width, frame.Height, frame.Dpi, scaleClickPositions), Label: $"Actions · {actions} action{(actions == 1 ? "" : "s")}"), countdown, default);
     }
-    public bool TryStart(CompatibleHelpers plan, TimeSpan? countdown = null)
-        => TryStart(new RunRequest(null, null, plan), countdown, default);
     private bool TryStart(RunRequest request, TimeSpan? countdown, Guid macroId)
     {
         bool accepted = false;
         lock (gate)
         {
             if (disposed || recording || ShutdownPending || executor.TotalCompletedLoops >= executor.CompletionLimit || executor.TotalCompletedClicks >= executor.ClickCompletionLimit || executor.TotalActiveTime >= executor.ActiveTimeLimit) return false;
-            try
-            {
-                if (request.Sequence is { } sequence && sequence.AllInputs().Any(i => i.Control.Kind == InputKind.LogicalKey))
-                {
-                    string layout = TargetKeyboardLayout ?? throw new ArgumentException("Choose a target before resolving logical keys.");
-                    // Logical keys follow the US positions on Linux; GNOME does not expose the layout's key map.
-                    request = request with { Sequence = sequence.BindLogicalKeys(key =>
-                        LinuxKeys.ScanCodeFromEvdev(LinuxKeys.EvdevFromVirtualKey(key)) ?? throw new ArgumentException("That logical key has no Linux key position."), layout) };
-                }
-            }
-            catch (ArgumentException ex) { state = "Not started"; reason = ex.Message; NotifyChanged(); return false; }
             if (busy)
             {
                 if (request.Sequence is not { } joined || actionToggleSession is not { } session || playbackControl?.IsPaused == true || !TargetAvailable) return false;
@@ -372,8 +357,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             }
             var errors = request.Helper?.Validate() ?? Array.Empty<string>();
             var controls = request.ToggleHold is { } toggle ? new[] { toggle.Plan.Control } : request.Helper is { } helper ? new[] { helper.Control }
-                : request.Combined is { } combined ? combined.Helpers.Select(h => h.Plan.Control).ToArray()
-                : request.Sequence!.AllInputs().Select(i => i.Control).Distinct().ToArray();
+                : request.Sequence!.Inputs.Select(i => i.Control).Distinct().ToArray();
             string? problem = errors.FirstOrDefault();
             if (!Control.Available) problem = Control.Error ?? "Stop route unavailable.";
             else if (executor.HasOwnedInput) problem = "Cleanup is pending. Release physical input, then retry cleanup.";
@@ -382,7 +366,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             {
                 try
                 {
-                    if (request.ToggleHold is not null || request.Helper is not null || request.Combined is not null)
+                    if (request.ToggleHold is not null || request.Helper is not null)
                         throw new ArgumentException("Select a Click target before using toggles or saved helpers.");
                     request.Sequence!.ValidateDesktopMode(GetTargetFrame().Width, GetTargetFrame().Height, 96);
                 }
@@ -400,13 +384,13 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             {
                 inputRejection = null;
                 cursorFreeActive = request.LeaveCursorFree;
-                if (request.Sequence?.AllInputs().Any(i => (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true)) == true)
+                if (request.Sequence?.Inputs.Any(i => (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true)) == true)
                     controls = controls.Append(new InputControl(InputKind.PointerMove, 0)).Distinct().ToArray();
                 cancellation = new();
                 playbackControl = new(); executor.Playback = playbackControl; runningRequest = request;
                 cancellationCallbacks = Task.CompletedTask;
                 pending = request; Volatile.Write(ref activeControls, controls);
-                activeLayout = request.Sequence is { } keyboardSequence && keyboardSequence.AllInputs().Any(i => i.Control.Kind == InputKind.ScanCode) ? keyboardSequence.KeyboardLayout : null;
+                activeLayout = request.Sequence is { } keyboardSequence && keyboardSequence.Inputs.Any(i => i.Control.Kind == InputKind.ScanCode) ? keyboardSequence.KeyboardLayout : null;
                 observingWindowActive = StartsWithWindowWait(request.Sequence);
                 runningMacro = macroId;
                 activity = request.Label ?? armedHelpers.FirstOrDefault(h => h.Binding.MacroId == macroId)?.DisplayName
@@ -418,11 +402,6 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     actionToggleSession = new();
                     if (request.ToggleHold is { } hold) { actionToggleSession.Toggle(hold); activity = "Toggles"; }
                     if (request.Sequence is { } actions) actionToggleSession.Start(actions, activity, TimeSpan.Zero, macroId);
-                }
-                if (request.Combined is { } set)
-                {
-                    activity = string.Join(" + ", set.Helpers.Select(h => h.Name + (h.Plan is { Count: 0, ActiveDuration: null } ? " (until stopped)" : "")));
-                    helperSetControl = new(set);
                 }
                 startDelay = countdown ?? TimeSpan.Zero; countingDown = startDelay > TimeSpan.Zero;
                 busy = true; state = countingDown ? "Starting" : "Running";
@@ -510,39 +489,14 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             {
                 if (playbackControl?.IsPaused == true)
                 { StopPlayback("Paused macro stopped with its trigger. Use Resume for continuation."); return; }
-                if (helperSetControl is { } set)
-                {
-                    if ((command == TriggerCommand.Stop || !holdTrigger) && set.RequestStop(id))
-                    { reason = "Stopping this member of the helper set. Other compatible helpers continue."; NotifyChanged(); return; }
-                    if (command == TriggerCommand.Toggle && helper.Plan is { } joining && !countingDown
-                        && cancellation?.IsCancellationRequested == false && !ShutdownPending && TargetAvailable && Control.Available)
-                    {
-                        try
-                        {
-                            Control.SampleBeforeRun(joining.Control);
-                            if (Control.IsPhysicalDown(joining.Control) || Control.ModifiersDown) throw new InvalidOperationException("Release physical input before joining a helper.");
-                            if (set.RequestJoin(new(id, helper.DisplayName ?? RecordingNormalizer.Label(joining.Control), joining)))
-                            {
-                                Volatile.Write(ref activeControls, activeControls.Append(joining.Control).Distinct().ToArray());
-                                activity = "Compatible helper set";
-                                reason = "Compatible helper joined by its explicit trigger.";
-                            }
-                            else reason = "The helper set is ending. Start again explicitly once stopped.";
-                        }
-                        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { reason = "Helper did not join: " + ex.Message; }
-                        NotifyChanged();
-                    }
-                    return;
-                }
                 if (runningMacro == id && (command == TriggerCommand.Stop || !holdTrigger)) StopPlayback("Macro stopped with its trigger.");
                 else { reason = "Stop the current Quick action or macro before starting another toggle."; NotifyChanged(); }
                 return; // Exclusive Quick/sequence playback; never queue a later start.
             }
+            // Toggles were handled above through the shared toggle session.
             if (command == TriggerCommand.Toggle)
             {
-                if (helper.IsToggle && helper.Plan is { } togglePlan)
-                    TryStart(CompatibleHelpers.Compile([new(id, helper.DisplayName ?? "Toggle", togglePlan)]));
-                else if (helper.Plan is { } plan) TryStart(plan, macroId: id);
+                if (helper.Plan is { } plan) TryStart(plan, macroId: id);
                 else TryStart(helper.Sequence!, macroId: id);
             }
         }
@@ -599,33 +553,6 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             }
             if (!playbackControl.RequestResume()) return false;
             state = "Resuming"; reason = "Resuming the remaining timing after explicit review.";
-        }
-        NotifyChanged(); return true;
-    }
-    public async Task<bool> ResumeAfterCountdownAsync()
-    {
-        CancellationToken stop;
-        lock (gate)
-        {
-            if (resumeCountdown || playbackControl?.CanResume != true || cancellation is null) return false;
-            resumeCountdown = true;
-            stop = cancellation.Token; reason = "Resuming in 3 seconds. Stop All cancels.";
-        }
-        NotifyChanged();
-        try
-        {
-            if (!CursorFreeActive && !BringTargetForward()) return false;
-            await Task.Delay(TimeSpan.FromSeconds(3), stop).ConfigureAwait(false); return TryResume();
-        }
-        catch (OperationCanceledException) { return false; }
-        finally { lock (gate) resumeCountdown = false; NotifyChanged(); }
-    }
-    public bool FinishSequenceLoop()
-    {
-        lock (gate)
-        {
-            if (!busy || countingDown || !executor.RequestFinishSequenceLoop()) return false;
-            reason = "Finishing this sequence loop. Stop All still stops immediately.";
         }
         NotifyChanged(); return true;
     }
@@ -773,10 +700,10 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         // release, off the input thread; a helper call must never block that callback.
         if (!down) QueueCleanupRetry();
         if (countingDown || observingWindowActive || CursorFreeActive) return;
-        var controls = actionToggleSession?.ActiveControls ?? helperSetControl?.ActiveControls ?? Volatile.Read(ref activeControls);
+        var controls = actionToggleSession?.ActiveControls ?? Volatile.Read(ref activeControls);
         if (controls.Length == 0) return;
         bool modifier = input.Kind == InputKind.ScanCode && (input.Code & 0xFF) is 0x1D or 0x2A or 0x36 or 0x38 or 0x5B or 0x5C;
-        if (controls.Contains(input) || modifier && controls.Any(c => c.Kind is InputKind.ScanCode or InputKind.Unicode))
+        if (controls.Contains(input) || modifier && controls.Any(c => c.Kind == InputKind.ScanCode))
             Stop("Stopped: physical input takes priority.");
     }
 
@@ -839,7 +766,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             if (cancellation?.IsCancellationRequested != false || !Control.Available) return RejectInput("Playback was stopped or its input controls became unavailable.");
             if (Control.IsPhysicalDown(transition.Control) || Control.UnownedModifiersDown(ownsInput)) return RejectInput("Release physical keys/buttons before starting. Physical input takes priority.");
             if (activeLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)) return RejectInput("The foreground keyboard layout differs from this recording.");
-            if (transition.Control.Kind is not (InputKind.ScanCode or InputKind.Unicode))
+            if (transition.Control.Kind != InputKind.ScanCode)
             {
                 TargetClientFrame frame;
                 try { frame = GetTargetFrame(); } catch (InvalidOperationException) { return false; }
@@ -921,10 +848,6 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     int code = LinuxKeys.EvdevFromScanCode(control.Code);
                     if (code == 0) return false;
                     helper.Key(code, down); return true;
-                case InputKind.Unicode:
-                    // X keysyms: Latin-1 maps directly; every other code point uses the Unicode range.
-                    uint keysym = control.Code is >= 0x20 and <= 0xFF ? (uint)control.Code : 0x01000000u | (uint)control.Code;
-                    helper.Keyval(keysym, down); return true;
                 case InputKind.Scroll or InputKind.HorizontalScroll:
                     if (!down) return true;
                     uint steps = (uint)Math.Clamp(Math.Abs(control.Code) / 120, 1, 100);
@@ -959,14 +882,14 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             try { var frame = GetTargetFrame(); plan.ValidateDesktopMode(frame.Width, frame.Height, frame.Dpi); return true; }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { return false; }
         }
-        if (plan is null || !plan.AllInputs().Any(i => i.Position is not null) && !plan.AllConditions().Any(c => c.Definition.Region is not null)) return true;
+        if (plan is null || !plan.Inputs.Any(i => i.Position is not null) && !plan.Conditions.Any(c => c.Definition.Region is not null)) return true;
         var selected = target;
         if (selected is null || Query(selected) is not { Exists: true } client) return false;
         int dpi = Dpi(client.Scale);
-        return plan.AllInputs().All(i => i.Position is null || i.Position.Matches(client.Width, client.Height, dpi)
+        return plan.Inputs.All(i => i.Position is null || i.Position.Matches(client.Width, client.Height, dpi)
             && (i.Position.Space != CoordinateSpace.Desktop || i.Position.X >= client.X && i.Position.Y >= client.Y
                 && i.Position.X < client.X + client.Width && i.Position.Y < client.Y + client.Height))
-            && plan.AllConditions().All(c => c.Definition.Region is null || c.Definition.Region.Origin.Matches(client.Width, client.Height, dpi));
+            && plan.Conditions.All(c => c.Definition.Region is null || c.Definition.Region.Origin.Matches(client.Width, client.Height, dpi));
     }
 
     private static string HelperLabel(HelperPlan plan) => plan.Control.Kind switch
@@ -1015,8 +938,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 {
                     // A finishing action must not replace the explicit Stop All reason or state.
                     if (stop.IsCancellationRequested) return;
-                    activeLayout = started && action.Plan.AllInputs().Any(i => i.Control.Kind == InputKind.ScanCode) ? action.Plan.KeyboardLayout : null;
-                    Volatile.Write(ref activeControls, started && action.Plan.AllInputs().Any(i => i.Control.Kind == InputKind.PointerMove || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true))
+                    activeLayout = started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.ScanCode) ? action.Plan.KeyboardLayout : null;
+                    Volatile.Write(ref activeControls, started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.PointerMove || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true))
                         ? [new(InputKind.PointerMove, 0)] : []);
                     if (started && !CoordinatesAvailable(action.Plan)) throw new InvalidOperationException("Recalibrate the action positions before playback.");
                     activity = started ? action.Name : "Toggles";
@@ -1030,11 +953,10 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 ? new ClickRunResult(ClickRunOutcome.Faulted, 0, 0, true, "The desktop rejected the keep-awake request. Review power settings before starting again.")
                 : !CoordinatesAvailable(plan.Sequence)
                 ? new ClickRunResult(ClickRunOutcome.InputRejected, 0, 0, true, "Target size or DPI changed. Recalibrate recorded positions before playback.")
-                : plan.Sequence is { KeyboardLayout: { } layout } && plan.Sequence.AllInputs().Any(i => i.Control.Kind == InputKind.ScanCode) && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)
+                : plan.Sequence is { KeyboardLayout: { } layout } && plan.Sequence.Inputs.Any(i => i.Control.Kind == InputKind.ScanCode) && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)
                 ? new ClickRunResult(ClickRunOutcome.InputRejected, 0, 0, true, "Target keyboard layout differs from this recording. Review under the recorded layout before playback.")
                 : actionToggleSession is { } session ? executor.Execute(session, instance, stop.Token)
                 : plan.Helper is { } helper ? executor.Execute(helper, instance, stop.Token)
-                : plan.Combined is { } combined ? executor.Execute(combined, instance, stop.Token, helperSetControl)
                 : executor.Execute(plan.Sequence!, instance, stop.Token);
             power.Dispose();
             }
@@ -1072,7 +994,6 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 cleanupPendingRecovery = !result.CleanupSucceeded;
                 busy = false; cancellation = null; stop.Dispose();
                 playbackControl?.Dispose(); playbackControl = null; executor.Playback = null; executor.PlaybackPaused = null; runningRequest = null;
-                helperSetControl?.Dispose(); helperSetControl = null;
                 actionToggleSession?.Dispose(); actionToggleSession = null; executor.SessionActionChanged = null; executor.SessionHoldsChanged = null;
                 Volatile.Write(ref activeControls, []);
                 activeLayout = null;

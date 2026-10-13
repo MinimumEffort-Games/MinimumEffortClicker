@@ -20,6 +20,7 @@ internal static class DesktopNative
     [StructLayout(LayoutKind.Sequential)] private struct Input { public uint Type; public Union Data; }
     [DllImport("user32.dll")] internal static extern bool EnumWindows(EnumWindow callback, nint parameter);
     [DllImport("user32.dll")] internal static extern bool IsWindowVisible(nint hwnd);
+    [DllImport("user32.dll")] internal static extern nint GetShellWindow();
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern int GetWindowText(nint hwnd, StringBuilder text, int max);
     [DllImport("user32.dll")] internal static extern bool GetClientRect(nint hwnd, out ProbeNative.Rect rect);
     [DllImport("user32.dll")] internal static extern bool ClientToScreen(nint hwnd, ref ProbeNative.Point point);
@@ -34,6 +35,7 @@ internal static class DesktopNative
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] internal static extern nint GetModuleHandle(string? name);
     [DllImport("user32.dll")] internal static extern nint SetWinEventHook(uint min, uint max, nint module, WinEvent callback, uint pid, uint thread, uint flags);
     [DllImport("user32.dll")] internal static extern bool UnhookWinEvent(nint hook);
+    [DllImport("dwmapi.dll")] internal static extern int DwmGetWindowAttribute(nint hwnd, int attribute, out int value, int size);
     [DllImport("user32.dll")] internal static extern uint MapVirtualKey(uint code, uint mapType);
     [DllImport("user32.dll")] internal static extern uint MapVirtualKeyExW(uint code, uint mapType, nint layout);
     [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint count, Input[] input, int size);
@@ -48,7 +50,7 @@ internal static class DesktopNative
     internal static bool Send(InputTransition transition, ProbeNative.Point? position = null)
     {
         var control = transition.Control;
-        if (!Enum.IsDefined(control.Kind) || control.Kind == InputKind.LogicalKey) return false;
+        if (!Enum.IsDefined(control.Kind)) return false;
         bool up = transition.Edge == InputEdge.Up;
         Input input;
         Input? move = null;
@@ -65,9 +67,7 @@ internal static class DesktopNative
         }
         if (control.Kind == InputKind.PointerMove)
             return move is { } movement && SendInput(1, [movement], Marshal.SizeOf<Input>()) == 1;
-        if (control.Kind == InputKind.Unicode)
-            input = new() { Type = 1, Data = new() { Key = new() { Scan = checked((ushort)control.Code), Flags = 4u | (up ? 2u : 0u), Extra = ProbeNative.InputTag } } };
-        else if (control.Kind == InputKind.ScanCode)
+        if (control.Kind == InputKind.ScanCode)
             input = new() { Type = 1, Data = new() { Key = new() { Scan = (ushort)(control.Code & 0xFF),
                 Flags = 8u | (up ? 2u : 0u) | ((control.Code & 0x100) != 0 ? 1u : 0u), Extra = ProbeNative.InputTag } } };
         else

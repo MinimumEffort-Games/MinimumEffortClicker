@@ -10,6 +10,18 @@ needed to use the app.
 eight-hour full-app endurance acceptance remain unfinished. This is a preview,
 not a promise of universal compatibility or a warning-free Windows download.
 
+## What it looks like
+
+| Actions | Toggles |
+| --- | --- |
+| ![Actions page](docs/screenshots/actions.png) | ![Toggles page](docs/screenshots/toggles.png) |
+
+| Screenshot | Settings |
+| --- | --- |
+| ![Screenshot page](docs/screenshots/screenshot.png) | ![Settings page](docs/screenshots/settings.png) |
+
+Light mode is in Settings: [Actions](docs/screenshots/actions-light.png), [Settings](docs/screenshots/settings-light.png).
+
 ## Download and run
 
 Open this repository's **Releases** page and download the Windows x64 portable
@@ -23,16 +35,18 @@ published.
 4. **F8** starts/stops Actions, **F9** stops all Actions/toggles/recording, and
    **F10** starts/stops recording by default. Check Settings if you change keys.
 
-Playback starts stopped. Loading/importing and restored focus never start it.
+Playback starts stopped. Loading/importing and restored focus never start it. If the target window goes behind another window during a run, the run pauses and continues by itself when the window is back in front.
 Checked toggles are available for their shortcut, not automatically running.
 Use Stop All before exiting; forced process termination cannot guarantee input
 cleanup. Closing may minimize to the notification area; use the tray **Exit**
 command or disable that behavior in Settings.
 
 Portable settings and macros live in `Data` beside the app. Do not run from inside
-the ZIP. Keep the full runtime folder together. For upgrades, keep the old folder
-and its Data, export reviewed macros, and import into a fresh extraction. Current
-storage schema is **15**; older versions may reject newer files.
+the ZIP. Keep the full runtime folder together. For upgrades, extract the new
+version into a fresh folder and copy the old `Data` folder next to it: saved
+macros are upgraded on load and never reset. The current macro file schema is
+**16**; older app versions cannot read newer files. The **Help** button in the
+app describes each page.
 
 ## Linux preview
 
@@ -52,14 +66,15 @@ planned separately; see [release status](docs/RELEASE_STATUS.md).
 
 ## Build from source
 
-Requires Windows 11 x64 and the pinned **.NET SDK 10.0.401**. SDK setup and first
-package restore need network access; the app itself runs offline.
+Requires Windows 11 x64 and a **.NET SDK 10.0.4xx** (the build is pinned to
+10.0.401 and accepts newer patches). SDK setup and the first package restore need
+network access; the app itself runs offline.
 
 ```powershell
-.\scripts\Setup-Sdk.ps1 # if the exact SDK is not installed
+.\scripts\Setup-Sdk.ps1 # installs the pinned SDK locally under .tools if you do not have one
 .\scripts\Build.ps1
 .\scripts\Test.ps1
-.\scripts\Build-Public.ps1 -Destination "$env:USERPROFILE\Desktop\Clicker\My Preview" -Zip
+.\scripts\Build-Public.ps1 -Zip # portable ZIP under artifacts\package
 ```
 
 Default tests use fake inputs/time/targets and send **no desktop input**. Native

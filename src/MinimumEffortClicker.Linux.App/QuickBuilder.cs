@@ -416,7 +416,7 @@ public partial class MainWindow
     private void QuickClear_Click(object sender, RoutedEventArgs e)
     {
         if (quickOperation || macroFileBusy || ioBusy || runtime?.Snapshot.Busy == true || runtime?.Snapshot.CleanupPending == true) return;
-        quickHistory.Commit(quickHistory.Current with { Steps = [], KeyboardLayout = null, Subsequences = null });
+        quickHistory.Commit(quickHistory.Current with { Steps = [], KeyboardLayout = null });
         RefreshQuickList(); NewAction_Click(sender, e);
         ReasonLabel.Text = "Action List cleared. Undo restores it; saved macros are kept.";
     }

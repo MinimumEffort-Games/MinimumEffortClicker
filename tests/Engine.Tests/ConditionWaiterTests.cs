@@ -54,17 +54,6 @@ public sealed class ConditionWaiterTests
     }
 
     [TestMethod]
-    public void BooleanCheckRequiresFreshStableNegativeSamplesAndNeverConvertsTimeoutToFalse()
-    {
-        var clock = new FakeClock(); int index = 0;
-        ConditionObservation[] samples = [new(ConditionObservationState.NotMet, 1, 1), new(ConditionObservationState.NotMet, 1, 1),
-            new(ConditionObservationState.NotMet, 2, 1), new(ConditionObservationState.NotMet, 2, 2)];
-        var result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(2), new Probe(() => samples[index++]), default, checkOnly: true);
-        Assert.AreEqual(ConditionOutcome.NotMatched, result.Outcome); Assert.AreEqual(4, result.Samples);
-        result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(2), new Probe(() => new(ConditionObservationState.NotMet, 1, 1)), default, checkOnly: true);
-        Assert.AreEqual(ConditionOutcome.Stopped, result.Outcome);
-    }
-    [TestMethod]
     public void StabilityNeedsFreshSamplesAndResetsAcrossContextChanges()
     {
         var clock = new FakeClock(); int index = 0;

@@ -17,11 +17,6 @@ public partial class MainWindow
         overlay = new();
         overlay.LockRequested += LockOverlay;
         overlay.StopRequested += () => runtime?.Stop();
-        overlay.PlacementChanged += (x, y) =>
-        {
-            overlayOptions = overlayOptions with { X = x, Y = y, AnchorTarget = false };
-            AnchorOverlayBox.IsChecked = false; PersistPreferences();
-        };
     }
     private void DisplaysChanged(object? sender, EventArgs e)
     {
@@ -34,7 +29,7 @@ public partial class MainWindow
         overlayOptions = overlayOptions with
         {
             Expanded = false, KeepIdle = IdleOverlayBox.IsChecked == true,
-            AnchorTarget = AnchorOverlayBox.IsChecked == true, Opacity = OverlayOpacity.Value, Scale = OverlayScale.Value
+            Opacity = OverlayOpacity.Value, Scale = OverlayScale.Value
         };
         RefreshStatus(); overlay?.Constrain(); PersistPreferences();
     }

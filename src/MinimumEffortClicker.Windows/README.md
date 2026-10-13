@@ -1,7 +1,16 @@
-# Windows boundary
+# Windows
 
-M0 now includes narrowly scoped probe adapters for left mouse transitions, target checks,
-F9 on a dedicated message thread and native overlay window styles. Only the isolated WindowsProbe
-tool calls them. They are not a finished production backend: keyboard semantics, physical-input
-collision tracking, target lifecycle, session lock/sleep and complete ownership policies remain M1 work.
-The normal app shell has no automation controls. Default tests send no OS input.
+The native layer the WPF app runs on. Core and Engine never reference it.
+
+- `DesktopRuntime`: one scheduler worker that runs the engine, plus target selection, foreground checks, pause and
+  resume, cleanup retry and the status snapshot the UI reads.
+- `DesktopControl`: one dedicated message thread for the registered F-key shortcuts, the low-level keyboard and
+  mouse hooks, physical-input tracking and the window-foreground events.
+- `DesktopNative`, `ProbeNative`: SendInput and the other P/Invoke calls. Every injected event carries a tag so the
+  hooks never mistake the app's own input for the user's.
+- `DesktopRecorder`, `SequenceConditions`, `DesktopScreenshot`, `PowerSession`, `WindowChromeTheme`,
+  `WindowsDeadlineWait`, `BackgroundClicks`: recording, Wait Until conditions, screenshots, keep-awake, title-bar
+  theming, the high-resolution scheduler timer and cursor-free clicks.
+
+Default tests never load this project. The real-input probe in `tools/WindowsProbe` exercises it inside an isolated
+virtual machine only.

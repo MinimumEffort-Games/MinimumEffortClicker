@@ -14,6 +14,15 @@ public partial class App : Application
         if (e.Args.Length == 3 && e.Args[0] == "--endurance-report") EnduranceMeasurement.Begin(e.Args[1], int.Parse(e.Args[2], System.Globalization.CultureInfo.InvariantCulture));
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnMainWindowClose;
+        // An unhandled exception must never end the process while a key or button is still held down.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            (MainWindow as MainWindow)?.EmergencyStop();
+            args.Handled = true;
+            try { AppDialog.Show("Something went wrong and playback was stopped: " + args.Exception.Message + "\n\nSave your macro and restart the app if it misbehaves."); }
+            catch (Exception) { /* Reporting must not raise a second failure. */ }
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, _) => (MainWindow as MainWindow)?.EmergencyStop();
         AppTheme.Apply(Appearance);
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
             new RoutedEventHandler((sender, _) => AppTheme.ApplyWindowChrome((Window)sender)));

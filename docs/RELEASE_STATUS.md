@@ -1,6 +1,7 @@
 # Release status
 
-Version: **0.5.0-preview.34.16**, portable Windows 11 x64, schema **15**.
+Version: **0.5.0-preview.34.16**, portable Windows 11 x64, macro file schema **16**
+(the published preview ZIP still writes schema 15; the next release upgrades it on load).
 The owner authorized public source under MIT and a free unsigned preview on
 13 October 2026. Signing is a later step. No paid provider, certificate,
 installer, Store/Steam submission, or application runtime service was purchased
@@ -8,8 +9,10 @@ or configured.
 
 ## Verification
 
-The R34.16 private baseline records 297 fake-only passing tests and bounded
-Windows regression, recovery, capture and spam checks in the isolated VM.
+The R34.16 private baseline recorded 297 fake-only passing tests and bounded
+Windows regression, recovery, capture and spam checks in the isolated VM. After
+the October 2026 cleanup the suite is 255 tests (9 TestTarget, 112 Engine, 134 Core); the removed tests covered
+features that no longer exist and new regression tests cover the bug fixes.
 The public snapshot must independently pass `scripts/Test.ps1`, locked restore
 and Release build. Its release manifest records the actual source commit,
 runtime and per-file hashes. Do not infer full hardware acceptance from these

@@ -122,44 +122,6 @@ internal static class HelperProbe
                 report.ReceiverSamples.Add($"Short 20 CPS probe/runtime/overlay sample: {sampleStart.Elapsed.TotalSeconds:0.###} s; {(productProcess.TotalProcessorTime - cpuBefore).TotalSeconds / sampleStart.Elapsed.TotalSeconds * 100:0.###}% of one logical core; private {productProcess.PrivateMemorySize64 / 1048576d:0.###} MiB, {productProcess.HandleCount} handles. Excludes the receiver process; not whole-app acceptance or a steady-state benchmark.");
             }
 
-            report.Stage = "Explicit Unicode text receiver";
-            var beforeText = await Request(pipe, "state");
-            Require(runtime.TryStart(SequenceCompiler.Compile(new([SequenceStep.TypeText("é中😀")]))), runtime.Snapshot.Reason);
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            var afterText = await Request(pipe, "state");
-            for (int attempt = 0; attempt < 20 && afterText.Text != beforeText.Text + "é中😀"; attempt++)
-            { await Task.Delay(20, deadline.Token); afterText = await Request(pipe, "state"); }
-            Require(afterText.Text == beforeText.Text + "é中😀" && runtime.Snapshot.InputsSent == 8 && !runtime.Snapshot.CleanupPending,
-                $"Explicit Unicode fixture receipt or cleanup mismatch: before units {beforeText.Text?.Length}, after units {afterText.Text?.Length}; received {string.Join(",", (afterText.Text ?? "").TakeLast(8).Select(c => ((int)c).ToString("X4")))}.");
-            report.Checks.Add("Explicit Unicode text delivered accented, CJK and surrogate-pair fixture characters in order; eight transitions, no owned input. Fixture text is excluded from diagnostics.");
-            report.Stage = "Overlay editing reservation and placement recovery";
-            var beforeOverlayEditing = await Request(pipe, "state");
-            runtime.BeginOverlayEditing(_ => app.Dispatcher.BeginInvoke(() => { overlay.SetEditing(false); runtime.EndOverlayEditing(); }));
-            await app.Dispatcher.InvokeAsync(() =>
-            {
-                overlay.Configure(new(Expanded: true, Opacity: 0.7, Scale: 1.25, X: -999999, Y: -999999));
-                overlay.Place(restoreSaved: true);
-                Require(ProbeNative.GetWindowRect(runtime.OverlayHandle, out var rect) && rect.Right > 0 && rect.Bottom > 0, "Off-screen overlay was not recovered.");
-                overlay.SetEditing(true);
-                Require((ProbeNative.GetWindowLongPtr(runtime.OverlayHandle, -20).ToInt64() & 0x20) == 0, "Unlocked overlay remained click-through.");
-            });
-            Require(!runtime.TryStart(clicks), "Playback started while overlay was unlocked.");
-            expectedStop = true;
-            Require(ProbeNative.SendProbeStopKey(), "Overlay F9 failed.");
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            expectedStop = false;
-            await app.Dispatcher.InvokeAsync(() =>
-            {
-                Require(!overlay.IsEditing && (ProbeNative.GetWindowLongPtr(runtime.OverlayHandle, -20).ToInt64() & 0x08000020) == 0x08000020, "F9 did not restore locked native styles.");
-                overlay.Configure(new());
-                ProbeNative.SetWindowPos(runtime.OverlayHandle, -1, receiver.X - 100, receiver.Y - 20, 280, 86, 0x50);
-            });
-            var afterOverlayEditing = await Request(pipe, "state");
-            Require(afterOverlayEditing.Count == beforeOverlayEditing.Count
-                && afterOverlayEditing.ButtonDownEvents == beforeOverlayEditing.ButtonDownEvents
-                && afterOverlayEditing.KeyDownEvents == beforeOverlayEditing.KeyDownEvents
-                && ProbeNative.GetForegroundWindow() == (nint)receiver.Window, "Overlay editing sent input or stole focus.");
-            report.Checks.Add("Overlay adjustment blocked playback; off-screen placement recovered; F9 restored native click-through/no-activation and remained stopped.");
             await Task.Delay(50, deadline.Token);
             receiver = await Request(pipe, "state");
 
@@ -245,7 +207,7 @@ internal static class HelperProbe
             {
                 var fixtureClock = new StopwatchClock();
                 var fixture = new ClickExecutor(new BoundProbeInput(targetHandle, (uint)target.Id), fixtureClock, new DeadlineWait(fixtureClock), runtime);
-                var fixturePlan = ClickPlan.Compile(new(PointerButton.Left, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(20)), 1);
+                var fixturePlan = new HelperPlan(InputControl.Mouse(PointerButton.Left), HelperMode.Repeat, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(20), 1);
                 var fixtureResult = await Task.Run(() => fixture.Execute(fixturePlan, runtime.Current!.InstanceId, deadline.Token), deadline.Token);
                 Require(fixtureResult.Outcome == ClickRunOutcome.Completed && fixtureResult.CleanupSucceeded, "Bounded preview fixture click failed.");
             }
@@ -262,43 +224,6 @@ internal static class HelperProbe
             Require(keyed.KeyDownEvents - receiver.KeyDownEvents == 3 && keyed.KeyUpEvents - receiver.KeyUpEvents == 3 && keyed.KeysDown == "None observed", "Key repeat receipt mismatch; see ReceiverSamples.");
             report.Checks.Add("Three physical-position W taps received with separate down/up transitions.");
 
-            report.Stage = "Compatible simple helpers through shared execution";
-            var beforeCombined = await Request(pipe, "state");
-            var combinedHold = new NamedHelper(Guid.NewGuid(), "Hold W", new(InputControl.Key(0x11), HelperMode.Hold,
-                TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(20), 1, TimeSpan.FromMilliseconds(700)));
-            var combinedTap = new NamedHelper(Guid.NewGuid(), "Tap E", key with { Control = InputControl.Key(0x12) });
-            var combinedPlan = CompatibleHelpers.Compile([combinedHold, combinedTap]);
-            Require(runtime.TryStart(combinedPlan), "Compatible helper set failed to start.");
-            Require(!runtime.TryStart(SequenceCompiler.Compile(new([SequenceStep.Wait(TimeSpan.FromMilliseconds(20))]))), "Exclusive sequence joined a helper set.");
-            await WaitFor(() => runtime.Snapshot.HeldInputs.Contains("W", StringComparison.Ordinal), deadline.Token);
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            var afterCombined = await Request(pipe, "state");
-            Require(runtime.Snapshot.State == "Completed" && runtime.Snapshot.CompletedCycles == 4 && runtime.Snapshot.InputsSent == 8
-                && afterCombined.KeyDownEvents - beforeCombined.KeyDownEvents == 4 && afterCombined.KeyUpEvents - beforeCombined.KeyUpEvents == 4
-                && afterCombined.KeysDown == "None observed", "Combined hold/repeat receipt or ownership mismatch.");
-            await Task.Delay(100, deadline.Token);
-            Require(!runtime.Snapshot.Busy, "Rejected exclusive sequence was queued.");
-            report.Checks.Add("Compatible W hold and three E taps shared one executor/ledger; all four completed and released. Exclusive sequence rejected without a queued restart.");
-
-            Require(await runtime.ConfigureHelpersAsync([new(new(combinedHold.Id, 0x75, false), combinedHold.Plan)]), "Combined member binding failed.");
-            Require(runtime.TryStart(combinedPlan), "Second compatible set failed to start.");
-            await WaitFor(() => runtime.Snapshot.HeldInputs.Contains("W", StringComparison.Ordinal), deadline.Token);
-            Require(ProbeNative.SendProbeMacroKey(), "Combined member stop trigger failed.");
-            await WaitFor(() => !runtime.Snapshot.HeldInputs.Contains("W", StringComparison.Ordinal), deadline.Token);
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            Require(runtime.Snapshot.CompletedCycles == 3 && runtime.Snapshot.InputsSent == 8, "Stopping W did not leave E's three taps independent.");
-            Require((await Request(pipe, "state")).KeysDown == "None observed", "Member stop left an observed held key.");
-            await runtime.ConfigureHelpersAsync([]);
-            report.Checks.Add("A member's F6 toggle stopped W inside the shared set while E finished independently; no member automatically rejoined.");
-            Require(await runtime.ConfigureHelpersAsync([new(new(combinedTap.Id, 0x75, false), combinedTap.Plan)]), "Join binding failed.");
-            Require(runtime.TryStart(CompatibleHelpers.Compile([combinedHold])), "Single-member compatible set failed to start.");
-            await WaitFor(() => runtime.Snapshot.HeldInputs.Contains("W", StringComparison.Ordinal), deadline.Token);
-            Require(ProbeNative.SendProbeMacroKey(), "Join trigger failed.");
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            Require(runtime.Snapshot.CompletedCycles == 4 && runtime.Snapshot.InputsSent == 8, "Explicit join failed or restarted the existing hold.");
-            Require((await Request(pipe, "state")).KeysDown == "None observed", "Joined helper left input held.");
-            await runtime.ConfigureHelpersAsync([]);
-            report.Checks.Add("Explicit F6 joined three E taps into a running W hold; the original hold kept its lifetime and both members released cleanly.");
 
             report.Stage = "Scroll";
             var scroll = new HelperPlan(new(InputKind.Scroll, 120), HelperMode.Scroll, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(20), 3);
@@ -313,14 +238,9 @@ internal static class HelperProbe
             for (int i = 0; i < 20 && afterHorizontal.HorizontalWheelDelta != beforeHorizontal.HorizontalWheelDelta + 360; i++)
             { await Task.Delay(20, deadline.Token); afterHorizontal = await Request(pipe, "state"); }
             Require(afterHorizontal.HorizontalWheelDelta == beforeHorizontal.HorizontalWheelDelta + 360 && !runtime.Snapshot.CleanupPending, "Horizontal wheel receipt mismatch.");
-            var logicalKey = SequenceCompiler.Compile(new([SequenceStep.Input("Logical W", new(InputKind.LogicalKey, 'W'), TimeSpan.FromMilliseconds(50))]));
-            Require(runtime.TryStart(logicalKey), runtime.Snapshot.Reason);
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            var logicalReceived = await Request(pipe, "state");
-            Require(logicalReceived.KeyDownEvents == afterHorizontal.KeyDownEvents + 1 && logicalReceived.KeysDown == "None observed", "Logical key receipt or release mismatch.");
-            report.Checks.Add("Three horizontal wheel steps were received; explicit logical W resolved against the target layout and released through the physical ownership path.");
+            report.Checks.Add("Three horizontal wheel steps were received.");
 
-            report.Stage = "Focus-loss held-key cleanup";
+            report.Stage = "Focus-loss held-key cleanup and automatic resume";
             var hold = key with { Mode = HelperMode.Hold, Count = 0 };
             Require(runtime.TryStart(hold), runtime.Snapshot.Reason);
             await WaitFor(() => runtime.Snapshot.InputsSent == 1, deadline.Token);
@@ -332,30 +252,20 @@ internal static class HelperProbe
             Require(!runtime.TryResume(), "Resume accepted an inactive target.");
             await Request(pipe, "focus");
             await WaitFor(() => runtime.Current?.IsAvailable == true, deadline.Token);
+            // The window has to stay in front for half a second before anything is sent again.
             await Task.Delay(150, deadline.Token);
-            Require(runtime.CanResume && !runtime.Snapshot.PlaybackActive && (await Request(pipe, "state")).KeysDown == "None observed", "Focus restoration restarted input.");
-            Require(runtime.Snapshot.TotalActiveTime == pausedActive, "Paused time entered the active-time budget.");
-            Require(runtime.TryResume(), "Explicit resume was refused after target restoration.");
+            Require(runtime.Snapshot.InputsSent == 2 && (await Request(pipe, "state")).KeysDown == "None observed", "Input restarted before the target settled in front.");
             await WaitFor(() => runtime.Snapshot.InputsSent == 3, deadline.Token);
+            Require((await Request(pipe, "state")).KeysDown.Contains("W", StringComparison.Ordinal), "Automatic resume did not press W again.");
+            Require(runtime.Snapshot.TotalActiveTime - pausedActive < TimeSpan.FromMilliseconds(400), "Paused time entered the active-time budget.");
             runtime.Stop("Resume fixture complete.");
             await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
             Require(runtime.Snapshot.InputsSent == 4 && !runtime.Snapshot.CleanupPending, "Resumed hold cleanup failed.");
-            report.Checks.Add("Focus loss paused and released W; inactive-target resume was refused; restoration emitted nothing and paused time stayed excluded; explicit resume reacquired W and Stop released it.");
+            report.Checks.Add("Focus loss paused and released W; inactive-target resume was refused; nothing was sent until the target had settled in front, then W was pressed again by itself with paused time excluded; Stop released it.");
 
-            report.Stage = "Toggle-to-hold start";
-            runtime.ArmedPlan = hold;
-            Require(!runtime.Snapshot.Busy, "Arming a helper started input.");
-            Require(ProbeNative.SendProbeToggleKey(), "Toggle injection failed.");
-            await WaitFor(() => runtime.Snapshot.Busy && runtime.Snapshot.InputsSent == 1, deadline.Token);
-            report.Stage = "Toggle-to-hold stop";
-            Require(ProbeNative.SendProbeToggleKey(), "Second toggle injection failed.");
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            Require(runtime.Snapshot.InputsSent == 2 && !runtime.Snapshot.CleanupPending, "Toggle-to-hold cleanup failed.");
-            runtime.ArmedPlan = null;
-            report.Checks.Add("Arming sent no input; F8 toggled the W hold on and off through the registered control route.");
 
             report.Stage = "Profile binding enable and disable";
-            var macro = new ArmedHelper(new(Guid.NewGuid(), 0x75, false), hold);
+            var macro = new ArmedHelper(new(Guid.NewGuid(), 0x75, false), hold, "Hold W");
             long beforeEnable = runtime.Snapshot.InputsSent;
             Require(await runtime.ConfigureHelpersAsync([macro]), "Profile binding registration failed.");
             await Task.Delay(100, deadline.Token);
@@ -413,7 +323,6 @@ internal static class HelperProbe
             report.Stage = "Recorder ignores injected triggers and excludes playback";
             using (var capture = new DesktopRecorder(runtime))
             {
-                runtime.ArmedPlan = key;
                 Require(!runtime.TryStart(key), "Playback started during explicit recording.");
                 await app.Dispatcher.InvokeAsync(() => banner.Activate());
                 await WaitFor(() => capture.Paused, deadline.Token);
@@ -430,7 +339,6 @@ internal static class HelperProbe
                 Require(capture.Count == 0, "Injected trigger appeared in the physical recording buffer.");
                 var draft = await capture.GetDraftAsync();
                 Require(SequenceCompiler.Compile(draft.Sequence).Inputs.Count == 0, "Recorder synthesized actions from injected input.");
-                runtime.ArmedPlan = null;
             }
             report.Checks.Add("Recorder excluded playback, paused on focus loss, stayed paused after restoration, resumed explicitly, and ignored injected F8 content.");
 
@@ -564,38 +472,16 @@ internal static class HelperProbe
             await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
             Require(runtime.Snapshot.InputsSent == 0 && runtime.Snapshot.State == "Stopped", "Ambiguous image authorized input.");
             report.Checks.Add("Explicit template capture remained input-free; captured image and absent-image waits each continued to a clean tap. Multiple image matches stopped with zero subsequent input. No captured pixels persisted in the probe.");
-            report.Stage = "Reusable calls, fresh branches and bounded repeats";
-            var reusableTap = new ReusableSequence(Guid.NewGuid(), "Reusable E", [afterCondition]);
-            var callPlan = SequenceCompiler.Compile(new([SequenceStep.Call("First", reusableTap.Id), SequenceStep.Call("Second", reusableTap.Id)], Subsequences: [reusableTap]));
-            Require(runtime.TryStart(callPlan), runtime.Snapshot.Reason);
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            Require(runtime.Snapshot.State == "Completed" && runtime.Snapshot.InputsSent == 4, "Reusable calls did not dispatch two independent clean taps.");
-            var noInput = new ReusableSequence(Guid.NewGuid(), "No input", [SequenceStep.Wait(TimeSpan.Zero)]);
-            var branch = SequenceStep.WaitUntil("Black false", wrongColour with { Policy = conditionPolicy with { StableSamples = 1 } }) with
-            { Kind = StepKind.ConditionalFlow, Flow = new(FlowKind.IfElse, noInput.Id, reusableTap.Id) };
-            Require(runtime.TryStart(SequenceCompiler.Compile(new([branch], Subsequences: [noInput, reusableTap]))), runtime.Snapshot.Reason);
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            Require(runtime.Snapshot.State == "Completed" && runtime.Snapshot.InputsSent == 2, "Fresh false observation failed to select only Else.");
-            var repeat = branch with { Flow = new(FlowKind.RepeatUntil, reusableTap.Id, MaximumIterations: 2) };
-            Require(runtime.TryStart(SequenceCompiler.Compile(new([repeat, afterCondition with { Id = Guid.NewGuid() }], Subsequences: [reusableTap]))), runtime.Snapshot.Reason);
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            Require(runtime.Snapshot.State == "Stopped" && runtime.Snapshot.InputsSent == 4 && !runtime.Snapshot.CleanupPending, "Bounded repeat exceeded two bodies or dispatched its following action.");
-            report.Checks.Add("Two reusable calls completed cleanly; a fresh negative pixel observation selected only Else; repeat-until stopped after exactly two bodies with no following input.");
-            report.Stage = "Whole-sequence repetition and finish-loop";
+            report.Stage = "Whole-sequence repetition";
             var loopSource = new SequenceDefinition([afterCondition], Repetition: new(3, TimeSpan.FromMilliseconds(20)));
             Require(runtime.TryStart(SequenceCompiler.Compile(loopSource)), runtime.Snapshot.Reason);
             await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
             Require(runtime.Snapshot.CompletedCycles == 3 && runtime.Snapshot.InputsSent == 6, "Whole sequence loop count was incorrect.");
             var longBody = afterCondition with { Duration = TimeSpan.FromMilliseconds(150) };
-            Require(runtime.TryStart(SequenceCompiler.Compile(loopSource with { Steps = [longBody], Repetition = new(10) })), runtime.Snapshot.Reason);
-            await WaitFor(() => runtime.Snapshot.InputsSent == 1, deadline.Token);
-            Require(runtime.FinishSequenceLoop(), "Finish-loop request was rejected during playback.");
-            await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
-            Require(runtime.Snapshot.CompletedCycles == 1 && runtime.Snapshot.InputsSent == 2, "Finish-loop truncated or repeated a body.");
             Require(runtime.TryStart(SequenceCompiler.Compile(loopSource with { Steps = [longBody], Repetition = new(0, ActiveDuration: TimeSpan.FromMilliseconds(50)) })), runtime.Snapshot.Reason);
             await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
             Require(runtime.Snapshot.CompletedCycles == 0 && runtime.Snapshot.InputsSent == 2 && !runtime.Snapshot.CleanupPending, "Sequence time limit did not release its partial hold.");
-            report.Checks.Add("Whole-sequence count completed exactly three loops; Finish This Loop completed one hold without starting another; active-duration limit released a partial hold with zero completed loops.");
+            report.Checks.Add("Whole-sequence count completed exactly three loops; active-duration limit released a partial hold with zero completed loops.");
             report.Stage = "Failing runtime observers cannot prevent stop";
             Action failingObserver = () => throw new InvalidOperationException("Deliberate runtime observer failure");
             runtime.Changed += failingObserver; runtime.StopIssued += failingObserver;
@@ -648,7 +534,7 @@ internal static class HelperProbe
         {
             runtime.Stop("Probe ending.");
             try { await WaitFor(() => !runtime.Snapshot.Busy, CancellationToken.None, TimeSpan.FromSeconds(2)); } catch (TimeoutException) { }
-            if (overlay is not null) await app.Dispatcher.InvokeAsync(() => { overlay.SetEditing(false); overlay.Close(); });
+            if (overlay is not null) await app.Dispatcher.InvokeAsync(() => { overlay.Close(); });
             if (target is not null)
             {
                 try { await Request(pipe, "close"); } catch (Exception) { }

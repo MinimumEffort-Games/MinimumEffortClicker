@@ -15,6 +15,7 @@ public sealed partial class ClickExecutor
     private readonly Dictionary<Guid, RepeatSlot> sessionRepeats = [];
     private TimeSpan nextSpamPress;
     // One scheduler; at most 100 aggregate spam presses/sec, never a catch-up burst.
+    // Spam is deliberately outside the Actions click cap: the cap protects the PC during long runs, Spam is for fast tapping.
     private TimeSpan NextConcurrentDue => sessionRepeats.Count == 0 ? TimeSpan.MaxValue
         : sessionRepeats.Values.Min(s => s.Down || s.Due >= nextSpamPress ? s.Due : nextSpamPress);
     public Action<SessionAction, bool>? SessionActionChanged { get; set; }
@@ -56,7 +57,8 @@ public sealed partial class ClickExecutor
                     if (!Release(run, input)) throw new InvalidOperationException("Spam release was rejected.");
                     sessionHeld.Remove(slot.Helper.Id); slot.Down = false;
                     slot.Due = slot.Started + slot.Helper.Plan.Interval;
-                    if (slot.Due <= clock.Elapsed) slot.Due = clock.Elapsed + slot.Helper.Plan.Interval;
+                    // A press that equals the interval is due now, not one interval later.
+                    if (slot.Due < clock.Elapsed) slot.Due = clock.Elapsed + slot.Helper.Plan.Interval;
                 }
                 else
                 {
@@ -78,10 +80,12 @@ public sealed partial class ClickExecutor
     public ClickRunResult Execute(ActionToggleSession session, Guid targetId, CancellationToken stop)
     {
         ArgumentNullException.ThrowIfNull(session);
-        actionSession = session; nextSpamPress = clock.Elapsed;
-        try
+        // Claim the session only once the single-run guard has passed, so a rejected second
+        // call cannot wipe the state of the run that is still executing.
+        return ExecuteSession(targetId, stop, run =>
         {
-            return ExecuteSession(targetId, stop, run =>
+            actionSession = session; nextSpamPress = clock.Elapsed;
+            try
             {
                 while (true)
                 {
@@ -113,7 +117,7 @@ public sealed partial class ClickExecutor
                             {
                                 foreach (var input in owned.Where(i => !sessionHeld.Values.Contains(i)).Reverse().ToArray())
                                     if (!Release(run, input)) run.Outcome = ClickRunOutcome.CleanupFailed;
-                                finishSequence?.Dispose(); finishSequence = null; Interlocked.Exchange(ref sequenceDeadline, long.MaxValue);
+                                Interlocked.Exchange(ref sequenceDeadline, long.MaxValue);
                             }
                             session.CompletedAction(); SessionActionChanged?.Invoke(action, false);
                         }
@@ -123,8 +127,8 @@ public sealed partial class ClickExecutor
                     WaitDeadline(TimeSpan.MaxValue, stop, session.Changed);
                     lock (gate) { if (!CanContinue(run, targetId, stop)) return; }
                 }
-            });
-        }
-        finally { actionSession = null; sessionHeld.Clear(); sessionRepeats.Clear(); }
+            }
+            finally { actionSession = null; sessionHeld.Clear(); sessionRepeats.Clear(); }
+        });
     }
 }

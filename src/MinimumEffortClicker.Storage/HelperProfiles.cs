@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using MinimumEffortClicker.Core;
 
@@ -17,6 +18,7 @@ public sealed class HelperProfiles(string directory)
         WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, MaxDepth = 16
     };
+    private static readonly JsonDocumentOptions DocumentOptions = new() { MaxDepth = 16 };
     private string PathName => Path.Combine(directory, "profiles.json");
     public string DirectoryPath => directory;
 
@@ -42,14 +44,16 @@ public sealed class HelperProfiles(string directory)
     public ProfileLoad Load()
     {
         if (!File.Exists(PathName) && !File.Exists(PathName + ".bak")) return new([], null);
-        try { return new(ReadAll(PathName), null); }
+        try { return new(ReadAll(PathName, out int dropped), DroppedWarning(dropped)); }
         catch (Exception exception) when (exception is IOException or JsonException or ArgumentException or UnauthorizedAccessException)
         {
-            try { return new(ReadAll(PathName + ".bak"), "Recovered the last good backup. The primary file is missing or unreadable; any existing file is retained until the next successful save."); }
+            try { return new(ReadAll(PathName + ".bak", out _), "Recovered the last good backup. The primary file is missing or unreadable; any existing file is retained until the next successful save."); }
             catch (Exception backup) when (backup is IOException or JsonException or ArgumentException or UnauthorizedAccessException)
             { return new([], "Profiles could not be loaded. Original files were preserved; review the data folder before saving."); }
         }
     }
+    public static string? DroppedWarning(int dropped) => dropped == 0 ? null
+        : $"{dropped} action{(dropped == 1 ? "" : "s")} from an older version (typed text, reusable groups or branches) are no longer supported and were removed. Saving keeps the upgraded macro.";
 
     public void Save(IReadOnlyList<ProfileDefinition> profiles)
     {
@@ -68,7 +72,7 @@ public sealed class HelperProfiles(string directory)
                 if (File.GetAttributes(PathName).HasFlag(FileAttributes.ReadOnly))
                     throw new UnauthorizedAccessException("The saved profiles file is read-only. Make it writable before saving.");
                 bool valid;
-                try { ReadAll(PathName); valid = true; }
+                try { ReadAll(PathName, out _); valid = true; }
                 catch (Exception ex) when (ex is JsonException or ArgumentException) { valid = false; }
                 if (valid) File.Replace(temporary, PathName, PathName + ".bak");
                 else
@@ -88,12 +92,48 @@ public sealed class HelperProfiles(string directory)
         return profile with { Id = Guid.NewGuid(), Macros = profile.Macros.Select(m => m with { Id = Guid.NewGuid() }).ToArray() };
     }
     /// <summary>Read a validated macro file for editing, preserving its identity. Contains no runtime bindings.</summary>
-    public static ProfileDefinition Open(string path)
+    public static ProfileDefinition Open(string path) => Open(path, out _);
+    /// <summary>As <see cref="Open(string)"/>; <paramref name="droppedActions"/> counts actions an older schema stored that no longer exist.</summary>
+    public static ProfileDefinition Open(string path, out int droppedActions)
     {
-        byte[] data = ReadBounded(path, MaximumProfileBytes);
-        using var document = JsonDocument.Parse(data, new JsonDocumentOptions { MaxDepth = 16 });
+        var root = JsonNode.Parse(ReadBounded(path, MaximumProfileBytes), documentOptions: DocumentOptions) as JsonObject
+            ?? throw new ArgumentException("Expected a profile object.");
+        droppedActions = 0;
+        UpgradeProfile(root, ref droppedActions);
+        using var document = JsonDocument.Parse(root.ToJsonString(), DocumentOptions);
         return ParseProfile(document.RootElement);
     }
+
+    /// <summary>Schema 16 retired typed-text, subsequence and branch steps and the logical-key and Unicode input kinds.
+    /// Older documents are upgraded in memory and the removed actions are counted so the caller can tell the user.</summary>
+    private static void UpgradeProfile(JsonObject profile, ref int dropped)
+    {
+        if (profile["schemaVersion"] is not JsonValue versionValue || !versionValue.TryGetValue<int>(out int version)
+            || version < 2 || version >= ProfileDefinition.CurrentVersion) return;
+        if (profile["macros"] is not JsonArray macros) return;
+        foreach (var macro in macros.OfType<JsonObject>())
+        {
+            if (macro["sequence"] is not JsonObject sequence) continue;
+            sequence.Remove("subsequences");
+            if (sequence["steps"] is not JsonArray steps) continue;
+            for (int i = steps.Count - 1; i >= 0; i--)
+            {
+                if (steps[i] is not JsonObject step) continue;
+                if (IsRetiredStep(step)) { steps.RemoveAt(i); dropped++; continue; }
+                step.Remove("subsequenceId"); step.Remove("flow"); step.Remove("text");
+                if (step["condition"] is JsonObject condition) condition.Remove("checkOnly");
+            }
+        }
+    }
+    private static bool IsRetiredStep(JsonObject step)
+    {
+        if (step["kind"] is JsonValue kindValue && kindValue.TryGetValue<int>(out int kind) && kind is 4 or 5 or 6) return true;
+        if (IsRetiredControl(step["control"])) return true;
+        return step["children"] is JsonArray children && children.Any(child => child is JsonObject c && IsRetiredControl(c["control"]));
+    }
+    private static bool IsRetiredControl(JsonNode? control) =>
+        control is JsonObject o && o["kind"] is JsonValue kindValue && kindValue.TryGetValue<int>(out int kind) && kind is 4 or 5;
+
     private static ProfileDefinition ParseProfile(JsonElement element)
     {
         RequireFields(element, ["schemaVersion", "id", "name"]);
@@ -107,7 +147,7 @@ public sealed class HelperProfiles(string directory)
             var legacy = element.Deserialize<HelperProfile>(Options) ?? throw new ArgumentException("Empty profile.");
             profile = new(ProfileDefinition.CurrentVersion, legacy.Id, legacy.Name, [new(legacy.Id, legacy.Name, legacy.Plan)]);
         }
-        else if (version is 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 or ProfileDefinition.CurrentVersion)
+        else if (version is >= 2 and <= ProfileDefinition.CurrentVersion)
         {
             RequireFields(element, ["schemaVersion", "id", "name", "macros"]);
             if (version >= 4) RequireFields(element, ["points"]);
@@ -148,12 +188,6 @@ public sealed class HelperProfiles(string directory)
         RequireFields(sequence, ["steps"]);
         if (sequence.TryGetProperty("repetition", out var repetition) && repetition.ValueKind != JsonValueKind.Null)
             RequireFields(repetition, ["count", "delayBetweenLoops", "activeDuration"]);
-        if (sequence.TryGetProperty("subsequences", out var library) && library.ValueKind != JsonValueKind.Null)
-        {
-            if (library.ValueKind != JsonValueKind.Array) throw new ArgumentException("Expected reusable subsequences.");
-            foreach (var body in library.EnumerateArray())
-            { RequireFields(body, ["id", "name", "steps"]); ValidateSequenceFields(body); }
-        }
         var steps = sequence.GetProperty("steps");
         if (steps.ValueKind != JsonValueKind.Array) throw new ArgumentException("Expected action steps.");
         foreach (var step in steps.EnumerateArray())
@@ -162,8 +196,6 @@ public sealed class HelperProfiles(string directory)
             ValidatePositions(step);
             if (step.TryGetProperty("motion", out var motion) && motion.ValueKind != JsonValueKind.Null)
                 RequireFields(motion, ["moveDuration", "offsetPixels"]);
-            if (step.TryGetProperty("flow", out var flow) && flow.ValueKind != JsonValueKind.Null)
-                RequireFields(flow, ["kind", "bodyId", "elseId", "maximumIterations"]);
             if (step.TryGetProperty("condition", out var condition) && condition.ValueKind != JsonValueKind.Null)
             {
                 RequireFields(condition, ["kind", "policy", "region", "color", "tolerance", "changedFraction"]);
@@ -215,10 +247,14 @@ public sealed class HelperProfiles(string directory)
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
-    private static IReadOnlyList<ProfileDefinition> ReadAll(string path)
+    private static IReadOnlyList<ProfileDefinition> ReadAll(string path, out int droppedActions)
     {
-        using var document = JsonDocument.Parse(ReadBounded(path, Limit), new JsonDocumentOptions { MaxDepth = 16 });
-        if (document.RootElement.ValueKind != JsonValueKind.Array) throw new ArgumentException("Expected a profile collection.");
+        var root = JsonNode.Parse(ReadBounded(path, Limit), documentOptions: DocumentOptions) as JsonArray
+            ?? throw new ArgumentException("Expected a profile collection.");
+        int dropped = 0;
+        foreach (var entry in root.OfType<JsonObject>()) UpgradeProfile(entry, ref dropped);
+        droppedActions = dropped;
+        using var document = JsonDocument.Parse(root.ToJsonString(), DocumentOptions);
         var profiles = document.RootElement.EnumerateArray().Select(ParseProfile).ToArray();
         ValidateAll(profiles);
         return profiles;
