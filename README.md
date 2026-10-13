@@ -5,7 +5,7 @@ Repeat clicks and keys, create hold/spam toggles, record editable action lists,
 and save screenshots. Runs locally and offline; no account or subscription is
 needed to use the app.
 
-**Preview 0.5.0-preview.34.16 — unsigned.** Broader hardware/display testing and
+**Preview 0.5.0-preview.34.16 unsigned.** Broader hardware/display testing and
 eight-hour full-app endurance acceptance remain unfinished. This is a preview,
 not a promise of universal compatibility or a warning-free Windows download.
 
@@ -40,14 +40,6 @@ Smart App Control may warn or block it. Do not disable Windows protections to ru
 the app. SHA-256 checksums and an internal file manifest detect changed bytes;
 they are not a signing certificate or a safety guarantee. Trusted signing is
 planned separately; see [release status](docs/RELEASE_STATUS.md).
-
-Input is intended for explicit foreground use. Cursor-free clicks are an optional
-compatibility mode for supported foreground windows; many applications will not
-accept them. No background-game automation, injection, drivers, automatic
-elevation, anti-cheat bypass, startup service, updater, ads, or runtime telemetry.
-The selected app's macro rules still apply. No universal game compatibility or
-account-safety claim is made. Review imported actions: ordinary clicks and keys
-can still have consequential effects.
 
 ## Build from source
 
