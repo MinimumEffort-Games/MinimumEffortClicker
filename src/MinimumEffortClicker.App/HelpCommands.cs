@@ -20,7 +20,8 @@ public partial class MainWindow
         [
             "The Actions page runs a list of clicks, key presses and pauses in order.",
             "",
-            "- Click target: choose where the clicks go. Desktop uses screen positions. A window uses positions inside that window and follows it when it moves.",
+            "- Click target: choose where the clicks go. Desktop uses screen positions on any monitor. A window uses positions inside that window and follows it when it moves.",
+            "- Wait until a colour or image: with Desktop as the target, Pick colour shows a Monitor list, so the wait can watch any monitor.",
             "- Add Action: pick a click, key press, pause, wait for a colour, or screenshot. Fill in its settings and press Add Action.",
             "- Start (F8): runs the list once. Tick Loop to repeat it until you stop it.",
             "- Test (on each row): the clicker minimises and runs only that action. The button turns green when it worked and red when it did not. A click shows a ring where it landed. A colour or image wait is checked once: green means it is there right now.",

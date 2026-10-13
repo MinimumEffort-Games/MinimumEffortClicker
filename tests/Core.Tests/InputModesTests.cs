@@ -15,7 +15,8 @@ public sealed class InputModesTests
         Assert.AreEqual((-900, 140), client.Resolve(-1000, 90, 800, 600, 144));
         Assert.IsFalse(desktop.Matches(800, 600, 96));
         Assert.IsFalse((desktop with { Space = (CoordinateSpace)99 }).IsValid);
-        Assert.ThrowsExactly<ArgumentException>(() => new CaptureRegion(desktop, 1, 1).Validate());
+        // Desktop-mode waits keep their area in screen pixels, so it is valid on any monitor (Roy, 2026-10-13).
+        new CaptureRegion(desktop, 1, 1).Validate();
         Assert.ThrowsExactly<ArgumentException>(() => desktop.Resolve(0, 0, 900, 600, 144));
     }
 

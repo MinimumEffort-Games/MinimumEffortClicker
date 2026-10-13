@@ -29,8 +29,44 @@ public sealed partial class DesktopRuntime
         try
         {
             var selected = target;
-            if (selected is null) return new(ConditionOutcome.Unavailable, 0, 0);
             var waiter = new ConditionWaiter(clock, service is null ? new DeadlineWait(clock) : new ConcurrentConditionWait(clock, executor));
+            RasterSample? baseline = null;
+            var template = condition.Template?.Decode();
+            // The same judgement for a window area and a monitor area.
+            ConditionObservation Judge(RasterSample image, long frameId, CancellationToken token)
+            {
+                bool matches;
+                if (condition.Kind == ConditionKind.RegionChanged)
+                {
+                    baseline ??= image;
+                    matches = RegionComparison.Changed(baseline, image, condition.Tolerance, condition.ChangedFraction);
+                }
+                else if (condition.Kind is ConditionKind.ImageAppears or ConditionKind.ImageDisappears)
+                {
+                    var match = RegionComparison.Find(image, template!, condition.Tolerance, token);
+                    if (match == VisualMatch.Ambiguous) return new(ConditionObservationState.Ambiguous, 0, frameId);
+                    matches = condition.Kind == ConditionKind.ImageAppears ? match == VisualMatch.Met : match == VisualMatch.NotMet;
+                }
+                else matches = RegionComparison.MatchesColorCondition(image, condition.Kind, condition.Color, condition.Tolerance);
+                return new(matches ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, frameId);
+            }
+            if (selected is null)
+            {
+                // Desktop mode: the area is in screen pixels on any monitor and is read straight from the screen.
+                if (condition.Kind == ConditionKind.WindowActive || condition.Region is not { Origin.Space: CoordinateSpace.Desktop } area)
+                    return new(ConditionOutcome.Unavailable, 0, 0);
+                long screenFrame = 0;
+                return waiter.Wait(condition.Policy, new Observation(token =>
+                {
+                    var frame = GetTargetFrame();
+                    if (!area.Origin.Matches(frame.Width, frame.Height, frame.Dpi)) return new(ConditionObservationState.Unavailable, 0, screenFrame);
+                    byte[] pixels;
+                    try { pixels = DesktopScreenshot.CaptureArea(area.Origin.X, area.Origin.Y, area.Width, area.Height, token); }
+                    catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+                    { return new(ConditionObservationState.Unavailable, 0, screenFrame); }
+                    return Judge(new RasterSample(area.Width, area.Height, pixels), ++screenFrame, token);
+                }), budget.Token, testing, observed, service);
+            }
             if (condition.Kind == ConditionKind.WindowActive)
             {
                 long sample = 0;
@@ -42,29 +78,18 @@ public sealed partial class DesktopRuntime
                     return new(TargetAvailable ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, sample++);
                 }), budget.Token, testing, observed, service);
             }
-            using var capture = new WindowRegionCapture(selected.Handle, condition.Region!, () => CursorFreeActive ? BackgroundTargetAvailable : TargetAvailable, requireForeground: !CursorFreeActive);
-            RasterSample? baseline = null;
-            var template = condition.Template?.Decode();
+            if (condition.Region is not { Origin.Space: CoordinateSpace.WindowClient } windowArea) return new(ConditionOutcome.Unavailable, 0, 0);
+            using var capture = new WindowRegionCapture(selected.Handle, windowArea, () => CursorFreeActive ? BackgroundTargetAvailable : TargetAvailable, requireForeground: !CursorFreeActive);
+            long lastFrame = 0;
             return waiter.Wait(condition.Policy, new Observation(token =>
             {
-                var frame = capture.Capture(token);
-                bool matches;
-                if (condition.Kind == ConditionKind.RegionChanged)
-                {
-                    baseline ??= frame.Image;
-                    matches = RegionComparison.Changed(baseline, frame.Image, condition.Tolerance, condition.ChangedFraction);
-                }
-                else if (condition.Kind is ConditionKind.ImageAppears or ConditionKind.ImageDisappears)
-                {
-                    var match = RegionComparison.Find(frame.Image, template!, condition.Tolerance, token);
-                    if (match == VisualMatch.Ambiguous) return new(ConditionObservationState.Ambiguous, 0, frame.FrameId);
-                    matches = condition.Kind == ConditionKind.ImageAppears ? match == VisualMatch.Met : match == VisualMatch.NotMet;
-                }
-                else
-                {
-                    matches = RegionComparison.MatchesColorCondition(frame.Image, condition.Kind, condition.Color, condition.Tolerance);
-                }
-                return new(matches ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, frame.FrameId);
+                CapturedRegion frame;
+                // The window went behind another one, was resized or closed: report it as unavailable rather than failing
+                // the whole run, so playback can wait for the window to come back.
+                try { frame = capture.Capture(token); }
+                catch (InvalidOperationException) { return new(ConditionObservationState.Unavailable, 0, lastFrame); }
+                lastFrame = frame.FrameId;
+                return Judge(frame.Image, frame.FrameId, token);
             }), budget.Token, testing, observed, service);
         }
         catch (OperationCanceledException) when (budget.IsCancellationRequested && !stop.IsCancellationRequested)
@@ -115,10 +140,19 @@ public sealed partial class DesktopRuntime
         finally { EndTargetPreview("Snapshot ready. Playback remains stopped."); }
     }
 
+    /// <summary>Desktop mode: a still picture of one monitor for the area and colour picker. Sends no input.</summary>
+    public WindowSnapshot CaptureMonitorPreview(DesktopMonitor monitor, CancellationToken stop)
+    {
+        if (!IsDesktopMode) throw new InvalidOperationException("Choose Desktop as the Click target to pick on a monitor.");
+        return new(monitor.Width, monitor.Height, DesktopScreenshot.CaptureArea(monitor.X, monitor.Y, monitor.Width, monitor.Height, stop), 0);
+    }
+
     public RasterSample CaptureTemplate(CaptureRegion region, CancellationToken stop)
     {
         region.Validate();
         if (region.Width > 64 || region.Height > 64) throw new ArgumentException("Capture a template of at most 64×64 pixels; enlarge the search region afterwards if needed.");
+        // Monitor areas are cut from the app's monitor pictures, taken with the clicker out of the way.
+        if (region.Origin.Space != CoordinateSpace.WindowClient) throw new InvalidOperationException("This area is on a monitor. Capture it from the monitor picker.");
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(stop);
         BeginTargetPreview(reason => { _ = cancelled.CancelAsync(); });
         bool captured = false;

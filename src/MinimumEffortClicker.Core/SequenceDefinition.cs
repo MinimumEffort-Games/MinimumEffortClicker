@@ -53,7 +53,15 @@ public sealed class SequencePlan
     public void ValidateDesktopMode(int width, int height, int dpi)
     {
         if (LeaveCursorFree) throw new ArgumentException("Leave cursor free requires a selected Click target.");
-        if (Conditions.Count != 0) throw new ArgumentException("Wait Until requires a selected Click target.");
+        foreach (var condition in Conditions)
+        {
+            if (condition.Definition.Region is not { } region)
+                throw new ArgumentException("A \"window is active\" wait needs a selected Click target.");
+            if (region.Origin.Space != CoordinateSpace.Desktop)
+                throw new ArgumentException($"Wait \"{condition.Name}\" looks inside a window. Select that Click target, or pick its area again on a monitor.");
+            if (!region.Origin.Matches(width, height, dpi))
+                throw new ArgumentException($"The monitor layout changed since wait \"{condition.Name}\" was set up. Pick its area again.");
+        }
         foreach (var input in Inputs)
         {
             if (input.Position is not { } point) continue;
