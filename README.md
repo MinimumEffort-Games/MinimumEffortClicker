@@ -9,6 +9,18 @@ needed to use the app.
 eight-hour full-app endurance acceptance remain unfinished. This is a preview,
 not a promise of universal compatibility or a warning-free Windows download.
 
+## What it looks like
+
+| Actions | Toggles |
+| --- | --- |
+| ![Actions page](docs/screenshots/actions.png) | ![Toggles page](docs/screenshots/toggles.png) |
+
+| Screenshot | Settings |
+| --- | --- |
+| ![Screenshot page](docs/screenshots/screenshot.png) | ![Settings page](docs/screenshots/settings.png) |
+
+Light mode is in Settings: [Actions](docs/screenshots/actions-light.png), [Settings](docs/screenshots/settings-light.png).
+
 ## Download and run
 
 Open this repository's **Releases** page and download the Windows x64 portable
