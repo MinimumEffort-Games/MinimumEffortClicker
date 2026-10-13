@@ -90,6 +90,15 @@ public sealed class SequenceTests
     }
 
     [TestMethod]
+    public void NullChildWithRandomTimingIsRejectedAsInvalidNotAsACrash()
+    {
+        // System.Text.Json materialises a null list element; the loader must report an invalid file, never throw NullReferenceException.
+        var group = SequenceStep.Group("Broken", Ms(100), [new(Guid.NewGuid(), Ms(0), W, Ms(50))]) with
+        { Children = new TimedAction[] { null! }, Timing = new(Ms(80)) };
+        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([group])));
+    }
+
+    [TestMethod]
     public void ConflictingOverlapAndInvalidTimeAreRejected()
     {
         var group = SequenceStep.Group("Conflict", Ms(100), [new(Guid.NewGuid(), Ms(0), W, Ms(90)), new(Guid.NewGuid(), Ms(10), W, Ms(90))]);

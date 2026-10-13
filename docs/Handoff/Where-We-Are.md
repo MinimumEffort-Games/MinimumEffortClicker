@@ -10,6 +10,8 @@ Nothing has been changed yet. The build was not run here: the PC has SDK 10.0.40
 - 2026-10-13: App cleanup committed (hidden library page, sequence editor, wizard, overlay editing, MVVM package removed; Help button added). Build and 297 tests green; app starts.
 - 2026-10-13: Core/Engine/Windows/Storage cleanup: text, subsequence and branch steps, logical-key and Unicode input kinds, "Run together" helper sets, rehearsal, finish-loop, resume countdown and armed-plan paths removed. Profile schema is 16; schema 2–15 files are upgraded on load and the app reports how many retired actions were dropped. 245 tests green (tests for removed features deleted, one migration test added). Spam cadence bug (press equal to interval) fixed on the way. The GitHub Desktop commit "Clean-up" (e88a05f) was made mid-work and does not build on its own; the next commit completes it.
 
+- 2026-10-13: Launch prep committed (probe gate, packaging path, CI version, SDK roll-forward, docs); packaging script verified end to end (500 files, schema 16). Bug-fix batch committed: crash safety net, lock-free ownership reads for the hook thread, owned-hold sampling, scoped destroy hook, cloaked targets, orphan bindings, early-click preference overwrite, runtime flags instead of status strings, overlay options trimmed. 245 tests green; app starts.
+
 ## Roy's open list
 
 Struck items are done. Never resurrect them.

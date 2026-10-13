@@ -417,6 +417,43 @@ public sealed class ClickExecutorTests
     }
 
     [TestMethod]
+    public void ClickLimitStopsBeforeAConditionWaitInsteadOfPollingIt()
+    {
+        var f = new Fixture(); f.Executor.ClickCompletionLimit = 1; bool observed = false;
+        f.Executor.EvaluateCondition = (_, _) => { observed = true; return new(ConditionOutcome.Matched, 1, 1); };
+        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1)));
+        var plan = SequenceCompiler.Compile(new([SequenceStep.Input("Click", InputControl.Mouse(PointerButton.Left), TimeSpan.FromMilliseconds(20)),
+            SequenceStep.WaitUntil("Ready", condition), SequenceStep.Input("W", InputControl.Key(0x11), TimeSpan.FromMilliseconds(20))]));
+        var result = f.Executor.Execute(plan, f.TargetId, default);
+        Assert.AreEqual(ClickRunOutcome.Cancelled, result.Outcome); Assert.IsFalse(observed);
+        Assert.HasCount(2, f.Input.Sent); Assert.IsFalse(f.Executor.HasOwnedInput);
+    }
+
+    [TestMethod]
+    public void OwnershipReadsNeverWaitOnTheDispatchGate()
+    {
+        // The hook thread asks HasOwnedInput while SendInput is blocked under the gate; it must get an answer at once.
+        var f = new Fixture();
+        using var entered = new ManualResetEventSlim(); using var release = new ManualResetEventSlim();
+        f.Input.Accept = input =>
+        {
+            if (input.Edge == InputEdge.Down) { entered.Set(); if (!release.Wait(TimeSpan.FromSeconds(5))) throw new TimeoutException(); }
+            return true;
+        };
+        var worker = Task.Run(() => f.Run(1));
+        try
+        {
+            Assert.IsTrue(entered.Wait(TimeSpan.FromSeconds(2)));
+            var answered = Task.Run(() => f.Executor.HasOwnedInput || f.Executor.Owns(InputControl.Mouse(PointerButton.Left)));
+            Assert.IsTrue(answered.Wait(TimeSpan.FromMilliseconds(500)), "Ownership reads blocked behind an in-flight dispatch.");
+            Assert.IsFalse(answered.Result); // Not owned until the down is accepted.
+        }
+        finally { release.Set(); }
+        Assert.AreEqual(ClickRunOutcome.Completed, worker.Result.Outcome);
+        Assert.IsFalse(f.Executor.HasOwnedInput);
+    }
+
+    [TestMethod]
     public async Task ProgressRemainsReadableDuringBlockedDispatch()
     {
         var f = new Fixture();

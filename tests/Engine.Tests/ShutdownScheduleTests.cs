@@ -34,6 +34,7 @@ public sealed class ShutdownScheduleTests
         var schedule = new ShutdownSchedule(); int shutdowns = 0;
         schedule.Arm(new(ShutdownTrigger.CompletedLoops, Loops: 3), Now, 80, TimeSpan.Zero);
         Assert.AreEqual(1L, schedule.Update(Now, TimeSpan.Zero, 82, TimeSpan.Zero).LoopsRemaining);
+        Assert.AreEqual(TimeSpan.Zero, schedule.Update(Now, TimeSpan.Zero, 82, TimeSpan.Zero).Remaining); // Count plans report no time.
         Assert.IsTrue(schedule.Update(Now, TimeSpan.Zero, 83, TimeSpan.Zero).CountingDown);
         Assert.IsFalse(schedule.TryCommit(TimeSpan.FromHours(1), true, () => shutdowns++));
         schedule.BeginCountdown(TimeSpan.FromHours(1));
