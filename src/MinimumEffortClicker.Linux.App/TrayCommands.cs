@@ -46,7 +46,7 @@ public partial class MainWindow
     {
         if (exitRequested || trayIcon is null || CloseToTrayBox.IsChecked != true) return false;
         if (trayHidePending) return true;
-        if (!traySettingsLoaded || screenshotBusy || quickOperation || overlay?.IsEditing == true)
+        if (!traySettingsLoaded || screenshotBusy || quickOperation)
         {
             ReasonLabel.Text = !traySettingsLoaded ? "Wait for settings to finish loading."
                 : "Finish recording, testing, or adjusting the overlay before hiding the window.";
@@ -98,7 +98,6 @@ public partial class MainWindow
         Close(); // Uses the existing bounded stop, input-release, and save-completion path.
     }
 
-    private void ExitApplication_Click(object sender, RoutedEventArgs e) => ExitApplication();
 
     internal void PrepareSessionExit()
     {

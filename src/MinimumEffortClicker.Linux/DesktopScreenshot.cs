@@ -26,4 +26,19 @@ public static class DesktopScreenshot
         if (Bounds(helper) != bounds) throw new InvalidOperationException("The display changed. Try taking the screenshot again.");
         return new(bounds, RegionCapture.ToBgra(image, bounds.Width, bounds.Height));
     }
+
+    /// <summary>
+    /// Copies one rectangle of the desktop in logical pixels, on any monitor, as BGRA. Used for Desktop-mode colour and
+    /// image waits and their area picker.
+    /// </summary>
+    public static byte[] CaptureArea(ShellHelper helper, int x, int y, int width, int height, CancellationToken cancellation)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        var bounds = Bounds(helper);
+        if (width < 1 || height < 1 || x < bounds.X || y < bounds.Y || (long)x + width > (long)bounds.X + bounds.Width || (long)y + height > (long)bounds.Y + bounds.Height)
+            throw new InvalidOperationException("That area is no longer on a monitor. Pick it again.");
+        var image = helper.CaptureRaw(x, y, width, height);
+        cancellation.ThrowIfCancellationRequested();
+        return RegionCapture.ToBgra(image, width, height);
+    }
 }

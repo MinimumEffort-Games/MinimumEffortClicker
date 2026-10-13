@@ -24,6 +24,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     private readonly Func<InputControl, bool> ownsInput;
     private readonly DeferredCleanupRetry cleanupRetry;
     private readonly StopwatchClock clock = new();
+    private readonly Timer autoResumeTimer;
     private CancellationTokenSource? cancellation;
     private Task cancellationCallbacks = Task.CompletedTask;
     private sealed record RunRequest(HelperPlan? Helper, SequencePlan? Sequence, string? Label = null, NamedHelper? ToggleHold = null)
@@ -96,16 +97,15 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     public long CompletionLimit { get => executor.CompletionLimit; set => executor.CompletionLimit = value; }
     public TimeSpan ActiveTimeLimit { get => executor.ActiveTimeLimit; set => executor.ActiveTimeLimit = value; }
     public bool KeepAwakeWhileRunning { get; set; }
-    private volatile HelperPlan? armedPlan;
     private ArmedHelper[] armedHelpers = [];
     private Guid runningMacro;
-    public HelperPlan? ArmedPlan { get => armedPlan; set => armedPlan = value; }
     private volatile bool quickSequenceArmed;
     public bool QuickSequenceArmed { get => quickSequenceArmed; set => quickSequenceArmed = value; }
 
     public DesktopRuntime()
     {
         schedulerWait = new(clock);
+        autoResumeTimer = new(AutoResumeTick, null, Timeout.Infinite, Timeout.Infinite);
         executor = new(this, clock, schedulerWait, this);
         executor.EvaluateCondition = (condition, stop) => EvaluateCondition(condition, stop);
         executor.PrepareClickPoint = (point, motion, random) =>
@@ -388,6 +388,9 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     controls = controls.Append(new InputControl(InputKind.PointerMove, 0)).Distinct().ToArray();
                 cancellation = new();
                 playbackControl = new(); executor.Playback = playbackControl; runningRequest = request;
+                // A window target that goes behind another window pauses the run and resumes it when it is back in front.
+                // Desktop mode has no window to wait for.
+                executor.PauseOnTargetLoss = target is not null;
                 cancellationCallbacks = Task.CompletedTask;
                 pending = request; Volatile.Write(ref activeControls, controls);
                 activeLayout = request.Sequence is { } keyboardSequence && keyboardSequence.Inputs.Any(i => i.Control.Kind == InputKind.ScanCode) ? keyboardSequence.KeyboardLayout : null;
@@ -428,10 +431,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         }
         if (CanResume) { TryResume(); return; }
         if (Snapshot.Busy) { if (!Control.HoldTrigger) StopPlayback("Stopped with toggle hotkey."); return; }
-        var plan = ArmedPlan;
-        if ((plan is not null || QuickSequenceArmed) && QuickStartRequested is { } start) { start(); return; }
-        if (plan is not null && (plan.LeaveCursorFree || BringTargetForward()))
-            TryStart(plan, TimeSpan.FromMilliseconds(250));
+        if (QuickSequenceArmed && QuickStartRequested is { } start) start();
     }
 
     public async Task<bool> ConfigureHelpersAsync(IReadOnlyList<ArmedHelper> helpers)
@@ -532,12 +532,28 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     {
         lock (gate)
         {
-            if (!busy || countingDown || cancellation?.IsCancellationRequested != false || playbackControl?.RequestPause() != true) return false;
+            if (!busy || countingDown || cancellation?.IsCancellationRequested != false || playbackControl is not { } control) return false;
+            // Pausing while already waiting for the target turns it into the user's pause: it no longer resumes by itself.
+            if (!control.RequestPause() && !control.MakeManual()) return false;
             state = "Pausing"; reason = message;
         }
         NotifyChanged(); return true;
     }
-    public bool TryResume()
+    /// <summary>The target left the front: pause now and resume by itself once it is back (see AutoResumeTick).</summary>
+    private bool PauseForTargetLoss()
+    {
+        lock (gate)
+        {
+            if (!busy || countingDown || cancellation?.IsCancellationRequested != false || playbackControl is not { } control) return false;
+            if (control.Automatic) return true;
+            if (!control.RequestPause(automatic: true)) return control.IsPaused;
+            state = "Pausing"; reason = TargetLostReason;
+        }
+        NotifyChanged(); return true;
+    }
+    private const string TargetLostReason = "Paused: the target window is not in front. It continues by itself when the window is back in front. Stop All cancels.";
+    public bool TryResume() => TryResume(automatic: false);
+    private bool TryResume(bool automatic)
     {
         lock (gate)
         {
@@ -545,16 +561,39 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             if (!(CursorFreeActive ? BackgroundTargetAvailable : TargetAvailable) || !Control.Available || ShutdownPending || !CursorFreeActive && Control.ModifiersDown
                 || !CoordinatesAvailable(runningRequest?.Sequence)
                 || activeLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase))
-            { reason = "Resume refused. Restore the selected target, calibration and layout, and release physical modifiers."; NotifyChanged(); return false; }
+            { if (automatic) return false; reason = "Resume refused. Restore the selected target, calibration and layout, and release physical modifiers."; NotifyChanged(); return false; }
             foreach (var input in actionToggleSession?.ActiveControls ?? activeControls)
             {
                 Control.SampleBeforeRun(input);
-                if (!CursorFreeActive && Control.IsPhysicalDown(input)) { reason = "Release physical inputs before resuming."; NotifyChanged(); return false; }
+                if (!CursorFreeActive && Control.IsPhysicalDown(input)) { if (automatic) return false; reason = "Release physical inputs before resuming."; NotifyChanged(); return false; }
             }
             if (!playbackControl.RequestResume()) return false;
-            state = "Resuming"; reason = "Resuming the remaining timing after explicit review.";
+            state = "Resuming"; reason = automatic ? "The target window is back in front. Continuing." : "Resuming the remaining timing after explicit review.";
         }
         NotifyChanged(); return true;
+    }
+    // Polls only while a run is paused because its target left the front. The window must stay in front for a moment first,
+    // so alt-tabbing back does not send input while Alt is still held or the window is still animating.
+    private static readonly TimeSpan AutoResumeSettle = TimeSpan.FromMilliseconds(500);
+    private long targetBackSince = -1;
+    private void SetAutoResumePolling(bool on)
+    {
+        try { autoResumeTimer.Change(on ? 100 : Timeout.Infinite, on ? 100 : Timeout.Infinite); }
+        catch (ObjectDisposedException) { }
+    }
+    private void AutoResumeTick(object? _)
+    {
+        lock (gate)
+        {
+            // Stop polling once the pause ended or became the user's; keep polling while a resume is being handed over,
+            // because the scheduler may put it back on hold if the window left the front again.
+            if (disposed || playbackControl is not { Automatic: true } control) { targetBackSince = -1; SetAutoResumePolling(false); return; }
+            if (!control.CanResume) { targetBackSince = -1; return; }
+            if (!(CursorFreeActive ? BackgroundTargetAvailable : TargetAvailable)) { targetBackSince = -1; return; }
+            if (targetBackSince < 0) { targetBackSince = Environment.TickCount64; return; }
+            if (Environment.TickCount64 - targetBackSince < AutoResumeSettle.TotalMilliseconds) return;
+        }
+        if (TryResume(automatic: true)) lock (gate) targetBackSince = -1;
     }
     private void StopPlayback(string message)
     {
@@ -577,31 +616,6 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     }
 
     internal bool CaptureTargetAvailable => TargetAvailable;
-    private bool editingOverlay;
-    public void BeginOverlayEditing(Action<string> finish)
-    {
-        lock (gate)
-        {
-            if (disposed || busy || recording || executor.HasOwnedInput || !Control.Available)
-                throw new InvalidOperationException("Stop playback and finish cleanup before adjusting the overlay.");
-            editingOverlay = true; recording = true; captureStop = finish; capturePause = _ => { };
-            activity = "Overlay placement";
-            inputsSent = 0; completed = 0; elapsed = TimeSpan.Zero;
-            started = Stopwatch.GetTimestamp(); state = "Overlay unlocked";
-            reason = "Playback is blocked while adjusting the overlay. Lock it to finish; nothing resumes automatically.";
-        }
-        NotifyChanged();
-    }
-    public void EndOverlayEditing()
-    {
-        lock (gate)
-        {
-            if (!editingOverlay) return;
-            editingOverlay = false; recording = false; captureStop = null; capturePause = null;
-            elapsed = TimeSpan.Zero; state = "Stopped"; reason = "Overlay locked. Playback remains stopped.";
-        }
-        NotifyChanged();
-    }
     public void BeginTargetPreview(Action<string> finish)
     {
         BeginCapture(finish, finish);
@@ -683,7 +697,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             Action<string>? pause;
             lock (gate) pause = capturePause;
             if (pause is not null) pause("Target is no longer in the foreground. Resume capture explicitly.");
-            else if (!Pause("Paused: target focus lost. Returning never resumes playback; resume explicitly."))
+            else if (!PauseForTargetLoss())
             { if (!PlaybackIsPaused) Stop("Stopped: the target is no longer in the foreground."); }
         }
     }
@@ -889,7 +903,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         return plan.Inputs.All(i => i.Position is null || i.Position.Matches(client.Width, client.Height, dpi)
             && (i.Position.Space != CoordinateSpace.Desktop || i.Position.X >= client.X && i.Position.Y >= client.Y
                 && i.Position.X < client.X + client.Width && i.Position.Y < client.Y + client.Height))
-            && plan.Conditions.All(c => c.Definition.Region is null || c.Definition.Region.Origin.Matches(client.Width, client.Height, dpi));
+            && plan.Conditions.All(c => c.Definition.Region is null
+                || c.Definition.Region.Origin.Space == CoordinateSpace.WindowClient && c.Definition.Region.Origin.Matches(client.Width, client.Height, dpi));
     }
 
     private static string HelperLabel(HelperPlan plan) => plan.Control.Kind switch
@@ -926,9 +941,18 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             executor.PlaybackPaused = paused =>
             {
                 power.SetPaused(paused);
-                lock (gate) { state = paused ? "Paused" : "Running"; reason = paused
-                    ? "Paused with input released. Resume rechecks the target and continues remaining timing or retries this condition."
-                    : "Resumed explicitly after target and physical-input checks."; }
+                bool automatic;
+                lock (gate)
+                {
+                    automatic = playbackControl?.Automatic == true;
+                    state = paused ? "Paused" : "Running";
+                    reason = !paused ? (reason.StartsWith("The target window is back", StringComparison.Ordinal) ? reason : "Resumed explicitly after target and physical-input checks.")
+                        : automatic ? TargetLostReason
+                        : "Paused with input released. Resume rechecks the target and continues remaining timing or retries this condition.";
+                    targetBackSince = -1;
+                }
+                // The timer only runs while a pause can resume by itself; it checks every 100 ms.
+                SetAutoResumePolling(paused && automatic);
                 NotifyChanged();
             };
             executor.SessionHoldsChanged = NotifyChanged;
@@ -994,6 +1018,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 cleanupPendingRecovery = !result.CleanupSucceeded;
                 busy = false; cancellation = null; stop.Dispose();
                 playbackControl?.Dispose(); playbackControl = null; executor.Playback = null; executor.PlaybackPaused = null; runningRequest = null;
+                executor.PauseOnTargetLoss = false; targetBackSince = -1; SetAutoResumePolling(false);
                 actionToggleSession?.Dispose(); actionToggleSession = null; executor.SessionActionChanged = null; executor.SessionHoldsChanged = null;
                 Volatile.Write(ref activeControls, []);
                 activeLayout = null;
@@ -1012,7 +1037,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         if (worker.Join(TimeSpan.FromSeconds(3)))
         {
             if (executor.HasOwnedInput) executor.RetryCleanup();
-            workReady.Dispose(); targetProcess?.Dispose();
+            workReady.Dispose(); targetProcess?.Dispose(); autoResumeTimer.Dispose();
         }
         Control.Dispose();
     }

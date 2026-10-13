@@ -26,7 +26,6 @@ public sealed class EvdevMonitor : IDisposable
     public event Action<Exception>? Failed;
 
     /// <summary>Physical keyboards or mice that this account can read.</summary>
-    public int DeviceCount { get { lock (gate) return devices.Count; } }
     public static string InputDirectory { get; set; } = "/dev/input";
 
     public EvdevMonitor()

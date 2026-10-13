@@ -13,7 +13,7 @@ namespace MinimumEffortClicker.App;
 
 public partial class MainWindow
 {
-    private int selectedStartKey = 0x77, selectedStopKey = 0x78, selectedToggleKey, selectedMacroKey;
+    private int selectedStartKey = 0x77, selectedStopKey = 0x78, selectedToggleKey;
     private InputControl selectedHeldInput = InputControl.Key(0x11);
     private async Task<int?> CaptureShortcut(string purpose)
     {
@@ -42,9 +42,6 @@ public partial class MainWindow
     { if (await CaptureShortcut("Record Macro / Stop shortcut") is { } key) { selectedRecordKey = key; await SetQuickRecordKey(); } }
     private async void CaptureToggleKey_Click(object sender, RoutedEventArgs e)
     { if (await CaptureShortcut("Toggle shortcut") is { } key) { selectedToggleKey = key; ToggleShortcutBox.Content = ShortcutKeys.Label(key); } }
-    private async void CaptureMacroKey_Click(object sender, RoutedEventArgs e)
-    { if (await CaptureShortcut("Saved macro shortcut") is { } key) { selectedMacroKey = key; MacroKeyBox.Content = ShortcutKeys.Label(key); } }
-    private void ClearMacroKey_Click(object sender, RoutedEventArgs e) { selectedMacroKey = 0; MacroKeyBox.Content = "Choose a key…"; }
     private async void CaptureHeldInput_Click(object sender, RoutedEventArgs e)
     {
         if (await CaptureShortcut("Key or mouse button to hold") is not { } key) return;

@@ -31,13 +31,6 @@ public partial class MainWindow
     private static string InputLabel(InputControl input)
     { var label = RecordingNormalizer.Label(input); return label.StartsWith("Hold ", StringComparison.Ordinal) ? label[5..] : label; }
 
-    private void RefreshLibraryLists()
-    {
-        var selection = (ProfileList.SelectedItem as ProfileDefinition)?.Id;
-        ProfileList.ItemsSource = profiles.Where(p => p.Macros.Any(m => !m.IsToggle)).ToArray();
-        ProfileList.SelectedItem = profiles.FirstOrDefault(p => p.Id == selection);
-        RefreshToggleList();
-    }
     private void RefreshToggleList()
     {
         if (ToggleList is null) return;
@@ -81,7 +74,7 @@ public partial class MainWindow
             var binding = new MacroBinding(id, key, false);
             MacroBindings.Validate([binding], appliedToggleKey, appliedStopKey);
             if (macroBindings.Values.Any(b => b.MacroId != id && b.Key == key))
-                throw new ArgumentException("That shortcut is assigned to another toggle or macro. Choose a different key.");
+                throw new ArgumentException("That shortcut is assigned to another toggle. Choose a different key.");
             var held = InputLabel(selectedHeldInput);
             if (MinimumEffortClicker.Linux.DesktopRuntime.InputMatchesKey(selectedHeldInput, key))
                 throw new ArgumentException("Choose a shortcut different from the input being held.");
@@ -134,6 +127,26 @@ public partial class MainWindow
         }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
         finally { Pages.IsEnabled = true; }
+    }
+    /// <summary>Arm the checked toggles' shortcuts in the runtime. Arming never starts anything; a shortcut press does.</summary>
+    private async Task ApplyAvailability()
+    {
+        if (runtime is null || bindingBusy) return;
+        bindingBusy = true; TogglePage.IsEnabled = false;
+        try
+        {
+            var helpers = SavedToggles.Where(m => enabledToggles.Contains(m.Id)).Select(m => new ArmedHelper(macroBindings.GetValueOrDefault(m.Id)
+                ?? throw new ArgumentException($"Assign a shortcut for '{m.Name}' first."), m.Plan!, DisplayName: m.Name, IsToggle: true)).ToArray();
+            MacroBindings.Validate(helpers.Select(h => h.Binding).ToArray(), appliedToggleKey, appliedStopKey);
+            if (!await runtime.ConfigureHelpersAsync(helpers)) throw new InvalidOperationException("A toggle shortcut is already in use. Choose another key.");
+        }
+        catch (Exception ex)
+        {
+            enabledToggles.Clear();
+            await runtime.ConfigureHelpersAsync([]);
+            ReasonLabel.Text = "Toggles disabled: " + ex.Message;
+        }
+        finally { bindingBusy = false; TogglePage.IsEnabled = true; RefreshToggleList(); }
     }
     private string[] ToggleOverlayLines(RuntimeSnapshot snapshot)
     {

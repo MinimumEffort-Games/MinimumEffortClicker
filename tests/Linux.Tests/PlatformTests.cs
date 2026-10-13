@@ -16,6 +16,17 @@ public sealed class PlatformTests
     }
 
     [TestMethod]
+    public void MainMonitorComesFirstThenLeftToRight()
+    {
+        // The helper lists GNOME's primary monitor first; it is not at the desktop origin here.
+        var monitors = DesktopMonitor.Order([new(1920, 0, 2560, 1440, 1), new(4480, 200, 1920, 1080, 1), new(0, 300, 1920, 1080, 1)]);
+        CollectionAssert.AreEqual(new[] { "Monitor 1 (main) · 2560 × 1440", "Monitor 2 (left) · 1920 × 1080", "Monitor 3 (right) · 1920 × 1080" },
+            monitors.Select(m => m.ToString()).ToArray());
+        Assert.IsTrue(monitors[1].Contains(0, 300) && !monitors[1].Contains(1920, 300));
+        Assert.AreEqual(0, DesktopMonitor.Order([]).Count);
+    }
+
+    [TestMethod]
     public void RgbaRowsBecomePackedBgra()
     {
         // Two pixels per row with four padding bytes per row: red, green / blue, white.

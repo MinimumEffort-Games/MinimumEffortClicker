@@ -21,12 +21,23 @@ public partial class MainWindow
         runtime.Control.StopRequested += Cancel; RefreshStatus();
         try
         {
-            if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
-            await Task.Delay(350, cancellation.Token);
-            var frame = runtime.GetTargetFrame();
-            var snapshot = await Task.Run(() => runtime.CaptureAuthoringPreview(cancellation.Token), cancellation.Token);
-            cancellation.Token.ThrowIfCancellationRequested(); Activate();
-            var picker = new RegionPicker(this, snapshot, frame, 1);
+            RegionPicker picker;
+            if (runtime.IsDesktopMode)
+            {
+                // Desktop mode: pick on any monitor.
+                var (monitors, pictures) = await CaptureMonitorPicturesAsync(cancellation.Token);
+                cancellation.Token.ThrowIfCancellationRequested(); Activate();
+                picker = new RegionPicker(this, monitors, pictures, runtime.GetTargetFrame(), 1);
+            }
+            else
+            {
+                if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
+                await Task.Delay(350, cancellation.Token);
+                var frame = runtime.GetTargetFrame();
+                var snapshot = await Task.Run(() => runtime.CaptureAuthoringPreview(cancellation.Token), cancellation.Token);
+                cancellation.Token.ThrowIfCancellationRequested(); Activate();
+                picker = new RegionPicker(this, snapshot, frame, 1);
+            }
             using var abortPicker = cancellation.Token.Register(() => Dispatcher.BeginInvoke(() => picker.Close()));
             if (picker.ShowDialog() != true || picker.Region is not { } point) return;
             // Sampling a new colour preserves an already chosen search region.

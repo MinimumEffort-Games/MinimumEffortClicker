@@ -15,8 +15,8 @@ internal interface IOverlayPresenter
 }
 
 /// <summary>
-/// Always-on-top status window. Locked, it is click-through (an empty X11 input region) and the
-/// runtime's hit tests look through it by title; unlocked, it can be dragged.
+/// Always-on-top status window. It is click-through (an empty X11 input region), never takes focus, and the
+/// runtime's hit tests look through it by title.
 /// </summary>
 internal sealed class StatusOverlay : Window, IOverlayPresenter
 {
@@ -24,17 +24,12 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private static readonly IBrush Active = new SolidColorBrush(Color.FromRgb(28, 96, 50));
     private readonly TextBlock label = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.NoWrap };
     private readonly TextBlock activityLabel = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, MaxHeight = 40 };
-    private readonly StackPanel controls = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
     private readonly StackPanel body = new();
     private readonly LayoutTransformControl scaler = new();
     private readonly Border frame;
     private OverlayOptions options = new();
     private bool configured;
     private bool recording, active;
-    public bool IsEditing { get; private set; }
-    public event Action? LockRequested;
-    public event Action? StopRequested;
-    public event Action<int, int>? PlacementChanged;
 
     public StatusOverlay()
     {
@@ -42,21 +37,11 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         WindowDecorations = WindowDecorations.None; Background = Brushes.Transparent;
         TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
         ShowActivated = false; ShowInTaskbar = false; Topmost = true; CanResize = false; Focusable = false;
-        body.Children.Add(activityLabel); body.Children.Add(label); body.Children.Add(controls);
-        var stop = new Button { Content = "Stop all", Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 8, 0) };
-        var finish = new Button { Content = "Lock overlay", Padding = new Thickness(10, 5, 10, 5) };
-        stop.Click += (_, _) => StopRequested?.Invoke(); finish.Click += (_, _) => LockRequested?.Invoke();
-        controls.Children.Add(stop); controls.Children.Add(finish); controls.IsVisible = false;
+        body.Children.Add(activityLabel); body.Children.Add(label);
         frame = new Border { Background = Idle, BorderBrush = IdleBorder, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 9, 4), Child = body };
         scaler.Child = frame;
         Content = scaler;
         ApplyColours();
-        body.PointerPressed += (_, e) =>
-        {
-            if (!IsEditing || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-            BeginMoveDrag(e);
-        };
-        PositionChanged += (_, e) => { if (IsEditing) PlacementChanged?.Invoke(e.Point.X, e.Point.Y); };
         Opened += (_, _) => ApplyStyles();
     }
 
@@ -69,24 +54,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
 
     private void ApplyStyles()
     {
-        X11Windows.SetClickThrough(this, !IsEditing);
-        X11Windows.SetNoFocus(this, !IsEditing);
-    }
-
-    public void SetEditing(bool editing)
-    {
-        IsEditing = editing; Focusable = editing;
-        ShowInTaskbar = editing;
-        controls.IsVisible = editing;
-        body.Cursor = editing ? new Cursor(StandardCursorType.SizeAll) : Cursor.Default;
-        ApplyStyles();
-        if (editing) Activate();
-    }
-
-    protected override void OnClosing(WindowClosingEventArgs e)
-    {
-        if (IsEditing) { e.Cancel = true; Dispatcher.Post(() => LockRequested?.Invoke()); }
-        base.OnClosing(e);
+        X11Windows.SetClickThrough(this, true);
+        X11Windows.SetNoFocus(this, true);
     }
 
     public void Configure(OverlayOptions value)
@@ -112,8 +81,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
             label.Text = $"{recordKey} · Stop recording · {stopKey} · Stop all";
             return;
         }
-        bool toggleOnly = toggles?.Count > 0 && !IsEditing;
-        if (!state.Busy && !state.CleanupPending && !IsEditing)
+        bool toggleOnly = toggles?.Count > 0;
+        if (!state.Busy && !state.CleanupPending)
         {
             activityLabel.Text = (actionsEmpty ? "Actionlist Empty" : $"{startKey} to start/stop")
                 + (toggles?.Count > 0 ? "\n" + string.Join("\n", toggles) : "");
@@ -122,11 +91,11 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
             return;
         }
         activityLabel.MaxHeight = double.PositiveInfinity;
-        activityLabel.Text = IsEditing ? "Drag to move overlay" : toggleOnly ? (state.CleanupPending ? "Input release pending\n" : state.ActionsActive ? $"{state.State} · {state.Activity}\n" : "") + string.Join("\n", toggles!)
+        activityLabel.Text = toggleOnly ? (state.CleanupPending ? "Input release pending\n" : state.ActionsActive ? $"{state.State} · {state.Activity}\n" : "") + string.Join("\n", toggles!)
             : $"{state.State} · {(state.Activity is "Minimum Effort" or "Named points" ? "Actions" : state.Activity)}";
         ToolTip.SetTip(activityLabel, activityLabel.Text);
         label.IsVisible = !(toggleOnly && !state.ActionsActive && !state.CleanupPending);
-        label.Text = IsEditing ? "Playback stopped" : state.CleanupPending ? $"Stop all: {stopKey}" : $"{startKey} to start/stop";
+        label.Text = state.CleanupPending ? $"Stop all: {stopKey}" : $"{startKey} to start/stop";
     }
 
     private PixelSize PixelFrame
