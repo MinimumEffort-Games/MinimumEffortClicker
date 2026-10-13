@@ -71,8 +71,7 @@ public partial class MainWindow : Window
         SystemEvents.DisplaySettingsChanged += DisplaysChanged;
         timer.Tick += (_, _) => RefreshStatus();
         overlayFollowTimer.Tick += (_, _) => PositionOverlay();
-        initialized = true;
-        Config_Changed(this, new RoutedEventArgs());
+        // Stays false until Loaded has read the saved preferences, so an early click cannot overwrite them with defaults.
         RefreshStatus();
         LocationChanged += (_, _) => { if (runtime is not null && !runtime.HasSelectedTarget) RefreshStatus(); };
         SizeChanged += (_, _) => { if (runtime is not null && !runtime.HasSelectedTarget) RefreshStatus(); };
@@ -97,7 +96,11 @@ public partial class MainWindow : Window
                 await Task.Run(() => store.Save(profiles));
                 RefreshToggleList();
             }
-            foreach (var binding in await Task.Run(bindingsStore.Load)) macroBindings[binding.MacroId] = binding;
+            var toggleIds = profiles.SelectMany(p => p.Macros).Select(m => m.Id).ToHashSet();
+            var storedBindings = await Task.Run(bindingsStore.Load);
+            foreach (var binding in storedBindings.Where(b => toggleIds.Contains(b.MacroId))) macroBindings[binding.MacroId] = binding;
+            // A binding whose toggle no longer exists would silently block its key forever.
+            if (storedBindings.Count != macroBindings.Count) await Task.Run(() => bindingsStore.Save(macroBindings.Values.ToArray()));
             RefreshToggleList();
             var settings = await Task.Run(preferences.Load);
             StartupMeasurement.Mark("Preferences loaded");
@@ -175,6 +178,8 @@ public partial class MainWindow : Window
         };
     }
 
+    /// <summary>Called from the unhandled-exception handlers; releases owned input without touching the UI.</summary>
+    internal void EmergencyStop() => runtime?.EmergencyRelease();
     private void SessionChanged(object sender, SessionSwitchEventArgs e) { CancelScreenshot("Session changed"); runtime?.Stop("Stopped: Windows session changed."); }
     private void PowerChanged(object sender, PowerModeChangedEventArgs e) { CancelScreenshot("Power changed"); runtime?.Stop("Stopped: Windows power state changed."); }
     private void RuntimeChanged()
@@ -197,8 +202,7 @@ public partial class MainWindow : Window
         if (!snapshot.Busy && desktopPlaybackFrom is { } previous)
         {
             desktopPlaybackFrom = null;
-            if (snapshot.State is "Could not continue" or "Not started" or "Cleanup pending")
-                RestoreDesktopOperationWindow(previous);
+            if (snapshot.Failed) RestoreDesktopOperationWindow(previous);
         }
         TargetLabel.IsEnabled = ToggleTargetLabel.IsEnabled = !snapshot.Busy && !snapshot.CleanupPending
             && !quickOperation && !screenshotBusy && !macroFileBusy && !ioBusy && !bindingBusy && !closing;
@@ -210,7 +214,7 @@ public partial class MainWindow : Window
         ToggleTargetCard.SetResourceReference(Border.BorderBrushProperty, targetBorder);
         RefreshPower(snapshot);
         System.Windows.Automation.AutomationProperties.SetHelpText(RunButton, snapshot.State);
-        FailureDetailLabel.Visibility = snapshot.CleanupPending || snapshot.State is "Could not continue" or "Not started" or "Cleanup pending" ? Visibility.Visible : Visibility.Collapsed;
+        FailureDetailLabel.Visibility = snapshot.CleanupPending || snapshot.Failed ? Visibility.Visible : Visibility.Collapsed;
         FailureDetailLabel.Text = snapshot.Reason;
         PausePlaybackButton.IsEnabled = !quickOperation && (snapshot.PlaybackActive || runtime.CanResume);
         PausePlaybackButton.Content = runtime.CanResume ? "Resume" : "Pause";
@@ -225,8 +229,7 @@ public partial class MainWindow : Window
         HotkeyStatus.Text = runtime.Control.Available ? "" : runtime.Control.Error;
         timer.Interval = TimeSpan.FromMilliseconds(snapshot.Busy ? 100 : 1000);
         if (snapshot.Busy || shutdownSchedule.Armed) timer.Start(); else timer.Stop();
-        bool capturing = snapshot.Busy && snapshot.State.StartsWith("Recording", StringComparison.Ordinal);
-        if (!screenshotBusy && (capturing || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
+        if (!screenshotBusy && (snapshot.Recording || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);

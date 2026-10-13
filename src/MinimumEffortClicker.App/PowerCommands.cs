@@ -37,7 +37,6 @@ public partial class MainWindow
         ShutdownTimeFields.Visibility = mode == 3 ? Visibility.Visible : Visibility.Collapsed;
         ArmShutdownButton.Visibility = mode > 0 ? Visibility.Visible : Visibility.Collapsed;
         ShutdownValueLabel.Text = mode == 2 ? "Minutes running" : "Loops";
-        if (initialized && mode > 0) LoopBox.IsChecked = true;
         ShutdownValueBox.Text = mode == 2 ? "60" : "100";
         var time = DateTime.Now.AddHours(1);
         ShutdownHourBox.Text = time.ToString("HH", CultureInfo.InvariantCulture);

@@ -43,10 +43,13 @@ public sealed class HelperValidationTests
             var store = new Preferences(directory);
             File.WriteAllText(Path.Combine(directory, "preferences.json"), "{\"SchemaVersion\":1,\"Appearance\":0,\"ToggleKey\":119,\"StopKey\":120,\"HoldTrigger\":false,\"Overlay\":true}");
             Assert.AreEqual(UserPreferences.Default, store.Load());
-            var value = UserPreferences.Default with { OverlayOptions = new(true, true, true, 0.75, 1.5, -1920, 80), MainTopmost = true };
+            var value = UserPreferences.Default with { OverlayOptions = new(true, true, 0.75, 1.5), MainTopmost = true };
             store.Save(value); Assert.AreEqual(value, store.Load());
-            foreach (var invalid in new[] { new OverlayOptions(Opacity: double.NaN), new OverlayOptions(Scale: 2), new OverlayOptions(X: 2), new OverlayOptions(Y: int.MaxValue) })
+            foreach (var invalid in new[] { new OverlayOptions(Opacity: double.NaN), new OverlayOptions(Scale: 2) })
                 Assert.ThrowsExactly<ArgumentException>(() => store.Save(value with { OverlayOptions = invalid }));
+            // Fields an older version wrote (overlay X/Y/anchor) are ignored, not treated as corruption.
+            File.WriteAllText(Path.Combine(directory, "preferences.json"), "{\"SchemaVersion\":1,\"Appearance\":0,\"ToggleKey\":119,\"StopKey\":120,\"HoldTrigger\":false,\"Overlay\":true,\"OverlayOptions\":{\"Expanded\":false,\"KeepIdle\":true,\"AnchorTarget\":true,\"Opacity\":0.8,\"Scale\":1,\"X\":10,\"Y\":20}}");
+            Assert.AreEqual(new OverlayOptions(false, true, 0.8, 1), store.Load().OverlayOptions);
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }

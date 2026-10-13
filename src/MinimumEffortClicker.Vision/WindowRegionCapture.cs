@@ -90,7 +90,8 @@ public sealed class WindowRegionCapture : IDisposable
                 int x = client.X - bounds.Left + region.Origin.X, y = client.Y - bounds.Top + region.Origin.Y;
                 if (x < 0 || y < 0 || x + region.Width > frame.ContentSize.Width || y + region.Height > frame.ContentSize.Height)
                     throw new InvalidOperationException("Client region does not fit the capture frame.");
-                var pixels = device!.Read(frame.Surface, x, y);
+                using var surface = frame.Surface; // Release the surface wrapper now instead of leaving it to the finalizer.
+                var pixels = device!.Read(surface, x, y);
                 stop.ThrowIfCancellationRequested(); ValidateWindow();
                 lastFrame = frame.SystemRelativeTime.Ticks;
                 return new(region.Width, region.Height, pixels.ToArray(), lastFrame);

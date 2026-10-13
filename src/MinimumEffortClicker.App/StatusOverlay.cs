@@ -82,7 +82,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     }
     public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<string>? toggles = null, string recordKey = "F10", bool actionsEmpty = false)
     {
-        bool capturing = state.Busy && state.State.StartsWith("Recording", StringComparison.Ordinal);
+        bool capturing = state.Recording;
         bool running = state.PlaybackActive && !state.CleanupPending;
         if (capturing != recording || running != active) { recording = capturing; active = running; ApplyContrast(); }
         if (capturing)

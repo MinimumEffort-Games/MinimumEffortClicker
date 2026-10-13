@@ -27,8 +27,8 @@ Struck items are done. Never resurrect them.
    - **Tests and tools:** delete the tests for everything above; keep `WindowsProbe` only if the VM probe survives item 5.
    - **Help text:** rewrite `HelpCommands` content to describe only the four pages (or ship it as `docs/Help.md`).
    Single-file Save and Load on the Actions tab, the Condition editor, the colour and region pickers, the target preview, the overlay, toggles, screenshots and all Settings stay.
-2. **No crash safety net for held input.** No `DispatcherUnhandledException` or `AppDomain.UnhandledException` anywhere. Several `async void` handlers have no catch (`ShortcutCommands.cs:12-62` CaptureShortcut, `PlaybackCommands.cs:50-54` ResumePlayback). If one throws, the process exits, `MainWindow.Closed` never runs, `runtime.Dispose()` is skipped and any key or button the clicker is holding stays down. Fix: register both handlers in `App.OnStartup`, best-effort `executor.RetryCleanup()` then an AppDialog; wrap the two bare handlers.
-3. **Hook thread can block on the executor lock while SendInput is in flight.** `ClickExecutor.cs:175,261,460` call `sink.TrySend` inside `lock (gate)`; `HasOwnedInput`/`Owns` (`:217-218`) take the same gate; `DesktopRuntime.Toggle` (`:429`) and `MacroTriggered` (`:455`) run on the control/hook thread and call them. SendInput waits for the LL hooks, the hooks wait for the control thread, the control thread waits for the gate. Windows breaks the wait after the hook timeout and silently unhooks; `Available` still says true, so Stop All by key, physical-priority and recording all die with no indication. Fix: never block the control thread on `gate` (lock-free flags for the hook thread, or send outside the lock), and detect hook loss.
+2. ~~No crash safety net for held input.~~ Done 2026-10-13: both unhandled-exception handlers call `DesktopRuntime.EmergencyRelease`, which stops, waits for the worker and releases owned input without taking the runtime lock; the shortcut capture handler now catches.
+3. ~~Hook thread can block on the executor lock.~~ Done 2026-10-13: `HasOwnedInput`/`Owns` read the published snapshot lock-free, so the control thread never waits on the dispatch gate. Still open: detect a hook Windows silently removed (periodic tagged no-op event, or re-install on a timer) and report `Available = false`.
 4. ~~Spam toggles ignore the global click cap.~~ By design (Roy, 2026-10-13): Spam is for fast clicking; the cap exists to stop Actions lagging the user's PC. Write that in the Settings tooltip and Help. Still a bug: at `ConcurrentActions.cs:58-59` a toggle whose PressDuration equals Interval runs at half cadence.
 5. ~~Owner-only gates and paths baked into the public repo.~~ Done 2026-10-13: the probe needs `MEC_ISOLATED_VM=1`, a hypervisor and a standard user instead of the `GPT` account; packaging defaults to `artifacts/package`; CI reads the version from `Directory.Build.props`; AGENTS.md and CONTRIBUTING.md rewritten.
 6. ~~User-facing text still says "private personal preview".~~ Done 2026-10-13: help text, both sub-project READMEs and the third-party notices rewritten; the dangling BRANDING.md links are gone.
@@ -37,33 +37,33 @@ Struck items are done. Never resurrect them.
 
 Windows / native
 
-7. `DesktopControl.SampleBeforeRun` (`:124-132`) records the app's own injected holds as physical (GetAsyncKeyState sees injected state). Then `DesktopRuntime.cs:843` refuses the Up as "user's physical hold" and the key stays down until the user taps it. Skip controls the executor owns. Related: `:471` uses `ModifiersDown` instead of `UnownedModifiersDown`, so a second toggle cannot start while a modifier toggle is held.
-8. `DesktopControl.cs:199` rethrows after `TrySetException`, so any exception in a queued command kills the control thread (hooks and hotkeys gone, "restart the application"). Drop the `throw`.
-9. Hook-only Stop keys (anything but F1-F11, and all mouse buttons) do not reach the app while an elevated window is in front (medium-IL hook, asInvoker manifest). Keep a RegisterHotKey F-key as an always-on second stop route and warn in the picker.
-10. `DesktopControl.cs:234-239` installs a session-wide EVENT_OBJECT_DESTROY WinEvent hook; every destroyed object in every app lands on the thread that must service LL hooks in time. Scope it to the selected target's process.
-11. `DesktopRuntime.cs:139-142` allocates an enumerator on every mouse move inside the LL hook (`activeControls.Any(...)`). Keep a volatile bool.
-12. `ListTargets` (`DesktopRuntime.cs:147-161`) lists DWM-cloaked windows (suspended UWP frames) as targets. Filter with `DWMWA_CLOAKED`.
-13. `WindowRegionCapture.cs:93` never disposes the `IDirect3DSurface` RCW per frame (GC cleans it, latency nit).
+7. ~~Own injected holds recorded as physical.~~ Done 2026-10-13: owned inputs are never sampled; modifier checks use the unowned variant.
+8. ~~Queued-command rethrow kills the control thread.~~ Done 2026-10-13.
+9. Hook-only Stop keys do not reach the app while an elevated window is in front. 2026-10-13: the Stop All picker now warns when a non-F-key is chosen. Still open: an always-on registered F-key as a second stop route.
+10. ~~Session-wide destroy hook.~~ Done 2026-10-13: the destroy hook is installed per selected target process.
+11. ~~Per-move allocation in the mouse hook.~~ Done 2026-10-13.
+12. ~~Cloaked windows listed as targets.~~ Done 2026-10-13.
+13. ~~Capture surface left to the finalizer.~~ Done 2026-10-13.
 
 Engine / Core
 
-14. `ConcurrentActions.cs:81` sets `actionSession` before the single-run guard; a rejected second `Execute(session)` then clears the active run's session state in `finally` (`:128`) and toggles stop being serviced. Move the assignment inside the guarded lambda; add the overlap test the plain overload already has.
-15. Pause with a mouse-button Hold toggle active ends the whole session as "Interaction interrupted" (`ClickExecutor.cs:153-157` treats any owned mouse button as a partial click). Exclude Hold-toggle inputs.
-16. Condition waits skip the click-completion limit (`ClickExecutor.cs:373` checks loops and time but not `TotalCompletedClicks`), so a shutdown-by-clicks plan can poll a Wait Until for up to 40 minutes after reaching its count.
-17. `SequenceDefinition.cs:226` runs timing validation before the null-child check at `:277`; a profile with `"children": [null]` and a timing block throws NullReferenceException, which the Storage loaders do not catch, so opening the file crashes instead of reporting "invalid profile".
-18. `HelperSetControl.cs:31-32` preflights a rejoin while the stopping member is still in `members`, so a quick off/on on the same trigger fails with a duplicate-identity error.
-19. `PlaybackPaused(true)` has no matching `false` when cancelled during `WaitForResume` (`ClickExecutor.cs:165-168`). Harmless today because PowerSession is disposed at run end, but the contract is asymmetric.
-20. `ShutdownSchedule.Update` (`:44-45`) reports `Remaining` of about minus 2026 years for loop/click triggers, and a forward wall-clock jump fires a SystemTime trigger early.
+14. ~~Session claimed before the single-run guard.~~ Done 2026-10-13 (in the rewrite).
+15. ~~Pause with a mouse Hold toggle aborts the session.~~ Done 2026-10-13.
+16. ~~Condition waits skip the click-completion limit.~~ Done 2026-10-13.
+17. ~~Null children with timing crash the loader.~~ Done 2026-10-13.
+18. ~~Rejoin before release fails.~~ Gone with the helper sets.
+19. ~~Unpaired PlaybackPaused.~~ Done 2026-10-13.
+20. ~~Shutdown Remaining of minus 2026 years for count triggers.~~ Done 2026-10-13. A forward wall-clock jump still fires a "shut down at" time early; the 30 s countdown stays cancellable, and a wall-clock time is what the user asked for, so this stays as is.
 
 App / shell
 
-21. Deleting a macro or folder removes its hotkey binding in memory only (`MainWindow.xaml.cs:552`, `ProfileCommands.cs:261`); the orphan reloads at `:101` and blocks that key for toggles forever with no UI to clear it. Save after removal, or prune unknown MacroIds at load.
-22. `initialized` is true in the constructor (`MainWindow.xaml.cs:75`) before preferences load at `:103`; the header "Show overlay" box is outside the disabled `Pages`, so an early click writes XAML defaults over `preferences.json`.
-23. `Closed` (`MainWindow.xaml.cs:164-175`) dereferences `runtime` unguarded; in `--render-preview` mode runtime is null, so the screenshot tool crashes on shutdown. `Window_Closing` has the guard.
-24. Shell state is driven by string compares on runtime status text ("Could not continue", "Not started", `StartsWith("Recording")`, `== "Completed"`) in `MainWindow.xaml.cs:201,215,230`, `StatusOverlay.cs:115,137`, `QuickTestingRecording.cs:54`. A wording change breaks window restore and overlay colour with no compile error. Put an enum on `RuntimeSnapshot`.
-25. Overlay drag, saved X/Y and Anchor-to-target are dead: `PositionOverlay` (`:246-257`) re-pins to the target corner every refresh, `StatusOverlay.Place()` is never called, the Anchor box is collapsed, Unlock is unwired. Wire it or delete the options.
-26. Selecting a shutdown mode in the Settings dropdown flips the Actions-tab Loop box (`PowerCommands.cs:40,85`) before anything is armed. Only require Loop at arm time.
-27. The "wait for settings to finish loading" tray branch (`TrayCommands.cs:40-42`) is dead because the tray icon is created after `traySettingsLoaded`. Closing in the first second exits even with close-to-tray on.
+21. ~~Orphan hotkey bindings block keys forever.~~ Done 2026-10-13: bindings whose toggle no longer exists are pruned at load and the file is rewritten.
+22. ~~Early click overwrites saved preferences.~~ Done 2026-10-13: `initialized` stays false until the preferences are loaded.
+23. ~~Preview-render crash on shutdown.~~ Done 2026-10-13.
+24. ~~String compares on runtime status text.~~ Done 2026-10-13: `RuntimeSnapshot` exposes `Failed`, `Recording` and `Completed`; the strings live in one place.
+25. ~~Dead overlay drag/anchor options.~~ Done 2026-10-13: the options are gone; the preferences reader now ignores fields an older version wrote instead of resetting.
+26. ~~Shutdown dropdown flips Loop.~~ Done 2026-10-13: Loop is only switched on when a plan is armed.
+27. The "wait for settings to finish loading" tray branch (`TrayCommands.cs:40-42`) is dead because the tray icon is created after `traySettingsLoaded`. Closing in the first second exits even with close-to-tray on. Low impact; still open.
 
 ### C. Cleanup and launch prep
 

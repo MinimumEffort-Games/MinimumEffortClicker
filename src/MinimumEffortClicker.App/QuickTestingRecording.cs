@@ -51,7 +51,7 @@ public partial class MainWindow
                 var plan = SequenceCompiler.Compile(quickHistory.Current with { Steps = [step], Repetition = new() }, quickPoints);
                 if (!runtime.TryStartQuick(plan, 1, TimeSpan.FromMilliseconds(200), ResizeClicksBox.SelectedIndex == 0)) throw new InvalidOperationException(runtime.Snapshot.Reason);
                 while (runtime.Snapshot.Busy) { await Task.Delay(100, cancellation.Token); if (runtime.CanResume) { runtime.Stop("Test paused by safety; test again when ready."); break; } }
-                TestResultLabel.Text = runtime.Snapshot.State == "Completed" ? "Test completed — one action ran." : "Test ended: " + runtime.Snapshot.Reason;
+                TestResultLabel.Text = runtime.Snapshot.Completed ? "Test completed — one action ran." : "Test ended: " + runtime.Snapshot.Reason;
             }
         }
         catch (OperationCanceledException) { runtime.Stop("Action test aborted."); TestResultLabel.Text = "Test aborted. No further scanning or input."; }

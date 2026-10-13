@@ -21,16 +21,24 @@ public partial class MainWindow
             var capture = new ShortcutCaptureWindow(this, purpose);
             return capture.ShowDialog() == true ? capture.SelectedKey : null;
         }
+        catch (Exception ex) { ReasonLabel.Text = "The shortcut could not be changed: " + ex.Message; return null; }
         finally
         {
-            await runtime.Control.SuspendBindingsAsync(false);
+            try { await runtime.Control.SuspendBindingsAsync(false); }
+            catch (Exception ex) { ReasonLabel.Text = "Shortcuts could not be restored: " + ex.Message; }
             quickEditorOpen = false; bindingBusy = false; RefreshStatus();
         }
     }
     private async void CaptureStartKey_Click(object sender, RoutedEventArgs e)
     { if (await CaptureShortcut("Actions start / stop shortcut") is { } key) { selectedStartKey = key; await ApplyHotkeysAsync(); } }
     private async void CaptureStopKey_Click(object sender, RoutedEventArgs e)
-    { if (await CaptureShortcut("Stop All shortcut") is { } key) { selectedStopKey = key; await ApplyHotkeysAsync(); } }
+    {
+        if (await CaptureShortcut("Stop All shortcut") is not { } key) return;
+        selectedStopKey = key; await ApplyHotkeysAsync();
+        // F1–F11 are registered system-wide hotkeys; anything else relies on the input hook, which Windows does
+        // not deliver while an administrator window is in front.
+        if (ShortcutKeys.UsesHook(key)) ReasonLabel.Text = "Saved. Note: this Stop All key will not work while an administrator (elevated) window is in front. F1–F11 always work.";
+    }
     private async void CaptureRecordKey_Click(object sender, RoutedEventArgs e)
     { if (await CaptureShortcut("Record Macro / Stop shortcut") is { } key) { selectedRecordKey = key; await SetQuickRecordKey(); } }
     private async void CaptureToggleKey_Click(object sender, RoutedEventArgs e)

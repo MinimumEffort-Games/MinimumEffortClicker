@@ -18,7 +18,7 @@ public sealed class Preferences(string directory)
 {
     private static readonly JsonSerializerOptions Options = new()
     {
-        WriteIndented = true, MaxDepth = 8, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        WriteIndented = true, MaxDepth = 8, UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip, // Older versions may have written fields that no longer exist.
         IgnoreReadOnlyProperties = true
     };
     public UserPreferences Load()

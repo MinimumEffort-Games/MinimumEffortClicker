@@ -41,7 +41,12 @@ public sealed class ShutdownSchedule
             if (request is not { } plan) return new(false, false, TimeSpan.Zero, 0, message);
             long remainingLoops = Math.Max(0, plan.Loops - Math.Max(0, loops - initialLoops));
             if (plan.Trigger == ShutdownTrigger.CompletedClicks) remainingLoops = Math.Max(0, plan.Clicks - Math.Max(0, clicks - initialClicks));
-            var remaining = plan.Trigger == ShutdownTrigger.ActiveRunTime ? plan.ActiveTime - (active - initialActive) : plan.At - now;
+            var remaining = plan.Trigger switch
+            {
+                ShutdownTrigger.ActiveRunTime => plan.ActiveTime - (active - initialActive),
+                ShutdownTrigger.SystemTime => plan.At - now,
+                _ => TimeSpan.Zero // Count triggers have no time left to report; LoopsRemaining carries the number.
+            };
             bool reached = plan.Trigger is ShutdownTrigger.CompletedLoops or ShutdownTrigger.CompletedClicks ? remainingLoops == 0 : remaining <= TimeSpan.Zero;
             if (reached && !countdown) { countdown = true; countdownAt = monotonic; }
             if (countdown)

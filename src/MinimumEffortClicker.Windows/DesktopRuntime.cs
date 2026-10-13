@@ -10,7 +10,13 @@ public sealed record TargetWindow(nint Handle, int ProcessId, string Title)
     public override string ToString() => Title;
 }
 public sealed record RuntimeSnapshot(string State, string Reason, long InputsSent, int CompletedCycles,
-    TimeSpan Elapsed, bool Busy, bool CleanupPending, string CurrentAction = "", string NextAction = "", string HeldInputs = "None", string Activity = "Minimum Effort", long TotalCompletedLoops = 0, TimeSpan TotalActiveTime = default, bool PlaybackActive = false, IReadOnlyList<Guid>? ActiveHelperIds = null, bool ActionsActive = false, long TotalCompletedClicks = 0);
+    TimeSpan Elapsed, bool Busy, bool CleanupPending, string CurrentAction = "", string NextAction = "", string HeldInputs = "None", string Activity = "Minimum Effort", long TotalCompletedLoops = 0, TimeSpan TotalActiveTime = default, bool PlaybackActive = false, IReadOnlyList<Guid>? ActiveHelperIds = null, bool ActionsActive = false, long TotalCompletedClicks = 0)
+{
+    // The UI decides on these flags, never on the wording of State, so a text change cannot break behaviour.
+    public bool Failed => State is "Could not continue" or "Not started" or "Cleanup pending";
+    public bool Recording => Busy && State.StartsWith("Recording", StringComparison.Ordinal);
+    public bool Completed => State == "Completed";
+}
 public sealed record TargetClientFrame(int X, int Y, int Width, int Height, int Dpi);
 /// <summary>A saved toggle armed on its shortcut. Arming never starts anything; the shortcut press does.</summary>
 public sealed record ArmedHelper(MacroBinding Binding, HelperPlan Plan, string DisplayName);
@@ -48,9 +54,18 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         if (plan.KeyboardLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("The target keyboard layout differs from this recording.");
         if (Control.UnownedModifiersDown(ownsInput)) throw new ArgumentException("Release physical modifiers before starting Actions.");
         foreach (var control in plan.Inputs.Select(i => i.Control).Distinct())
-        { if (Control.UsesRegisteredInput(control)) throw new ArgumentException("An action presses a registered function-key shortcut. Change that shortcut or action first."); Control.SampleBeforeRun(control); if (Control.IsPhysicalDown(control)) throw new ArgumentException("Release the action keys/buttons before starting."); }
+        { if (Control.UsesRegisteredInput(control)) throw new ArgumentException("An action presses a registered function-key shortcut. Change that shortcut or action first."); SamplePhysical(control); if (Control.IsPhysicalDown(control)) throw new ArgumentException("Release the action keys/buttons before starting."); }
     }
+    // GetAsyncKeyState also reports the app's own injected holds. Sampling a key we own would record it as the
+    // user's physical hold and later refuse to release it, so owned inputs are never sampled.
+    private void SamplePhysical(InputControl control) { if (!ownsInput(control)) Control.SampleBeforeRun(control); }
     private InputControl[] activeControls = [];
+    private volatile bool activePointerMove; // Mirrors activeControls for the mouse hook, which must not allocate per move.
+    private void SetActiveControls(InputControl[] controls)
+    {
+        Volatile.Write(ref activeControls, controls);
+        activePointerMove = controls.Any(c => c.Kind == InputKind.PointerMove);
+    }
     private volatile string? activeLayout;
     private volatile TargetWindow? target;
     private volatile bool targetInvalidated;
@@ -135,7 +150,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         Control.PhysicalChanged += OnPhysical;
         Control.MouseObserved += sample =>
         {
-            if (!observingWindowActive && Volatile.Read(ref activeControls).Any(c => c.Kind == InputKind.PointerMove)) Stop("Stopped: physical pointer input takes priority.");
+            if (!observingWindowActive && activePointerMove) Stop("Stopped: physical pointer input takes priority.");
         };
         worker = new Thread(Worker) { IsBackground = true, Name = "MEC scheduler" };
         worker.Start();
@@ -147,6 +162,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         DesktopNative.EnumWindows((hwnd, _) =>
         {
             if (!DesktopNative.IsWindowVisible(hwnd)) return true;
+            // Suspended Store apps keep a visible but cloaked frame window; it can never be brought forward.
+            if (DesktopNative.DwmGetWindowAttribute(hwnd, 14, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
             ProbeNative.GetWindowThreadProcessId(hwnd, out uint pid);
             if (pid == Environment.ProcessId || pid == 0) return true;
             var title = new StringBuilder(512);
@@ -180,7 +197,14 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             targetId = Guid.NewGuid();
             state = "Ready"; reason = "Click target selected. Press Start, or use the start / stop hotkey while that window is active.";
         }
+        WatchTarget((uint)selected.ProcessId);
         NotifyChanged();
+    }
+    // Process.Exited and IsWindow checks already cover a closed target; the scoped destroy hook only makes it immediate.
+    private void WatchTarget(uint processId)
+    {
+        try { _ = Control.WatchTargetAsync(processId).ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted); }
+        catch (Exception) { /* The control thread is unavailable; its own error is already reported. */ }
     }
 
     public bool HasSelectedTarget => target is not null && !targetInvalidated;
@@ -195,6 +219,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             targetId = Guid.NewGuid(); state = "Ready";
             reason = "Desktop mode. Start minimises the clicker; clicks use physical screen coordinates. Stop All cancels.";
         }
+        WatchTarget(0);
         NotifyChanged();
     }
     public string? SelectedTargetTitle
@@ -343,11 +368,11 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 }
                 catch (ArgumentException ex) { problem = ex.Message; }
             }
-            if (!request.LeaveCursorFree && Control.ModifiersDown) problem = "Release Ctrl, Alt, Shift and Windows keys before starting.";
+            if (!request.LeaveCursorFree && Control.UnownedModifiersDown(ownsInput)) problem = "Release Ctrl, Alt, Shift and Windows keys before starting.";
             foreach (var control in controls)
             {
                 if (Control.UsesRegisteredInput(control)) problem = "An action presses a registered function-key shortcut. Change that shortcut or action first.";
-                Control.SampleBeforeRun(control);
+                SamplePhysical(control);
                 if (!request.LeaveCursorFree && Control.IsPhysicalDown(control)) problem = "Release the selected input before starting.";
             }
             if (problem is not null) { state = "Not started"; reason = problem; }
@@ -360,7 +385,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 cancellation = new();
                 playbackControl = new(); executor.Playback = playbackControl; runningRequest = request;
                 cancellationCallbacks = Task.CompletedTask;
-                pending = request; Volatile.Write(ref activeControls, controls);
+                pending = request; SetActiveControls(controls);
                 activeLayout = request.Sequence is { } keyboardSequence && keyboardSequence.Inputs.Any(i => i.Control.Kind == InputKind.ScanCode) ? keyboardSequence.KeyboardLayout : null;
                 observingWindowActive = StartsWithWindowWait(request.Sequence);
                 runningMacro = macroId;
@@ -432,7 +457,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 {
                     bool alreadyOn = session.ActiveIds.Contains(id);
                     if (!alreadyOn && (!TargetAvailable || playbackControl?.IsPaused == true || countingDown || ShutdownPending)) return;
-                    if (!alreadyOn) { if (Control.UsesRegisteredInput(toggleHold.Control)) throw new ArgumentException("The held key is also a registered shortcut. Change that shortcut first."); Control.SampleBeforeRun(toggleHold.Control); if (Control.IsPhysicalDown(toggleHold.Control) || Control.ModifiersDown) throw new ArgumentException("Release physical keys/buttons before enabling this hold."); }
+                    if (!alreadyOn) { if (Control.UsesRegisteredInput(toggleHold.Control)) throw new ArgumentException("The held key is also a registered shortcut. Change that shortcut first."); SamplePhysical(toggleHold.Control); if (Control.IsPhysicalDown(toggleHold.Control) || Control.UnownedModifiersDown(ownsInput)) throw new ArgumentException("Release physical keys/buttons before enabling this hold."); }
                     if (!session.Toggle(new(id, helper.DisplayName, toggleHold))) reason = "The session is finishing. Press the shortcut again once stopped.";
                     NotifyChanged(); return;
                 }
@@ -483,13 +508,13 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         lock (gate)
         {
             if (disposed || cancellation?.IsCancellationRequested != false || playbackControl?.CanResume != true) return false;
-            if (!(CursorFreeActive ? BackgroundTargetAvailable : TargetAvailable) || !Control.Available || ShutdownPending || !CursorFreeActive && Control.ModifiersDown
+            if (!(CursorFreeActive ? BackgroundTargetAvailable : TargetAvailable) || !Control.Available || ShutdownPending || !CursorFreeActive && Control.UnownedModifiersDown(ownsInput)
                 || !CoordinatesAvailable(runningRequest?.Sequence)
                 || activeLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase))
             { reason = "Resume refused. Restore the selected target, calibration and layout, and release physical modifiers."; NotifyChanged(); return false; }
             foreach (var input in actionToggleSession?.ActiveControls ?? activeControls)
             {
-                Control.SampleBeforeRun(input);
+                SamplePhysical(input);
                 if (!CursorFreeActive && Control.IsPhysicalDown(input)) { reason = "Release physical inputs before resuming."; NotifyChanged(); return false; }
             }
             if (!playbackControl.RequestResume()) return false;
@@ -779,7 +804,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             lock (gate) { if (disposed && pending is null) return; plan = pending; pending = null; stop = cancellation; instance = targetId; }
             if (plan is null || stop is null) continue;
             if (startDelay > TimeSpan.Zero) stop.Token.WaitHandle.WaitOne(startDelay);
-            foreach (var input in Volatile.Read(ref activeControls)) Control.SampleBeforeRun(input);
+            foreach (var input in Volatile.Read(ref activeControls)) SamplePhysical(input);
             countingDown = false;
             lock (gate)
             {
@@ -807,7 +832,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     // A finishing action must not replace the explicit Stop All reason or state.
                     if (stop.IsCancellationRequested) return;
                     activeLayout = started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.ScanCode) ? action.Plan.KeyboardLayout : null;
-                    Volatile.Write(ref activeControls, started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.PointerMove || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true))
+                    SetActiveControls(started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.PointerMove || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true))
                         ? [new(InputKind.PointerMove, 0)] : []);
                     if (started && !CoordinatesAvailable(action.Plan)) throw new InvalidOperationException("Recalibrate the action positions before playback.");
                     activity = started ? action.Name : "Toggles";
@@ -863,13 +888,22 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 busy = false; cancellation = null; stop.Dispose();
                 playbackControl?.Dispose(); playbackControl = null; executor.Playback = null; executor.PlaybackPaused = null; runningRequest = null;
                 actionToggleSession?.Dispose(); actionToggleSession = null; executor.SessionActionChanged = null; executor.SessionHoldsChanged = null;
-                Volatile.Write(ref activeControls, []);
+                SetActiveControls([]);
                 activeLayout = null;
                 observingWindowActive = false;
             }
             if (!result.CleanupSucceeded) QueueCleanupRetry();
             NotifyChanged();
         }
+    }
+
+    /// <summary>Last resort from an unhandled-exception handler: stop, give the worker a moment, then release owned
+    /// input. Takes no runtime lock (the faulting thread may hold it) and never throws.</summary>
+    public void EmergencyRelease()
+    {
+        try { Stop("Stopped: the application hit an unexpected error."); } catch (Exception) { }
+        for (int i = 0; i < 40 && busy; i++) Thread.Sleep(50);
+        try { if (executor.HasOwnedInput) executor.RetryCleanup(); } catch (Exception) { }
     }
 
     public void Dispose()

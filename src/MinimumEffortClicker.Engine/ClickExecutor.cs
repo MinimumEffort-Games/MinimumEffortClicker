@@ -210,8 +210,11 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
             next ?? previous.NextAction, Array.AsReadOnly(owned.ToArray())));
     }
 
-    public bool HasOwnedInput { get { lock (gate) return owned.Count != 0; } }
-    public bool Owns(InputControl input) { lock (gate) return owned.Contains(input); }
+    // Lock-free on purpose: the hook/control thread asks these while SendInput may be in flight under the gate,
+    // and SendInput itself waits for that hook thread. Every ownership change publishes a fresh snapshot before
+    // the gate is released, so readers see at most a microsecond-old ledger, never a deadlock.
+    public bool HasOwnedInput => Progress.Held.Count != 0;
+    public bool Owns(InputControl input) => Progress.Held.Contains(input);
 
     private sealed class Run
     {

@@ -34,6 +34,7 @@ internal static class DesktopNative
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] internal static extern nint GetModuleHandle(string? name);
     [DllImport("user32.dll")] internal static extern nint SetWinEventHook(uint min, uint max, nint module, WinEvent callback, uint pid, uint thread, uint flags);
     [DllImport("user32.dll")] internal static extern bool UnhookWinEvent(nint hook);
+    [DllImport("dwmapi.dll")] internal static extern int DwmGetWindowAttribute(nint hwnd, int attribute, out int value, int size);
     [DllImport("user32.dll")] internal static extern uint MapVirtualKey(uint code, uint mapType);
     [DllImport("user32.dll")] internal static extern uint MapVirtualKeyExW(uint code, uint mapType, nint layout);
     [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint count, Input[] input, int size);

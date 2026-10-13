@@ -23,7 +23,7 @@ public sealed class DesktopControl : IDisposable
     private readonly DesktopNative.Hook mouseCallback;
     private readonly DesktopNative.WinEvent windowCallback;
     private uint threadId;
-    private nint keyboardHook, mouseHook;
+    private nint keyboardHook, mouseHook, destroyHook;
     private readonly TriggerLatch trigger = new();
     private readonly Dictionary<int, (MacroBinding Binding, TriggerLatch Latch)> macroTriggers = [];
     private int toggleKey = 0x77, stopKey = 0x78;
@@ -131,6 +131,16 @@ public sealed class DesktopControl : IDisposable
         }
     }
 
+    /// <summary>Watch only the selected target's process for window destruction. A session-wide destroy hook
+    /// delivers every destroyed control in every app to this thread, which must also service the input hooks in time.</summary>
+    public Task<bool> WatchTargetAsync(uint processId) => QueueCommand(() =>
+    {
+        if (destroyHook != 0) { DesktopNative.UnhookWinEvent(destroyHook); destroyHook = 0; }
+        if (processId == 0) return true;
+        destroyHook = DesktopNative.SetWinEventHook(0x8001, 0x8001, 0, windowCallback, processId, 0, 0);
+        return destroyHook != 0;
+    });
+
     public Task<bool> ConfigureAsync(int toggle, int stop)
     {
         if (disposed) throw new ObjectDisposedException(nameof(DesktopControl));
@@ -195,8 +205,10 @@ public sealed class DesktopControl : IDisposable
                 lock (commandGate)
                 {
                     if (completion.Task.IsCompleted) return;
+                    // The caller receives the failure through its task; rethrowing here would end the whole
+                    // control thread and take the hooks and Stop All key with it.
                     try { completion.TrySetResult(apply()); }
-                    catch (Exception ex) { completion.TrySetException(ex); throw; }
+                    catch (Exception ex) { completion.TrySetException(ex); }
                     finally { pendingCommands.Remove(completion); }
                 }
             });
@@ -231,7 +243,8 @@ public sealed class DesktopControl : IDisposable
             var module = DesktopNative.GetModuleHandle(null);
             keyboardHook = DesktopNative.SetWindowsHookExW(13, keyboardCallback, module, 0);
             mouseHook = DesktopNative.SetWindowsHookExW(14, mouseCallback, module, 0);
-            foreach (uint evt in new uint[] { 3, 0x16, 0x8001 })
+            // Foreground and minimize events are global; the destroy event is scoped per target by WatchTargetAsync.
+            foreach (uint evt in new uint[] { 3, 0x16 })
             {
                 var hook = DesktopNative.SetWinEventHook(evt, evt, 0, windowCallback, 0, 0, 0);
                 if (hook == 0) throw new Win32Exception(Marshal.GetLastWin32Error(), "Foreground safety notifications unavailable.");
@@ -273,6 +286,7 @@ public sealed class DesktopControl : IDisposable
             ProbeNative.UnregisterHotKey(0, 41);
             ProbeNative.UnregisterHotKey(0, 1); ProbeNative.UnregisterHotKey(0, 2);
             foreach (var hook in hooks) DesktopNative.UnhookWinEvent(hook);
+            if (destroyHook != 0) DesktopNative.UnhookWinEvent(destroyHook);
             if (keyboardHook != 0) DesktopNative.UnhookWindowsHookEx(keyboardHook);
             if (mouseHook != 0) DesktopNative.UnhookWindowsHookEx(mouseHook);
         }
