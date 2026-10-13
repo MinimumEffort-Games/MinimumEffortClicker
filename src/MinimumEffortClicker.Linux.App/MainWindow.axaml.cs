@@ -372,6 +372,8 @@ public partial class MainWindow : Window
         var appearance = (Appearance)ThemeBox.SelectedIndex;
         ((App)Application.Current!).Appearance = appearance;
         AppTheme.Apply(appearance);
+        // Action rows carry their own brushes (colour conditions use ink colours), so rebuild them for the new theme.
+        RefreshQuickList(QuickActionList.SelectedIndex, preserveEditor: true);
         PersistPreferences();
     }
     private void LightTheme_Click(object sender, RoutedEventArgs e) => ThemeBox.SelectedIndex = 2;
