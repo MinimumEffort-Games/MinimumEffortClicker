@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using MinimumEffortClicker.Core;
+using MinimumEffortClicker.Engine;
 using MinimumEffortClicker.Linux;
 
 // Opt-in native probe for the Linux runtime. It sends real input, so it refuses to run anywhere but
@@ -141,5 +142,26 @@ var shot = DesktopScreenshot.Capture(runtime.Control.Helper!, CancellationToken.
 Check(shot.Bgr32Pixels.Length == shot.Bounds.Width * shot.Bounds.Height * 4, $"desktop screenshot {shot.Bounds.Width}x{shot.Bounds.Height}");
 
 runtime.UseDesktop();
+// Desktop mode: a colour wait in desktop pixels reads the screen on whichever monitor the area is on.
+var monitors = runtime.ListMonitors();
+Check(monitors.Count >= 1 && monitors[0].Primary, "monitors listed, main first: " + string.Join("; ", monitors));
+var desktop = runtime.GetTargetFrame();
+var onScreen = new CaptureRegion(new ClientPoint(client.X + 100, client.Y + 200, desktop.Width, desktop.Height, desktop.Dpi, CoordinateSpace.Desktop), 4, 4);
+var fill = new ConditionDefinition(ConditionKind.RegionColor, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(3)), onScreen, 0x3366CC, 8);
+var seen = runtime.TestCondition(fill, CancellationToken.None);
+Check(seen.Outcome == ConditionOutcome.Matched, "Desktop-mode colour wait saw the target fill on the monitor (" + seen.Outcome + ")");
+var picture = runtime.CaptureMonitorPreview(monitors[0], CancellationToken.None);
+Check(picture.Width == monitors[0].Width && picture.Pixels.Length == picture.Width * picture.Height * 4, $"monitor picture {picture.Width}x{picture.Height}");
+// The probe shell has a second, empty monitor: a wait there for the colour its picture shows is met, read from that monitor.
+if (monitors.Count > 1)
+{
+    var second = runtime.CaptureMonitorPreview(monitors[1], CancellationToken.None);
+    Check(second.Width == monitors[1].Width && second.Height == monitors[1].Height, $"second monitor picture {second.Width}x{second.Height} at {monitors[1].X},{monitors[1].Y}");
+    int at = (300 * second.Width + 10) * 4;
+    int background = second.Pixels[at + 2] << 16 | second.Pixels[at + 1] << 8 | second.Pixels[at];
+    var there = fill with { Region = new(new ClientPoint(monitors[1].X + 10, monitors[1].Y + 300, desktop.Width, desktop.Height, desktop.Dpi, CoordinateSpace.Desktop), 1, 1), Color = background, Kind = ConditionKind.PixelColor };
+    var met = runtime.TestCondition(there, CancellationToken.None);
+    Check(met.Outcome == ConditionOutcome.Matched && background != 0x3366CC, $"a wait on the second monitor saw its colour #{background:X6} ({met.Outcome})");
+}
 Console.WriteLine(failures.Count == 0 ? "PROBE PASSED" : "PROBE FAILED: " + string.Join("; ", failures));
 return failures.Count == 0 ? 0 : 1;

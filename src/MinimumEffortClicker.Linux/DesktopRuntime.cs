@@ -933,7 +933,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         return plan.Inputs.All(i => i.Position is null || i.Position.Matches(client.Width, client.Height, dpi)
             && (i.Position.Space != CoordinateSpace.Desktop || i.Position.X >= client.X && i.Position.Y >= client.Y
                 && i.Position.X < client.X + client.Width && i.Position.Y < client.Y + client.Height))
-            && plan.Conditions.All(c => c.Definition.Region is null || c.Definition.Region.Origin.Matches(client.Width, client.Height, dpi));
+            && plan.Conditions.All(c => c.Definition.Region is null
+                || c.Definition.Region.Origin.Space == CoordinateSpace.WindowClient && c.Definition.Region.Origin.Matches(client.Width, client.Height, dpi));
     }
 
     private static string HelperLabel(HelperPlan plan) => plan.Control.Kind switch

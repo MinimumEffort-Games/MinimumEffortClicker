@@ -23,7 +23,7 @@ set -u
 gsettings set org.gnome.shell disable-user-extensions false
 gsettings set org.gnome.shell enabled-extensions "['me-clicker-helper@minimumeffort-games.github.io']"
 gsettings set org.gnome.shell welcome-dialog-last-shown-version '999'
-gnome-shell --headless --wayland --no-x11 --virtual-monitor 1280x800 --wayland-display=mec-probe-0 > "$WORK/shell.log" 2>&1 &
+gnome-shell --headless --wayland --no-x11 --virtual-monitor 1280x800 --virtual-monitor 1024x768 --wayland-display=mec-probe-0 > "$WORK/shell.log" 2>&1 &
 SHELL_PID=$!
 for _ in $(seq 1 80); do
   gdbus introspect --session --dest io.github.MinimumEffortGames.ClickerHelper --object-path /io/github/MinimumEffortGames/ClickerHelper >/dev/null 2>&1 && break

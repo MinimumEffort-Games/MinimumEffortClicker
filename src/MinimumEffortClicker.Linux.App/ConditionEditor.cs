@@ -120,7 +120,9 @@ internal sealed class ConditionEditor : DialogWindow
         {
             int px = int.Parse(x.Text ?? ""), py = int.Parse(y.Text ?? "");
             var frame = recalibrate.IsChecked == true || region is null ? runtime.GetTargetFrame() : null;
-            var point = frame is null ? region!.Origin with { X = px, Y = py } : new ClientPoint(px, py, frame.Width, frame.Height, frame.Dpi);
+            // Desktop mode stores areas in absolute desktop pixels so they work on any monitor.
+            var point = frame is null ? region!.Origin with { X = px, Y = py }
+                : new ClientPoint(px, py, frame.Width, frame.Height, frame.Dpi, runtime.IsDesktopMode ? CoordinateSpace.Desktop : CoordinateSpace.WindowClient);
             var result = new CaptureRegion(point, KindIndex() == 1 ? 1 : int.Parse(width.Text ?? ""), KindIndex() == 1 ? 1 : int.Parse(height.Text ?? ""));
             result.Validate(); return result;
         }
@@ -134,10 +136,22 @@ internal sealed class ConditionEditor : DialogWindow
             {
                 var selectedRegion = ReadRegion();
                 if (selectedRegion.Width > 64 || selectedRegion.Height > 64) throw new ArgumentException("Capture at most 64 × 64 pixels, then enlarge the search region.");
-                if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
-                error.Text = "Capturing from the selected app. Stop All cancels.";
-                await Task.Delay(TimeSpan.FromMilliseconds(350), countdown.Token);
-                var sample = await Task.Run(() => runtime.CaptureTemplate(selectedRegion, countdown.Token), countdown.Token);
+                RasterSample sample;
+                if (selectedRegion.Origin.Space == CoordinateSpace.Desktop)
+                {
+                    // A monitor area: photograph the monitors with the clicker out of the way, then cut the area out.
+                    if (OwnerWindow is not MainWindow main) throw new InvalidOperationException("Open this from the clicker's Actions page.");
+                    error.Text = "Capturing from the monitor. Stop All cancels.";
+                    var (monitors, pictures) = await main.CaptureMonitorPicturesAsync(countdown.Token);
+                    sample = MainWindow.CutFromMonitorPictures(monitors, pictures, selectedRegion);
+                }
+                else
+                {
+                    if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
+                    error.Text = "Capturing from the selected app. Stop All cancels.";
+                    await Task.Delay(TimeSpan.FromMilliseconds(350), countdown.Token);
+                    sample = await Task.Run(() => runtime.CaptureTemplate(selectedRegion, countdown.Token), countdown.Token);
+                }
                 countdown.Token.ThrowIfCancellationRequested();
                 template = ImageTemplate.FromSample(sample); ShowTemplate();
                 error.Text = "Template captured into this draft. Playback remains stopped.";
@@ -158,14 +172,29 @@ internal sealed class ConditionEditor : DialogWindow
             runtime.Control.StopRequested += StopSelection;
             try
             {
-                if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
-                await Task.Delay(350, selection.Token);
-                var frame = runtime.GetTargetFrame();
-                var snapshot = await Task.Run(() => runtime.CaptureAuthoringPreview(selection.Token), selection.Token);
-                selection.Token.ThrowIfCancellationRequested();
-                if (closed) return;
-                Activate();
-                var picker = new RegionPicker(this, snapshot, frame, colourOnly || KindIndex() == 1 ? 1 : 256);
+                int side = colourOnly || KindIndex() == 1 ? 1 : 256;
+                RegionPicker picker;
+                if (runtime.IsDesktopMode)
+                {
+                    // Desktop mode: pick on any monitor.
+                    if (OwnerWindow is not MainWindow main) throw new InvalidOperationException("Open this from the clicker's Actions page.");
+                    var (monitors, pictures) = await main.CaptureMonitorPicturesAsync(selection.Token);
+                    selection.Token.ThrowIfCancellationRequested();
+                    if (closed) return;
+                    Activate();
+                    picker = new RegionPicker(this, monitors, pictures, runtime.GetTargetFrame(), side);
+                }
+                else
+                {
+                    if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
+                    await Task.Delay(350, selection.Token);
+                    var frame = runtime.GetTargetFrame();
+                    var snapshot = await Task.Run(() => runtime.CaptureAuthoringPreview(selection.Token), selection.Token);
+                    selection.Token.ThrowIfCancellationRequested();
+                    if (closed) return;
+                    Activate();
+                    picker = new RegionPicker(this, snapshot, frame, side);
+                }
                 using var abortPicker = selection.Token.Register(() => Dispatcher.Post(() => picker.Close()));
                 if (picker.ShowDialog() == true && picker.Region is { } chosen)
                 {

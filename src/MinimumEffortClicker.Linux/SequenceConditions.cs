@@ -28,7 +28,6 @@ public sealed partial class DesktopRuntime
         try
         {
             var selected = target;
-            if (selected is null) return new(ConditionOutcome.Unavailable, 0, 0);
             var waiter = new ConditionWaiter(clock, service is null ? new DeadlineWait(clock) : new ConcurrentConditionWait(clock, executor));
             RasterSample? baseline = null;
             var template = condition.Template?.Decode();
@@ -50,6 +49,26 @@ public sealed partial class DesktopRuntime
                 else matches = RegionComparison.MatchesColorCondition(image, condition.Kind, condition.Color, condition.Tolerance);
                 return new(matches ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, frameId);
             }
+            if (selected is null)
+            {
+                // Desktop mode: the area is in desktop pixels on any monitor and is read straight from the screen.
+                if (condition.Kind == ConditionKind.WindowActive || condition.Region is not { Origin.Space: CoordinateSpace.Desktop } area)
+                    return new(ConditionOutcome.Unavailable, 0, 0);
+                long screenFrame = 0;
+                return waiter.Wait(condition.Policy, new Observation(token =>
+                {
+                    byte[] pixels;
+                    try
+                    {
+                        var frame = GetTargetFrame();
+                        if (!area.Origin.Matches(frame.Width, frame.Height, frame.Dpi)) return new(ConditionObservationState.Unavailable, 0, screenFrame);
+                        pixels = DesktopScreenshot.CaptureArea(Helper, area.Origin.X, area.Origin.Y, area.Width, area.Height, token);
+                    }
+                    catch (Exception ex) when (ex is InvalidOperationException or ShellHelperException)
+                    { return new(ConditionObservationState.Unavailable, 0, screenFrame); }
+                    return Judge(new RasterSample(area.Width, area.Height, pixels), ++screenFrame, token);
+                }), budget.Token, testing, observed, service);
+            }
             if (condition.Kind == ConditionKind.WindowActive)
             {
                 long sample = 0;
@@ -60,6 +79,7 @@ public sealed partial class DesktopRuntime
                     return new(TargetAvailable ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, sample++);
                 }), budget.Token, testing, observed, service);
             }
+            if (condition.Region is not { Origin.Space: CoordinateSpace.WindowClient } windowArea) return new(ConditionOutcome.Unavailable, 0, 0);
             RegionCapture? capture = null;
             long lastFrame = 0;
             return waiter.Wait(condition.Policy, new Observation(token =>
@@ -67,7 +87,7 @@ public sealed partial class DesktopRuntime
                 CapturedRegion frame;
                 // The window went behind another one, was resized or closed: report it as unavailable rather than failing
                 // the whole run, so playback can wait for the window to come back.
-                try { capture ??= new RegionCapture(Helper, selected.Handle, condition.Region!, () => TargetAvailable); frame = capture.Capture(token); }
+                try { capture ??= new RegionCapture(Helper, selected.Handle, windowArea, () => TargetAvailable); frame = capture.Capture(token); }
                 catch (Exception ex) when (ex is InvalidOperationException or ShellHelperException) { return new(ConditionObservationState.Unavailable, 0, lastFrame); }
                 lastFrame = frame.FrameId;
                 return Judge(frame.Image, frame.FrameId, token);
@@ -121,10 +141,21 @@ public sealed partial class DesktopRuntime
         finally { EndTargetPreview("Snapshot ready. Playback remains stopped."); }
     }
 
+    /// <summary>A still picture of one monitor for the Desktop-mode area picker. Sends no input.</summary>
+    public WindowSnapshot CaptureMonitorPreview(DesktopMonitor monitor, CancellationToken stop)
+    {
+        if (!IsDesktopMode) throw new InvalidOperationException("Choose Desktop as the Click target to pick on a monitor.");
+        return new(monitor.Width, monitor.Height, DesktopScreenshot.CaptureArea(Helper, monitor.X, monitor.Y, monitor.Width, monitor.Height, stop), 0);
+    }
+
+    public IReadOnlyList<DesktopMonitor> ListMonitors() => DesktopMonitor.List(Helper);
+
     public RasterSample CaptureTemplate(CaptureRegion region, CancellationToken stop)
     {
         region.Validate();
         if (region.Width > 64 || region.Height > 64) throw new ArgumentException("Capture a template of at most 64×64 pixels; enlarge the search region afterwards if needed.");
+        // Monitor areas are cut from the app's monitor pictures, taken with the clicker out of the way.
+        if (region.Origin.Space != CoordinateSpace.WindowClient) throw new InvalidOperationException("This area is on a monitor. Capture it from the monitor picker.");
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(stop);
         BeginTargetPreview(reason => { _ = cancelled.CancelAsync(); });
         bool captured = false;

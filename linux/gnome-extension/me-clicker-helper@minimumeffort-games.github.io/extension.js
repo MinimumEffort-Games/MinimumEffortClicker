@@ -255,9 +255,13 @@ class Helper {
         });
     }
 
+    // The primary monitor comes first, so the app can call it the main monitor.
     GetMonitorsAsync(_params, invocation) {
-        this._handle(invocation, () => new GLib.Variant('(a(iiiid))', [Main.layoutManager.monitors.map(m =>
-            [m.x, m.y, m.width, m.height, m.geometry_scale ?? 1])]));
+        this._handle(invocation, () => {
+            const primary = Main.layoutManager.primaryMonitor;
+            const monitors = [...Main.layoutManager.monitors].sort((a, b) => (b === primary) - (a === primary));
+            return new GLib.Variant('(a(iiiid))', [monitors.map(m => [m.x, m.y, m.width, m.height, m.geometry_scale ?? 1])]);
+        });
     }
 
     ListWindowsAsync(_params, invocation) {
