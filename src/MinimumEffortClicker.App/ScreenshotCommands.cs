@@ -13,7 +13,6 @@ namespace MinimumEffortClicker.App;
 public partial class MainWindow
 {
     private ScreenshotSettings screenshotSettings = new();
-    private bool screenshotBusy;
     private CancellationTokenSource? screenshotCancellation;
     private int screenshotRequestQueued, selectedScreenshotKey;
     private long screenshotFinishedAt = -10000;
@@ -73,22 +72,22 @@ public partial class MainWindow
 
     private async void ApplyScreenshotKey_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime is null || screenshotBusy || bindingBusy || quickOperation) return;
+        if (runtime is null || !operations.Idle) return;
         if (ScreenshotHotkeyBox.IsChecked == true && !ScreenshotSettings.SupportedKey(selectedScreenshotKey))
         { ScreenshotHotkeyStatus.Text = "Choose a screenshot key first."; return; }
-        bindingBusy = true;
+        operations.Begin(Operation.Binding);
         try
         {
             screenshotSettings = screenshotSettings with { Hotkey = selectedScreenshotKey, HotkeyEnabled = ScreenshotHotkeyBox.IsChecked == true };
             await ConfigureScreenshotHotkey(); PersistPreferences();
         }
         catch (Exception ex) { ScreenshotHotkeyStatus.Text = "Could not apply screenshot key: " + ex.Message; }
-        finally { bindingBusy = false; }
+        finally { operations.End(Operation.Binding); }
     }
 
     private void ScreenshotOptions_Changed(object sender, RoutedEventArgs e)
     {
-        if (!initialized || screenshotBusy) return;
+        if (!initialized || operations.Has(Operation.Screenshot)) return;
         screenshotSettings = screenshotSettings with { Mode = ScreenshotModeBox.SelectedIndex, CopyToClipboard = ScreenshotClipboardBox.IsChecked == true,
             DailyFolders = ScreenshotDailyFoldersBox.IsChecked == true };
         PersistPreferences();
@@ -96,7 +95,7 @@ public partial class MainWindow
 
     private void ScreenshotFolder_Click(object sender, RoutedEventArgs e)
     {
-        if (screenshotBusy) return;
+        if (operations.Has(Operation.Screenshot)) return;
         var picker = new Microsoft.Win32.OpenFolderDialog { Title = "Save screenshots in", InitialDirectory = screenshotSettings.Folder ?? store.DirectoryPath };
         if (picker.ShowDialog(this) != true) return;
         screenshotSettings = screenshotSettings with { Folder = picker.FolderName };
@@ -144,14 +143,14 @@ public partial class MainWindow
         if (fromAction)
         {
             // A manual capture owns the same buffers/write slot. Macro actions wait, never drop.
-            while (screenshotBusy || Environment.TickCount64 - screenshotFinishedAt < 750)
+            while (operations.Has(Operation.Screenshot) || Environment.TickCount64 - screenshotFinishedAt < 750)
                 await Task.Delay(50, actionStop);
             actionStop.ThrowIfCancellationRequested();
             if (runtime is null || !initialized || closing || allowClose)
                 throw new InvalidOperationException("Screenshot saving is unavailable while closing.");
         }
-        if (runtime is null || !initialized || closing || allowClose || screenshotBusy || Environment.TickCount64 - screenshotFinishedAt < 750) return;
-        if ((!fromAction && quickOperation) || quickEditorOpen || bindingBusy || ioBusy || macroFileBusy || System.Windows.Interop.ComponentDispatcher.IsThreadModal
+        if (runtime is null || !initialized || closing || allowClose || operations.Has(Operation.Screenshot) || Environment.TickCount64 - screenshotFinishedAt < 750) return;
+        if ((!fromAction && operations.Has(Operation.Quick)) || operations.Has(Operation.Dialog) || operations.Any(Operation.Binding | Operation.Library) || operations.Has(Operation.MacroFile) || System.Windows.Interop.ComponentDispatcher.IsThreadModal
             || OwnedWindows.Cast<Window>().Any(w => w.IsVisible))
         {
             ScreenshotStatus.Text = "Finish the open dialog, recording, test, or overlay adjustment before taking a screenshot.";
@@ -162,7 +161,7 @@ public partial class MainWindow
         string? targetTitle = runtime.SelectedTargetTitle;
         bool wasVisible = IsVisible, reactivate = IsVisible && ProbeNative.GetForegroundWindow() == new System.Windows.Interop.WindowInteropHelper(this).Handle;
         bool hidden = false;
-        screenshotBusy = true; TakeScreenshotButton.IsEnabled = false;
+        operations.Begin(Operation.Screenshot); TakeScreenshotButton.IsEnabled = false;
         ScreenshotStatus.Text = settings.Mode == 1 ? "Preparing area selection…" : "Taking screenshot…";
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(actionStop); screenshotCancellation = cancellation;
         var token = cancellation.Token;
@@ -225,7 +224,7 @@ public partial class MainWindow
         }
         finally
         {
-            screenshotCancellation = null; screenshotBusy = false; screenshotFinishedAt = Environment.TickCount64;
+            screenshotCancellation = null; operations.End(Operation.Screenshot); screenshotFinishedAt = Environment.TickCount64;
             TakeScreenshotButton.IsEnabled = true;
             if (hidden && !closing && !allowClose && !exitRequested)
             {

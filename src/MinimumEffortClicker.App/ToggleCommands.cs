@@ -59,7 +59,7 @@ public partial class MainWindow
     }
     private async void SaveToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime is null || bindingBusy || ioBusy) return;
+        if (runtime is null || operations.Any(Operation.Binding | Operation.Library)) return;
         if (runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) { ReasonLabel.Text = "Stop playback and finish cleanup before changing toggles."; return; }
         Pages.IsEnabled = false;
         try
@@ -99,13 +99,13 @@ public partial class MainWindow
     }
     private async void ToggleEnabled_Changed(object sender, RoutedEventArgs e)
     {
-        if (!initialized || refreshingToggles || bindingBusy || ioBusy || sender is not CheckBox { DataContext: ToggleRow row } box) return;
+        if (!initialized || refreshingToggles || operations.Any(Operation.Binding | Operation.Library) || sender is not CheckBox { DataContext: ToggleRow row } box) return;
         if (box.IsChecked == true) enabledToggles.Add(row.Id); else enabledToggles.Remove(row.Id);
         await ApplyAvailability();
     }
     private async void DeleteToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (editingToggle is not { } id || runtime is null || bindingBusy || ioBusy) return;
+        if (editingToggle is not { } id || runtime is null || operations.Any(Operation.Binding | Operation.Library)) return;
         if (runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) { ReasonLabel.Text = "Stop playback before removing a toggle."; return; }
         var owner = profiles.FirstOrDefault(p => p.Macros.Any(m => m.Id == id));
         if (owner is null) return;
@@ -126,8 +126,8 @@ public partial class MainWindow
     /// <summary>Arm the checked toggles' shortcuts in the runtime. Arming never starts anything; a shortcut press does.</summary>
     private async Task ApplyAvailability()
     {
-        if (runtime is null || bindingBusy) return;
-        bindingBusy = true; TogglePage.IsEnabled = false;
+        if (runtime is null || operations.Has(Operation.Binding)) return;
+        operations.Begin(Operation.Binding); TogglePage.IsEnabled = false;
         try
         {
             var helpers = SavedToggles.Where(m => enabledToggles.Contains(m.Id)).Select(m => new ArmedHelper(macroBindings.GetValueOrDefault(m.Id)
@@ -141,7 +141,7 @@ public partial class MainWindow
             await runtime.ConfigureHelpersAsync([]);
             ReasonLabel.Text = "Toggles disabled: " + ex.Message;
         }
-        finally { bindingBusy = false; TogglePage.IsEnabled = true; RefreshToggleList(); }
+        finally { operations.End(Operation.Binding); TogglePage.IsEnabled = true; RefreshToggleList(); }
     }
     private string[] ToggleOverlayLines(RuntimeSnapshot snapshot)
     {

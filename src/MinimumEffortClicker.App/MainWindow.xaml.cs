@@ -21,14 +21,13 @@ public partial class MainWindow : Window
     private readonly HelperProfiles store;
     private readonly Preferences preferences;
     private UserPreferences? pendingPreferences;
-    private bool preferencesBusy;
     private List<ProfileDefinition> profiles = [];
     private readonly Dictionary<Guid, MacroBinding> macroBindings = [];
-    private bool bindingBusy;
     private readonly LocalBindings bindingsStore;
     private StatusOverlay? overlay;
     private OverlayOptions overlayOptions = new();
-    private bool initialized, closing, allowClose, ioBusy;
+    private bool initialized, closing, allowClose;
+    private readonly OperationGate operations = new();
     private int refreshPending;
     private (string State, string Reason)? lastRuntimeStatus;
     private string stopKey = "F9";
@@ -62,7 +61,7 @@ public partial class MainWindow : Window
             var intent = runtime.StopVersion;
             Dispatcher.BeginInvoke(() =>
             {
-                if (!closing && !allowClose && !screenshotBusy && !macroFileBusy && !ioBusy && intent == runtime.StopVersion && initialized && !quickOperation && !quickEditorOpen && !bindingBusy && !preferencesBusy && !System.Windows.Interop.ComponentDispatcher.IsThreadModal && quickValid && runtime.CanStartActions)
+                if (!closing && !allowClose && initialized && operations.Idle && !operations.Any(Operation.Dialog | Operation.Preferences) && intent == runtime.StopVersion && !System.Windows.Interop.ComponentDispatcher.IsThreadModal && quickValid && runtime.CanStartActions)
                     Run_Click(this, new RoutedEventArgs());
             });
         };
@@ -205,7 +204,7 @@ public partial class MainWindow : Window
             if (snapshot.Failed) RestoreDesktopOperationWindow(previous);
         }
         TargetLabel.IsEnabled = ToggleTargetLabel.IsEnabled = !snapshot.Busy && !snapshot.CleanupPending
-            && !quickOperation && !screenshotBusy && !macroFileBusy && !ioBusy && !bindingBusy && !closing;
+            && operations.Idle && !closing;
         if (!runtime.IsDesktopMode && !runtime.HasSelectedTarget && runtime.SelectedWindow is { } unavailable
             && (TargetLabel.SelectedItem as TargetWindow)?.Title != unavailable.Title + " (unavailable)")
             RefreshTargetChoices();
@@ -216,7 +215,7 @@ public partial class MainWindow : Window
         System.Windows.Automation.AutomationProperties.SetHelpText(RunButton, snapshot.State);
         FailureDetailLabel.Visibility = snapshot.CleanupPending || snapshot.Failed ? Visibility.Visible : Visibility.Collapsed;
         FailureDetailLabel.Text = snapshot.Reason;
-        PausePlaybackButton.IsEnabled = !quickOperation && (snapshot.PlaybackActive || runtime.CanResume);
+        PausePlaybackButton.IsEnabled = !operations.Has(Operation.Quick) && (snapshot.PlaybackActive || runtime.CanResume);
         PausePlaybackButton.Content = runtime.CanResume ? "Resume" : "Pause";
         var status = (snapshot.State, snapshot.Reason);
         if (lastRuntimeStatus != status)
@@ -229,7 +228,7 @@ public partial class MainWindow : Window
         HotkeyStatus.Text = runtime.Control.Available ? "" : runtime.Control.Error;
         timer.Interval = TimeSpan.FromMilliseconds(snapshot.Busy ? 100 : 1000);
         if (snapshot.Busy || shutdownSchedule.Armed) timer.Start(); else timer.Stop();
-        if (!screenshotBusy && (snapshot.Recording || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
+        if (!operations.Has(Operation.Screenshot) && (snapshot.Recording || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
@@ -271,13 +270,13 @@ public partial class MainWindow : Window
         {
             CancelScreenshot("Actions stopped."); quickCancellation?.Cancel(); runtime.StopActions(); return;
         }
-        if (runtime is null || screenshotBusy || quickOperation || macroFileBusy || ioBusy) return;
+        if (runtime is null || !operations.Idle) return;
         if (runtime.CanResume) { await ResumeActionsAsync(); return; }
         if (!TryQuickSequence(out var definition, out var plan, out var error)) { ReasonLabel.Text = error; return; }
         TestResultLabel.Text = "";
         WindowState? minimizedFrom = null;
         using var startCancellation = new CancellationTokenSource();
-        quickOperation = true; actionsStartPending = true; quickCancellation = startCancellation;
+        operations.Begin(Operation.Quick); actionsStartPending = true; quickCancellation = startCancellation;
         long startIntent = runtime.StopVersion;
         bool accepted = false;
         try
@@ -321,7 +320,7 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { ReasonLabel.Text = ex.Message; }
         finally
         {
-            quickCancellation = null; quickOperation = false; actionsStartPending = false;
+            quickCancellation = null; operations.End(Operation.Quick); actionsStartPending = false;
             if (!accepted) RestoreDesktopOperationWindow(minimizedFrom);
             RefreshStatus();
         }
@@ -361,7 +360,7 @@ public partial class MainWindow : Window
     private async Task ApplyHotkeysAsync()
     {
         if (runtime is null) return;
-        if (bindingBusy) { ReasonLabel.Text = "Wait for the current binding change."; return; }
+        if (operations.Has(Operation.Binding)) { ReasonLabel.Text = "Wait for the current binding change."; return; }
         if (runtime.Snapshot.Busy) { runtime.Stop("Stopped before changing global controls."); ReasonLabel.Text = "Wait for cleanup, then apply controls again."; return; }
         if (selectedStartKey == selectedStopKey || selectedStartKey == selectedRecordKey || selectedStopKey == selectedRecordKey
             || screenshotSettings.HotkeyEnabled && (selectedStartKey == screenshotSettings.Hotkey || selectedStopKey == screenshotSettings.Hotkey))
@@ -370,7 +369,7 @@ public partial class MainWindow : Window
             ToggleKeyBox.Content = ShortcutKeys.Label(appliedToggleKey); StopKeyBox.Content = ShortcutKeys.Label(appliedStopKey);
             ReasonLabel.Text = "Each global control needs a different key. The previous key was kept."; return;
         }
-        bindingBusy = true; Pages.IsEnabled = false;
+        operations.Begin(Operation.Binding); Pages.IsEnabled = false;
         try
         {
             enabledToggles.Clear(); RefreshToggleList();
@@ -401,7 +400,7 @@ public partial class MainWindow : Window
             if (success) ReasonLabel.Text = "Keybinds saved.";
         }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
-        finally { bindingBusy = false; Pages.IsEnabled = true; }
+        finally { operations.End(Operation.Binding); Pages.IsEnabled = true; }
     }
 
     private void ResizeClicks_Changed(object sender, SelectionChangedEventArgs e)
@@ -416,8 +415,8 @@ public partial class MainWindow : Window
         pendingPreferences = new(1, ThemeBox.SelectedIndex, appliedToggleKey,
             appliedStopKey, appliedHoldTrigger, OverlayBox.IsChecked == true, overlayOptions, false, appliedClickLimit, appliedKeepAwake, ResizeClicksBox.SelectedIndex == 0,
             CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey);
-        if (preferencesBusy) return;
-        preferencesBusy = true;
+        if (operations.Has(Operation.Preferences)) return;
+        operations.Begin(Operation.Preferences);
         try
         {
             while (pendingPreferences is { } next)
@@ -427,23 +426,23 @@ public partial class MainWindow : Window
             }
         }
         catch (Exception ex) { ReasonLabel.Text = "Preferences could not be saved: " + ex.Message; }
-        finally { preferencesBusy = false; }
+        finally { operations.End(Operation.Preferences); }
     }
 
     private async Task SaveProfiles(List<ProfileDefinition> updated)
     {
-        if (ioBusy) throw new InvalidOperationException("A profile operation is already in progress.");
-        ioBusy = true;
+        if (operations.Has(Operation.Library)) throw new InvalidOperationException("A profile operation is already in progress.");
+        operations.Begin(Operation.Library);
         try { await Task.Run(() => store.Save(updated)); profiles = updated; RefreshToggleList(); }
-        finally { ioBusy = false; }
+        finally { operations.End(Operation.Library); }
     }
     private async void SaveProfile_Click(object sender, RoutedEventArgs e)
     {
-        if (ioBusy || macroFileBusy || quickOperation || runtime?.Snapshot.Busy == true) { MacroSaveStatus.Text = "Stop before saving the macro."; return; }
+        if (!operations.Idle || runtime?.Snapshot.Busy == true) { MacroSaveStatus.Text = "Stop before saving the macro."; return; }
         string name = ActionMacroNameBox.Text.Trim();
         if (name.Length == 0) { MacroSaveStatus.Text = "Input macro name."; ActionMacroNameBox.Focus(); return; }
         if (!TryQuickSequence(out var sequence, out _, out var error)) { ReasonLabel.Text = error; return; }
-        macroFileBusy = true; RefreshStatus();
+        operations.Begin(Operation.MacroFile); RefreshStatus();
         string? exportedPath = null;
         try
         {
@@ -479,7 +478,7 @@ public partial class MainWindow : Window
             ReasonLabel.Text = "Macro saved. Use Load Macro to open it for editing or playback.";
         }
         catch (Exception ex) { MacroSaveStatus.Text = exportedPath is null ? "Could not save: " + ex.Message : $"File saved at {exportedPath}, but the local library update failed: {ex.Message}"; }
-        finally { macroFileBusy = false; RefreshStatus(); }
+        finally { operations.End(Operation.MacroFile); RefreshStatus(); }
     }
     private void LoadActionMacro(ProfileDefinition profile, MacroDefinition macro)
     {
@@ -503,13 +502,13 @@ public partial class MainWindow : Window
         CancelPowerSchedule();
         screenshotCancellation?.Cancel();
         quickCancellation?.Cancel(); quickRecorder?.Stop();
-        if (!screenshotBusy && !quickOperation && !runtime.Snapshot.Busy && !runtime.Snapshot.CleanupPending && !preferencesBusy && !ioBusy && !bindingBusy && !macroFileBusy) { allowClose = true; return; }
+        if (!operations.Has(Operation.Screenshot) && !operations.Has(Operation.Quick) && !runtime.Snapshot.Busy && !runtime.Snapshot.CleanupPending && !operations.Has(Operation.Preferences) && !operations.Has(Operation.Library) && !operations.Has(Operation.Binding) && !operations.Has(Operation.MacroFile)) { allowClose = true; return; }
         e.Cancel = true;
         if (closing) return;
         closing = true; runtime.Stop("Application closing.");
         for (int i = 0; i < 60 && runtime.Snapshot.Busy; i++) await Task.Delay(50);
-        for (int i = 0; i < 60 && (preferencesBusy || ioBusy || bindingBusy || quickOperation || macroFileBusy || screenshotBusy); i++) await Task.Delay(50);
-        if (preferencesBusy || ioBusy || bindingBusy || quickOperation || macroFileBusy || screenshotBusy) { closing = false; exitRequested = false; RestoreFromTray(); ReasonLabel.Text = "A save, capture or binding update is still finishing. Try exiting again shortly."; return; }
+        for (int i = 0; i < 60 && (!operations.Idle || operations.Has(Operation.Preferences)); i++) await Task.Delay(50);
+        if (!operations.Idle || operations.Has(Operation.Preferences)) { closing = false; exitRequested = false; RestoreFromTray(); ReasonLabel.Text = "A save, capture or binding update is still finishing. Try exiting again shortly."; return; }
         if (runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending)
         { closing = false; exitRequested = false; RestoreFromTray(); ReasonLabel.Text = "Release physical input and retry cleanup before exiting."; return; }
         allowClose = true;

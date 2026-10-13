@@ -17,7 +17,7 @@ public partial class MainWindow
     private SequenceStep? editingQuick;
     private string? originalQuickDefaultName;
     private Guid? loadedQuickProfile, loadedQuickMacro;
-    private bool loadingQuick, quickValid, quickOperation, quickEditorOpen;
+    private bool loadingQuick, quickValid;
     private bool useCursorLocation = true;
     private CancellationTokenSource? quickCancellation;
     private DesktopRecorder? quickRecorder;
@@ -97,8 +97,8 @@ public partial class MainWindow
     }
     private void RefreshQuickAvailability(RuntimeSnapshot snapshot)
     {
-        bool idle = !snapshot.Busy && !snapshot.CleanupPending && !quickOperation && !macroFileBusy && !ioBusy;
-        Navigation.IsEnabled = !quickOperation;
+        bool idle = !snapshot.Busy && !snapshot.CleanupPending && operations.Idle;
+        Navigation.IsEnabled = !operations.Has(Operation.Quick);
         // Keep the ScrollViewer enabled while its editing controls are locked.
         QuickFields.IsEnabled = QuickEditorTools.IsEnabled = QuickListTools.IsEnabled = QuickActionList.IsEnabled = idle;
         LoopBox.IsEnabled = idle;
@@ -106,13 +106,13 @@ public partial class MainWindow
         RunButton.Content = $"{(stopping ? "Stop" : "Start")} {MacroBindings.KeyLabel(appliedToggleKey)}";
         RunButton.SetResourceReference(FrameworkElement.StyleProperty, stopping ? "RedButton" : "GreenButton");
         System.Windows.Automation.AutomationProperties.SetName(RunButton, stopping ? "Stop Actions" : "Start Actions");
-        RunButton.IsEnabled = stopping || !quickOperation && !macroFileBusy && !ioBusy && !screenshotBusy && !quickEditorOpen && !bindingBusy && runtime?.Control.Available == true
+        RunButton.IsEnabled = stopping || operations.Idle && !operations.Has(Operation.Dialog) && runtime?.Control.Available == true
             && (runtime.CanResume || quickValid && runtime.CanStartActions);
         QuickRecordButton.IsEnabled = quickRecorder is not null || quickCancellation is not null || idle;
         QuickRecordButton.Content = $"{ShortcutKeys.Label(appliedRecordKey)} Record/Stop";
-        LoadMacroButton.IsEnabled = idle && !ioBusy;
+        LoadMacroButton.IsEnabled = idle;
         RecordDelaysBox.IsEnabled = RecordMovementBox.IsEnabled = idle;
-        QuickRecordKeyBox.IsEnabled = idle && !recordKeyChanging;
+        QuickRecordKeyBox.IsEnabled = idle && !operations.Has(Operation.RecordKey);
         ClearActionListButton.IsEnabled = idle && quickHistory.Current.Steps.Count > 0;
         if (quickRecorder?.Paused == true) QuickRecordStatus.Text = "Recording paused after focus changed. Finish to keep the captured actions.";
     }
@@ -218,9 +218,9 @@ public partial class MainWindow
         try { original = quickCondition is null ? new(kind, new(QuickScanInterval(), TimeSpan.FromSeconds(30))) : ReadQuickCondition(); }
         catch (ArgumentException ex) { ReasonLabel.Text = ex.Message; return; }
         var dialog = new ConditionEditor(this, runtime, original, coloursOnly: true);
-        quickEditorOpen = true;
+        operations.Begin(Operation.Dialog);
         try { if (dialog.ShowDialog() == true) { loadingQuick = true; quickCondition = dialog.Result; QuickScanIntervalBox.Text = Ms(quickCondition!.Policy.SampleInterval); ConditionKindBox.SelectedIndex = quickCondition.Kind switch { ConditionKind.ColorDisappears => 1, ConditionKind.RegionColor or ConditionKind.PixelColor => 0, _ => -1 }; ConditionLabel.Text = ConditionSummary(quickCondition!); ShowConditionColour(); } }
-        finally { loadingQuick = false; quickEditorOpen = false; }
+        finally { loadingQuick = false; operations.End(Operation.Dialog); }
     }
     private static string ConditionSummary(ConditionDefinition c) => (c.Kind switch
         { ConditionKind.RegionColor or ConditionKind.PixelColor => $"Colour #{c.Color:X6} appears", ConditionKind.ColorDisappears => $"Colour #{c.Color:X6} disappears", ConditionKind.ImageAppears => "Image appears", ConditionKind.ImageDisappears => "Image disappears", ConditionKind.RegionChanged => "Area changes", _ => "Window is active" })
@@ -370,7 +370,7 @@ public partial class MainWindow
     }
     private void QuickActive_Click(object sender, RoutedEventArgs e)
     {
-        if (loadingQuick || sender is not CheckBox { DataContext: QuickRow row } box || runtime?.Snapshot.Busy == true || quickOperation) return;
+        if (loadingQuick || sender is not CheckBox { DataContext: QuickRow row } box || runtime?.Snapshot.Busy == true || operations.Has(Operation.Quick)) return;
         var steps = quickHistory.Current.Steps.ToArray();
         var step = steps[row.Index] with { Enabled = box.IsChecked == true };
         steps[row.Index] = step;
@@ -397,7 +397,7 @@ public partial class MainWindow
     { if (QuickActionList.SelectedItem is QuickRow row) { quickHistory.Commit(SequenceEdits.Replace(quickHistory.Current, row.Index, 1, [], quickPoints)); RefreshQuickList(); NewAction_Click(sender, e); } }
     private void QuickClear_Click(object sender, RoutedEventArgs e)
     {
-        if (quickOperation || macroFileBusy || ioBusy || runtime?.Snapshot.Busy == true || runtime?.Snapshot.CleanupPending == true) return;
+        if (!operations.Idle || runtime?.Snapshot.Busy == true || runtime?.Snapshot.CleanupPending == true) return;
         quickHistory.Commit(quickHistory.Current with { Steps = [], KeyboardLayout = null });
         RefreshQuickList(); NewAction_Click(sender, e);
         ReasonLabel.Text = "Action List cleared. Undo restores it; saved macros are kept.";

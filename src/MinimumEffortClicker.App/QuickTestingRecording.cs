@@ -11,11 +11,11 @@ public partial class MainWindow
     { quickCancellation?.Cancel(); if (quickRecorder is null) runtime?.Stop("Action test aborted."); }
     private async void TestAction_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime is null || screenshotBusy || quickOperation || macroFileBusy || ioBusy || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) return;
+        if (runtime is null || !operations.Idle || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) return;
         SequenceStep step;
         try { step = ReadQuickAction() with { Enabled = true }; }
         catch (Exception ex) { TestResultLabel.Text = ex.Message; return; }
-        quickOperation = true;
+        operations.Begin(Operation.Quick);
         WindowState? minimizedFrom = null;
         bool observing = true;
         using var cancellation = new CancellationTokenSource(); quickCancellation = cancellation;
@@ -59,17 +59,16 @@ public partial class MainWindow
         finally
         {
             observing = false;
-            runtime.Control.StopRequested -= Cancel; quickCancellation = null; quickOperation = false;
+            runtime.Control.StopRequested -= Cancel; quickCancellation = null; operations.End(Operation.Quick);
             AbortTestButton.Visibility = Visibility.Collapsed; RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus();
         }
     }
-    private bool recordKeyChanging;
     private int appliedRecordKey = 0x79, selectedRecordKey = 0x79;
 
     private async Task SetQuickRecordKey()
     {
-        if (runtime is null || recordKeyChanging || !ShortcutKeys.Supported(selectedRecordKey)) return;
-        recordKeyChanging = true; RefreshStatus();
+        if (runtime is null || operations.Has(Operation.RecordKey) || !ShortcutKeys.Supported(selectedRecordKey)) return;
+        operations.Begin(Operation.RecordKey); RefreshStatus();
         try
         {
             int key = selectedRecordKey;
@@ -90,21 +89,21 @@ public partial class MainWindow
             if (!ready) ReasonLabel.Text = failure;
         }
         catch (Exception ex) { QuickRecordStatus.Text = ex.Message; }
-        finally { recordKeyChanging = false; RefreshStatus(); }
+        finally { operations.End(Operation.RecordKey); RefreshStatus(); }
     }
     private void QuickRecordHotkey() => Dispatcher.BeginInvoke(async () =>
     {
-        if (!quickEditorOpen && (quickOperation || currentPage == "QuickPage")) await RecordQuick();
+        if (!operations.Has(Operation.Dialog) && (operations.Has(Operation.Quick) || currentPage == "QuickPage")) await RecordQuick();
     });
     private async void QuickRecord_Click(object sender, RoutedEventArgs e) => await RecordQuick();
     private async Task RecordQuick()
     {
         if (quickRecorder is not null) { quickRecorder.Stop(); return; }
         if (quickCancellation is not null) { quickCancellation.Cancel(); runtime?.Stop("Current operation cancelled."); return; }
-        if (runtime is null || quickOperation || macroFileBusy || ioBusy || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) return;
+        if (runtime is null || !operations.Idle || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) return;
         bool includePauses = RecordDelaysBox.IsChecked == true;
         bool movement = RecordMovementBox.IsChecked == true;
-        quickOperation = true;
+        operations.Begin(Operation.Quick);
         WindowState? minimizedFrom = null;
         using var cancellation = new CancellationTokenSource(); quickCancellation = cancellation;
         void Cancel(string reason) { _ = cancellation.CancelAsync(); }
@@ -135,7 +134,7 @@ public partial class MainWindow
         catch (Exception ex) { QuickRecordStatus.Text = "Recording ended: " + ex.Message; }
         finally
         {
-            runtime.Control.StopRequested -= Cancel; quickRecorder = null; quickCancellation = null; quickOperation = false; RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus();
+            runtime.Control.StopRequested -= Cancel; quickRecorder = null; quickCancellation = null; operations.End(Operation.Quick); RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus();
         }
     }
 }

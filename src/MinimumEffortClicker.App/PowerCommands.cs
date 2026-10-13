@@ -106,8 +106,8 @@ public partial class MainWindow
     {
         if (runtime is null) return;
         var status = shutdownSchedule.Update(DateTimeOffset.Now, powerClock.Elapsed, snapshot.TotalCompletedLoops, snapshot.TotalActiveTime, snapshot.TotalCompletedClicks);
-        KeepAwakeBox.IsEnabled = !snapshot.Busy && !quickOperation;
-        bool editable = !snapshot.Busy && !snapshot.CleanupPending && !quickOperation && !macroFileBusy && !ioBusy && !status.Armed;
+        KeepAwakeBox.IsEnabled = !snapshot.Busy && !operations.Has(Operation.Quick);
+        bool editable = !snapshot.Busy && !snapshot.CleanupPending && operations.Idle && !status.Armed;
         ShutdownModeBox.IsEnabled = ShutdownNumberFields.IsEnabled = ShutdownTimeFields.IsEnabled = editable;
         ArmShutdownButton.IsEnabled = status.Armed || editable;
         ArmShutdownButton.Content = status.Armed ? "Cancel Shutdown" : "Enable shutdown…";
@@ -138,7 +138,7 @@ public partial class MainWindow
         shutdownNoticeText!.Text = status.Message;
         try
         {
-            if (shutdownSchedule.TryCommit(powerClock.Elapsed, !snapshot.Busy && !snapshot.CleanupPending && !preferencesBusy && !ioBusy && !bindingBusy, PcPower.RequestShutdown))
+            if (shutdownSchedule.TryCommit(powerClock.Elapsed, !snapshot.Busy && !snapshot.CleanupPending && !operations.Any(Operation.Preferences | Operation.Library | Operation.Binding), PcPower.RequestShutdown))
             {
                 runtime.ShutdownPending = false; runtime.CompletionLimit = long.MaxValue; runtime.ClickCompletionLimit = long.MaxValue; runtime.ActiveTimeLimit = TimeSpan.MaxValue;
                 CloseShutdownNotice();

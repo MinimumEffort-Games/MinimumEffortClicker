@@ -12,7 +12,6 @@ public partial class MainWindow
     private string MacroDirectory => Path.Combine(store.DirectoryPath, "Macros");
     private string? loadedMacroFile;
     private ProfileDefinition? loadedFileProfile;
-    private bool macroFileBusy;
 
     private async Task MakeSavedMacrosAvailable()
     {
@@ -24,8 +23,8 @@ public partial class MainWindow
     }
     private async void LoadMacroFile_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime?.Snapshot.Busy == true || quickOperation || ioBusy || macroFileBusy) { ReasonLabel.Text = "Stop before loading a macro."; return; }
-        macroFileBusy = true; RefreshStatus();
+        if (runtime?.Snapshot.Busy == true || !operations.Idle) { ReasonLabel.Text = "Stop before loading a macro."; return; }
+        operations.Begin(Operation.MacroFile); RefreshStatus();
         try
         {
             Directory.CreateDirectory(MacroDirectory);
@@ -42,7 +41,7 @@ public partial class MainWindow
             MacroSaveStatus.Text = $"Loaded ‘{macro.Name}’." + (HelperProfiles.DroppedWarning(dropped) is { } warning ? " " + warning : "");
         }
         catch (Exception ex) { MacroSaveStatus.Text = "Could not load: " + ex.Message; }
-        finally { macroFileBusy = false; loadingQuick = false; RefreshStatus(); }
+        finally { operations.End(Operation.MacroFile); loadingQuick = false; RefreshStatus(); }
     }
     private MacroDefinition? SelectFileMacro(MacroDefinition[] choices)
     {

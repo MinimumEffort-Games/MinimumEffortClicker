@@ -7,8 +7,8 @@ public partial class MainWindow
 {
     private async void QuickEyedropper_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime is null || runtime.Snapshot.Busy || quickOperation) return;
-        quickOperation = true; quickEditorOpen = true;
+        if (runtime is null || runtime.Snapshot.Busy || operations.Has(Operation.Quick)) return;
+        operations.Begin(Operation.Quick); operations.Begin(Operation.Dialog);
         using var cancellation = new CancellationTokenSource(); quickCancellation = cancellation;
         void Cancel(string reason) { _ = cancellation.CancelAsync(); }
         runtime.Control.StopRequested += Cancel; RefreshStatus();
@@ -31,6 +31,6 @@ public partial class MainWindow
         }
         catch (OperationCanceledException) { ReasonLabel.Text = "Colour selection cancelled."; }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
-        finally { runtime.Control.StopRequested -= Cancel; quickCancellation = null; quickOperation = false; quickEditorOpen = false; RefreshStatus(); }
+        finally { runtime.Control.StopRequested -= Cancel; quickCancellation = null; operations.End(Operation.Quick); operations.End(Operation.Dialog); RefreshStatus(); }
     }
 }

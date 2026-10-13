@@ -10,11 +10,11 @@ public partial class MainWindow
     private InputControl selectedHeldInput = InputControl.Key(0x11);
     private async Task<int?> CaptureShortcut(string purpose)
     {
-        if (runtime is null || screenshotBusy || bindingBusy || ioBusy || quickOperation) return null;
+        if (runtime is null || !operations.Idle) return null;
         runtime.Stop("Stopped before choosing an input.");
         for (int i = 0; i < 80 && runtime.Snapshot.Busy; i++) await Task.Delay(25);
         if (runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) { ReasonLabel.Text = "Finish input cleanup before choosing a key."; return null; }
-        quickEditorOpen = true; bindingBusy = true;
+        operations.Begin(Operation.Dialog); operations.Begin(Operation.Binding);
         try
         {
             await runtime.Control.SuspendBindingsAsync(true);
@@ -26,7 +26,7 @@ public partial class MainWindow
         {
             try { await runtime.Control.SuspendBindingsAsync(false); }
             catch (Exception ex) { ReasonLabel.Text = "Shortcuts could not be restored: " + ex.Message; }
-            quickEditorOpen = false; bindingBusy = false; RefreshStatus();
+            operations.End(Operation.Dialog); operations.End(Operation.Binding); RefreshStatus();
         }
     }
     private async void CaptureStartKey_Click(object sender, RoutedEventArgs e)
@@ -55,7 +55,7 @@ public partial class MainWindow
     }
     private async void ResetGlobalKeys_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime is null || bindingBusy || recordKeyChanging || quickOperation || screenshotBusy || ioBusy) return;
+        if (runtime is null || !operations.Idle || operations.Has(Operation.RecordKey)) return;
         runtime.Stop("Stopped before resetting keybinds.");
         for (int i = 0; i < 80 && runtime.Snapshot.Busy; i++) await Task.Delay(25);
         if (runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) { ReasonLabel.Text = "Finish input cleanup before resetting keybinds."; return; }
