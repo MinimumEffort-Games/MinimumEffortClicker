@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MinimumEffortClicker.Core/MinimumEffortClicker.Core.csproj" />
+    <Project Path="src/MinimumEffortClicker.Engine/MinimumEffortClicker.Engine.csproj" />
+    <Project Path="src/MinimumEffortClicker.Storage/MinimumEffortClicker.Storage.csproj" />
+    <Project Path="src/MinimumEffortClicker.Linux/MinimumEffortClicker.Linux.csproj" />
+    <Project Path="src/MinimumEffortClicker.Linux.App/MinimumEffortClicker.Linux.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Core.Tests/Core.Tests.csproj" />
+    <Project Path="tests/Engine.Tests/Engine.Tests.csproj" />
+    <Project Path="tests/Linux.Tests/Linux.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/LinuxProbe/LinuxProbe.csproj" />
+  </Folder>
+</Solution>

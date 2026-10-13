@@ -1,6 +1,7 @@
 # Minimum Effort Clicker
 
-A free, open-source mouse and keyboard automation app for **Windows 11 x64**.
+A free, open-source mouse and keyboard automation app for **Windows 11 x64**, with a
+**Linux preview** for GNOME (see [Linux](docs/LINUX.md)).
 Repeat clicks and keys, create hold/spam toggles, record editable action lists,
 and save screenshots. Runs locally and offline; no account or subscription is
 needed to use the app.
@@ -33,6 +34,14 @@ the ZIP. Keep the full runtime folder together. For upgrades, keep the old folde
 and its Data, export reviewed macros, and import into a fresh extraction. Current
 storage schema is **15**; older versions may reject newer files.
 
+## Linux preview
+
+The Linux build (`MinimumEffortClicker-<version>-linux-x64.tar.gz`) has the same pages and controls,
+reads the same macro files and needs GNOME (tested on Ubuntu 26.04, Wayland). Extract it, run
+`./install.sh`, then log out and back in once so GNOME loads the small ME Clicker helper extension.
+Recording and hotkeys in every app also need a one-time `sudo` input-access rule. Full steps,
+what the helper can do and current limits are in [docs/LINUX.md](docs/LINUX.md).
+
 ## Trust and limitations
 
 This preview has **no publisher Authenticode signature**. Windows SmartScreen or
@@ -62,6 +71,11 @@ Core/Engine contain the domain and scheduler without WPF dependencies. App is
 WPF, Windows handles native integration, Storage handles bounded versioned JSON,
 and Vision handles explicit local capture/conditions. Dependencies and lock files
 are pinned. Release builds are self-contained and untrimmed.
+
+The Linux build shares Core, Engine and Storage. `MinimumEffortClicker.Linux` holds its native
+adapters (GNOME helper over D-Bus, evdev, logind) and `MinimumEffortClicker.Linux.App` is the
+Avalonia UI; they build from `MinimumEffortClicker.Linux.slnx` with `scripts/linux/*.sh` and
+never change the Windows solution. See [docs/LINUX.md](docs/LINUX.md#build-from-source).
 
 ## License and contributions
 

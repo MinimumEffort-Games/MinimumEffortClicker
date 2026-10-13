@@ -1,5 +1,13 @@
 # Third-party dependency inventory
 
+The Linux build (2026-10-13) adds Avalonia 12.1.3 (UI), Avalonia.Controls.DataGrid 12.1.2 and
+Tmds.DBus.Protocol 0.94.1 (D-Bus), with their transitive SkiaSharp, HarfBuzzSharp, MicroCom and
+ANGLE packages. All declare MIT except ANGLE (BSD-3-Clause, copied notice). They are used only by the
+Linux projects; the Windows app's dependency graph and lock files are unchanged. Avalonia's
+build-time usage statistics are switched off by the Linux app project and `scripts/linux/common.sh`
+(`AVALONIA_TELEMETRY_OPTOUT=1`). `scripts/linux/update-license-inventory.py` is the Linux
+counterpart of `scripts/Update-LicenseInventory.ps1` and writes the same inventory format.
+
 R19 adds screenshot macro scheduling using existing .NET/WPF/Win32 components from R18.
 No new package, native library, asset or service; SDK/package pins and licence inventory unchanged.
 
@@ -13,8 +21,13 @@ The portable package includes these dependency notices and its actual runtime ve
 | CommunityToolkit.Mvvm | 8.4.2 | MIT | App shell MVVM |
 | Microsoft.NET.Test.Sdk | 18.10.1 | MIT | Tests only |
 | MSTest.TestAdapter / MSTest.TestFramework | 4.5.1 | MIT | Tests only |
+| Avalonia, Avalonia.Desktop, Avalonia.Themes.Fluent | 12.1.3 | MIT | Linux app UI |
+| Avalonia.Controls.DataGrid | 12.1.2 | MIT | Linux app UI |
+| SkiaSharp / HarfBuzzSharp (Avalonia dependencies) | 3.119.4 / 8.3.1.3 | MIT | Linux app rendering |
+| Avalonia.Angle.Windows.Natives (Avalonia dependency) | 2.1.27548.20260419 | BSD-3-Clause | Not used on Linux |
+| Tmds.DBus.Protocol | 0.94.1 | MIT | Linux D-Bus (GNOME helper, logind, notifications) |
 
-`licenses/nuget-inventory.json` lists all **13** unique resolved NuGet packages, including transitive
+`licenses/nuget-inventory.json` lists all **40** unique resolved NuGet packages, including transitive
 test tooling, their declared licence expressions, exact repository commits, package hashes and
 available copied notices. All current package metadata declares MIT. Detailed bundled notices are
 retained under `licenses/nuget/`; .NET's full archive notices are under `licenses/dotnet/`.
