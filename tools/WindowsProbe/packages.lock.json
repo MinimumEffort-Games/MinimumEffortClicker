@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0-windows10.0.22000": {
+      "minimumeffortclicker.core": {
+        "type": "Project"
+      },
+      "minimumeffortclicker.engine": {
+        "type": "Project",
+        "dependencies": {
+          "MinimumEffortClicker.Core": "[1.0.0, )"
+        }
+      },
+      "minimumeffortclicker.vision": {
+        "type": "Project",
+        "dependencies": {
+          "MinimumEffortClicker.Core": "[1.0.0, )"
+        }
+      },
+      "minimumeffortclicker.windows": {
+        "type": "Project",
+        "dependencies": {
+          "MinimumEffortClicker.Engine": "[1.0.0, )",
+          "MinimumEffortClicker.Vision": "[1.0.0, )"
+        }
+      }
+    },
+    "net10.0-windows10.0.22000/win-x64": {}
+  }
+}

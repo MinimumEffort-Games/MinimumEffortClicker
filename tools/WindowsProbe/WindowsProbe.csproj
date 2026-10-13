@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(MecWindowsTargetFramework)</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ApplicationManifest>../../src/Windows.manifest</ApplicationManifest>
+    <AssemblyName>MinimumEffortClicker.WindowsProbe</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../src/MinimumEffortClicker.Windows/MinimumEffortClicker.Windows.csproj" /></ItemGroup>
+  <ItemGroup><Compile Include="../../src/MinimumEffortClicker.App/StatusOverlay.cs" Link="StatusOverlay.cs" /></ItemGroup>
+  <ItemGroup><Resource Include="../../assets/brand/source/logo.png" Link="Assets/Logo.png" /></ItemGroup>
+  <ItemGroup><Compile Include="../../src/MinimumEffortClicker.App/TargetPreviewWindow.cs" Link="TargetPreviewWindow.cs" /></ItemGroup>
+</Project>

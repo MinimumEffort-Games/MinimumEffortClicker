@@ -1,0 +1,162 @@
+[
+  {
+    "package": "CommunityToolkit.Mvvm",
+    "version": "8.4.2",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/CommunityToolkit/dotnet",
+    "commit": "35dfe7b12da0e64384bfaec7ebc0883196a89f9f",
+    "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg==",
+    "localNotices": [
+      "licenses/nuget/CommunityToolkit.Mvvm/8.4.2/License.md",
+      "licenses/nuget/CommunityToolkit.Mvvm/8.4.2/ThirdPartyNotices.txt"
+    ]
+  },
+  {
+    "package": "Microsoft.ApplicationInsights",
+    "version": "2.23.0",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/Microsoft/ApplicationInsights-dotnet",
+    "commit": "2faa7e8b157a431daa2e71785d68abd5fa817b53",
+    "contentHash": "nWArUZTdU7iqZLycLKWe0TDms48KKGE6pONH2terYNa8REXiqixrMOkf1sk5DHGMaUTqONU2YkS4SAXBhLStgw==",
+    "localNotices": []
+  },
+  {
+    "package": "Microsoft.CodeCoverage",
+    "version": "18.10.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/vstest",
+    "commit": "87dfd4b2d2bacd91ad69e009ade6f4715b3b46ec",
+    "contentHash": "tV7tCyp/t+DuwQugLkCeUN7NBFFB4fEGRPr0gkMQ2nQgAvQQjmGlZZi1dsLzbyoe/A0mbnKybmkIh8qhT9p4Zw==",
+    "localNotices": [
+      "licenses/nuget/Microsoft.CodeCoverage/18.10.1/ThirdPartyNotices.txt"
+    ]
+  },
+  {
+    "package": "Microsoft.NET.Test.Sdk",
+    "version": "18.10.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/vstest",
+    "commit": "87dfd4b2d2bacd91ad69e009ade6f4715b3b46ec",
+    "contentHash": "SxCFvJE/2ltUQgCgv6+Ixagohw4sZc9hM7Wid2foaNM7paBscktoHLoRDz91fW8wbHG87Rg9Ku59/8PXumqUrA==",
+    "localNotices": []
+  },
+  {
+    "package": "Microsoft.Testing.Extensions.Telemetry",
+    "version": "2.5.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/testfx",
+    "commit": "0bf77e3aedbf86f1fa16220bc951d3b52ba56763",
+    "contentHash": "mu2iyoHovwl0q1mGeeRU0h8+LALXC7HqbxniLa1shTKYdJGl+KPoCEgjWIQ8MLzk1tlTGPOfg1JsxdH3RxhMCA==",
+    "localNotices": []
+  },
+  {
+    "package": "Microsoft.Testing.Extensions.TrxReport.Abstractions",
+    "version": "2.5.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/testfx",
+    "commit": "0bf77e3aedbf86f1fa16220bc951d3b52ba56763",
+    "contentHash": "DYTZAguaHz0wNJdHDTTGYOXtnlDoLoIbTMDKSApNNcytm55DJcnwpwELfQGLk5DB5QlgaEjNhnGo1Pu5QvL5VA==",
+    "localNotices": []
+  },
+  {
+    "package": "Microsoft.Testing.Platform.MSBuild",
+    "version": "2.5.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/testfx",
+    "commit": "0bf77e3aedbf86f1fa16220bc951d3b52ba56763",
+    "contentHash": "lYawcAwY+h76rQmpma2n0HaL8zkOFbbKapso0Eb+uOAUQn7333pIByLftEuiO67csAoZufHNMwi6PqhNemWQXA==",
+    "localNotices": []
+  },
+  {
+    "package": "Microsoft.Testing.Platform",
+    "version": "2.5.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/testfx",
+    "commit": "0bf77e3aedbf86f1fa16220bc951d3b52ba56763",
+    "contentHash": "FAMaFFWnULW+hDHMb40Qzhcgz9cAU2/EtgRCBNX/DdQoKo0sPG2EiY+w7bQdl/BgHnf/DbpXLbf5Xy0o15M8NA==",
+    "localNotices": []
+  },
+  {
+    "package": "Microsoft.TestPlatform.ObjectModel",
+    "version": "18.10.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/vstest",
+    "commit": "87dfd4b2d2bacd91ad69e009ade6f4715b3b46ec",
+    "contentHash": "o+PuLDRVp1iwiVAPBADZItXgm9Ck23XtPhE4kZtZVi0uYnMiiz1Dx9Cjh75kJ+ijfqnORL3VOTOaQVKi0f/ixg==",
+    "localNotices": []
+  },
+  {
+    "package": "Microsoft.TestPlatform.TestHost",
+    "version": "18.10.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/vstest",
+    "commit": "87dfd4b2d2bacd91ad69e009ade6f4715b3b46ec",
+    "contentHash": "KYz2omqkoz9E2mWa4fdgT+Ycie1wi5968EmyJlusjlp87RxxtA2FvDm8tcBEYIDzLnkWGnsKjE4d13Z7/rxkQA==",
+    "localNotices": [
+      "licenses/nuget/Microsoft.TestPlatform.TestHost/18.10.1/ThirdPartyNotices.txt"
+    ]
+  },
+  {
+    "package": "Microsoft.Windows.SDK.NET.Ref",
+    "version": "10.0.22000.87",
+    "licenseType": "url",
+    "license": "Microsoft Windows SDK licence",
+    "licenseUrl": "https://aka.ms/WinSDKLicenseURL",
+    "contentHash": "xAYCTPTi0E/9BmVm46sWrILT2XHiMUxCFEh7pJFR8dJ0v1tdtLaJdRIPH4HT5bdBXAm1R7Nm2l6eknp+jA5IVA==",
+    "localNotices": [],
+    "implicitFrameworkReference": true
+  },
+  {
+    "package": "MSTest.Analyzers",
+    "version": "4.5.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/testfx",
+    "commit": "0bf77e3aedbf86f1fa16220bc951d3b52ba56763",
+    "contentHash": "oa0w2QC/T3U+ulUn38AmbWE/wnEMtqSFRb2z277z5SpswqNc/ySWcAVlG1qEWUxzm+NztCjkoeLAn/83gIx3ug==",
+    "localNotices": []
+  },
+  {
+    "package": "MSTest.TestAdapter",
+    "version": "4.5.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/testfx",
+    "commit": "0bf77e3aedbf86f1fa16220bc951d3b52ba56763",
+    "contentHash": "0q9TkkpOF3YjXGMfjcQG5bftpu/NPhVqKFL4DLUDJK6CGO4si5z+PVxVL1fM6TXEFSHnCM09E1691nhn8GUTYg==",
+    "localNotices": []
+  },
+  {
+    "package": "MSTest.TestFramework",
+    "version": "4.5.1",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/microsoft/testfx",
+    "commit": "0bf77e3aedbf86f1fa16220bc951d3b52ba56763",
+    "contentHash": "mdYgQYAtDGq/IixJq7oD6VvIYAz+mRniGMxyhlZ2wQOpIeFe6oFQ/RniT3i7c3ZfCTKykhI6AB0wqRYVEWZDgQ==",
+    "localNotices": []
+  }
+]

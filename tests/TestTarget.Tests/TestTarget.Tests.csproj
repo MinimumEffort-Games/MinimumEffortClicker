@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <!-- Compile only the receiver's UI-free model: these tests cannot load or drive a WPF window. -->
+    <Compile Include="../../src/MinimumEffortClicker.TestTarget/InputMonitor.cs" Link="InputMonitor.cs" />
+  </ItemGroup>
+</Project>

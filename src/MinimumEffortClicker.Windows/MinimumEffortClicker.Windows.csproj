@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>$(MecWindowsTargetFramework)</TargetFramework></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../MinimumEffortClicker.Vision/MinimumEffortClicker.Vision.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../MinimumEffortClicker.Engine/MinimumEffortClicker.Engine.csproj" /></ItemGroup>
+</Project>

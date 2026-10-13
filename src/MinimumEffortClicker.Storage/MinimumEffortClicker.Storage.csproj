@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../MinimumEffortClicker.Core/MinimumEffortClicker.Core.csproj" /></ItemGroup>
+</Project>

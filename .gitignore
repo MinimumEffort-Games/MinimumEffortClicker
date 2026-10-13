@@ -1,0 +1,22 @@
+**/bin/
+**/obj/
+.vs/
+.tools/
+artifacts/
+TestResults/
+*.user
+
+# Generated guest bundles and local runtime data (source/assets remain tracked).
+/bundle/
+/ProbeBundle.zip
+/VM-Project-Handoff.zip
+**/Data/
+*.log
+*.dmp
+*.tmp
+*.pfx
+*.p12
+*.pem
+*.key
+.env
+.env.*
