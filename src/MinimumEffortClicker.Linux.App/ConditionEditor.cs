@@ -88,7 +88,7 @@ internal sealed class ConditionEditor : DialogWindow
         panel.Children.Remove(recalibrate); advancedPanel.Children.Add(recalibrate);
         var advanced = new Expander { Header = "Advanced: coordinates, scan speed and matching", Content = advancedPanel, Margin = new Thickness(0, 8, 0, 8) };
         panel.Children.Add(advanced);
-        Label("Pause releases held inputs and waits at this condition. Explicitly resume to retry with fresh observations. Focus restoration never resumes input.");
+        Label("Pause releases held inputs and waits at this condition. Resume to retry with fresh observations. (If the target window only went behind another window, it continues by itself when the window is back.)");
         void RefreshFields()
         {
             bool visual = KindIndex() != 2;

@@ -97,6 +97,39 @@ Check(WaitFor(() => !runtime.Snapshot.Busy, 2000), $"Stop All ended the hold in 
 Console.WriteLine($"State {runtime.Snapshot.State}: {runtime.Snapshot.Reason} · inputs {runtime.Snapshot.InputsSent}");
 Check(!runtime.Snapshot.CleanupPending, "held button released after Stop All");
 
+// A looping run whose window target goes behind another window pauses and continues by itself once the
+// target is back in front for half a second. A pause the user asked for stays paused.
+var other = runtime.ListTargets().FirstOrDefault(t => t.Title == "MEC Probe Other");
+Check(other is not null, "second probe window listed");
+if (other is not null)
+{
+    runtime.BringTargetForward();
+    Check(WaitFor(() => runtime.Control.Helper!.GetFocusWindow() == target.Handle), "target in front before the loop");
+    var loop = SequenceCompiler.Compile(new([QuickActions.Click(PointerButton.Left, QuickClickKind.Single, TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(80), TimeSpan.Zero, point)], Repetition: new(0)));
+    Check(runtime.TryStartQuick(loop, 1, TimeSpan.Zero, false), "loop started: " + runtime.Snapshot.Reason);
+    Check(WaitFor(() => runtime.Snapshot.InputsSent >= 4), "loop clicking");
+    runtime.Control.Helper!.ActivateWindow(other.Handle);
+    Check(WaitFor(() => runtime.Snapshot.State == "Paused"), $"loop paused when the target went behind ({runtime.Snapshot.State}: {runtime.Snapshot.Reason})");
+    Check(runtime.Snapshot.Reason.Contains("continues by itself", StringComparison.Ordinal), "pause says it continues by itself");
+    long pausedAt = runtime.Snapshot.InputsSent;
+    Thread.Sleep(800);
+    Check(runtime.Snapshot.Busy && runtime.Snapshot.InputsSent == pausedAt, "no input while the target is behind");
+    var back = Stopwatch.StartNew();
+    runtime.Control.Helper!.ActivateWindow(target.Handle);
+    Check(WaitFor(() => runtime.Snapshot.State == "Running" && runtime.Snapshot.InputsSent > pausedAt), $"loop continued by itself after {back.ElapsedMilliseconds} ms ({runtime.Snapshot.State}: {runtime.Snapshot.Reason})");
+    Check(back.ElapsedMilliseconds >= 450, "waited about half a second before continuing");
+    Check(runtime.Pause(), "user pause accepted");
+    Check(WaitFor(() => runtime.Snapshot.State == "Paused"), "user pause took effect");
+    runtime.Control.Helper!.ActivateWindow(other.Handle); Thread.Sleep(300);
+    runtime.Control.Helper!.ActivateWindow(target.Handle);
+    long userPausedAt = runtime.Snapshot.InputsSent;
+    Thread.Sleep(1500);
+    Check(runtime.Snapshot.State == "Paused" && runtime.Snapshot.InputsSent == userPausedAt, "a user pause stays paused when the window comes back");
+    runtime.Stop("Probe Stop All.");
+    Check(WaitFor(() => !runtime.Snapshot.Busy, 2000), "loop stopped");
+    Check(!runtime.Snapshot.CleanupPending, "nothing held after the focus-loss loop");
+}
+
 // Colour sampling of the probe target's known fill (#3366CC), from the window's own pixels.
 runtime.BringTargetForward();
 var region = new CaptureRegion(new ClientPoint(100, 200, client.Width, client.Height, client.Dpi), 4, 4);

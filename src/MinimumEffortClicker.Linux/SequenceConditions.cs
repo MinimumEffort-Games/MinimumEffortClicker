@@ -30,6 +30,26 @@ public sealed partial class DesktopRuntime
             var selected = target;
             if (selected is null) return new(ConditionOutcome.Unavailable, 0, 0);
             var waiter = new ConditionWaiter(clock, service is null ? new DeadlineWait(clock) : new ConcurrentConditionWait(clock, executor));
+            RasterSample? baseline = null;
+            var template = condition.Template?.Decode();
+            // The same judgement for a window area and a monitor area.
+            ConditionObservation Judge(RasterSample image, long frameId, CancellationToken token)
+            {
+                bool matches;
+                if (condition.Kind == ConditionKind.RegionChanged)
+                {
+                    baseline ??= image;
+                    matches = RegionComparison.Changed(baseline, image, condition.Tolerance, condition.ChangedFraction);
+                }
+                else if (condition.Kind is ConditionKind.ImageAppears or ConditionKind.ImageDisappears)
+                {
+                    var match = RegionComparison.Find(image, template!, condition.Tolerance, token);
+                    if (match == VisualMatch.Ambiguous) return new(ConditionObservationState.Ambiguous, 0, frameId);
+                    matches = condition.Kind == ConditionKind.ImageAppears ? match == VisualMatch.Met : match == VisualMatch.NotMet;
+                }
+                else matches = RegionComparison.MatchesColorCondition(image, condition.Kind, condition.Color, condition.Tolerance);
+                return new(matches ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, frameId);
+            }
             if (condition.Kind == ConditionKind.WindowActive)
             {
                 long sample = 0;
@@ -40,29 +60,17 @@ public sealed partial class DesktopRuntime
                     return new(TargetAvailable ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, sample++);
                 }), budget.Token, testing, observed, service);
             }
-            var capture = new RegionCapture(Helper, selected.Handle, condition.Region!, () => TargetAvailable);
-            RasterSample? baseline = null;
-            var template = condition.Template?.Decode();
+            RegionCapture? capture = null;
+            long lastFrame = 0;
             return waiter.Wait(condition.Policy, new Observation(token =>
             {
-                var frame = capture.Capture(token);
-                bool matches;
-                if (condition.Kind == ConditionKind.RegionChanged)
-                {
-                    baseline ??= frame.Image;
-                    matches = RegionComparison.Changed(baseline, frame.Image, condition.Tolerance, condition.ChangedFraction);
-                }
-                else if (condition.Kind is ConditionKind.ImageAppears or ConditionKind.ImageDisappears)
-                {
-                    var match = RegionComparison.Find(frame.Image, template!, condition.Tolerance, token);
-                    if (match == VisualMatch.Ambiguous) return new(ConditionObservationState.Ambiguous, 0, frame.FrameId);
-                    matches = condition.Kind == ConditionKind.ImageAppears ? match == VisualMatch.Met : match == VisualMatch.NotMet;
-                }
-                else
-                {
-                    matches = RegionComparison.MatchesColorCondition(frame.Image, condition.Kind, condition.Color, condition.Tolerance);
-                }
-                return new(matches ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, frame.FrameId);
+                CapturedRegion frame;
+                // The window went behind another one, was resized or closed: report it as unavailable rather than failing
+                // the whole run, so playback can wait for the window to come back.
+                try { capture ??= new RegionCapture(Helper, selected.Handle, condition.Region!, () => TargetAvailable); frame = capture.Capture(token); }
+                catch (Exception ex) when (ex is InvalidOperationException or ShellHelperException) { return new(ConditionObservationState.Unavailable, 0, lastFrame); }
+                lastFrame = frame.FrameId;
+                return Judge(frame.Image, frame.FrameId, token);
             }), budget.Token, testing, observed, service);
         }
         catch (OperationCanceledException) when (budget.IsCancellationRequested && !stop.IsCancellationRequested)

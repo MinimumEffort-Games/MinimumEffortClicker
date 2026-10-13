@@ -42,6 +42,13 @@ def activate(application):
     motion.connect('leave', lambda c: log.write('leave\n'))
     window.add_controller(motion)
     window.present()
+    # A second, plain window the probe brings in front to take focus away from the target.
+    other = Gtk.ApplicationWindow(application=application, title='MEC Probe Other')
+    other.set_default_size(320, 200)
+    other.set_child(Gtk.Label(label='MEC probe other window'))
+    other.connect('notify::is-active', lambda w, _p: log.write(f'other active={w.is_active()}\n'))
+    other.present()
+    window.present()
     log.write('ready\n')
 
 
