@@ -33,7 +33,7 @@ Steps, in order. Run each from the repository root in PowerShell 7 and keep the 
    - Screenshot: full screen and area capture to a folder; Open last screenshot.
    - Settings: change Stop All to a letter key and confirm the warning about administrator windows appears; Reset keybinds; dark and light appearance; close the window with minimise-to-tray on and exit from the tray icon.
    After exiting, confirm no key or mouse button is stuck down (type in Notepad, move the mouse).
-7. Upgrade check: load `docsHandoffVM-Reportssamplesschema15-retired-steps.mecprofile` through Actions / Load Macro and report the status line; expected: 3 retired actions removed and one Wait action left. Also load any `.mecprofile` from an older version if one exists in the VM.
+7. Upgrade check: load `docs/Handoff/VM-Reports/samples/schema15-retired-steps.mecprofile` through Actions / Load Macro and report the status line; expected: 3 retired actions removed and one Wait action left. Also load any `.mecprofile` from an older version if one exists in the VM.
 
 Report, as one Markdown file saved at `docs\Handoff\VM-Reports\<yyyy-mm-dd>-<vm-name>.md` and committed on this branch (commit only that file; do not commit `artifacts`):
 
