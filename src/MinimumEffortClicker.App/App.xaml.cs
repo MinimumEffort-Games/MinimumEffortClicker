@@ -19,10 +19,15 @@ public partial class App : Application
         {
             (MainWindow as MainWindow)?.EmergencyStop();
             args.Handled = true;
+            AppLog.Crash("the app", args.Exception);
             try { AppDialog.Show("Something went wrong and playback was stopped: " + args.Exception.Message + "\n\nSave your macro and restart the app if it misbehaves."); }
             catch (Exception) { /* Reporting must not raise a second failure. */ }
         };
-        AppDomain.CurrentDomain.UnhandledException += (_, _) => (MainWindow as MainWindow)?.EmergencyStop();
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            (MainWindow as MainWindow)?.EmergencyStop();
+            if (args.ExceptionObject is Exception exception) AppLog.Crash("a background thread", exception);
+        };
         AppTheme.Apply(Appearance);
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
             new RoutedEventHandler((sender, _) => AppTheme.ApplyWindowChrome((Window)sender)));

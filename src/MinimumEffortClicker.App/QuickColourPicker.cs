@@ -24,11 +24,9 @@ public partial class MainWindow
             }
             else
             {
-                if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
-                await Task.Delay(350, cancellation.Token);
-                var frame = runtime.GetTargetFrame();
-                var snapshot = await Task.Run(() => runtime.CaptureAuthoringPreview(cancellation.Token), cancellation.Token);
-                cancellation.Token.ThrowIfCancellationRequested(); Activate();
+                // The picture is read from the window itself, so the window stays where it is and the clicker stays in front.
+                var (snapshot, frame) = await Task.Run(() => runtime.CaptureTargetPicture(cancellation.Token), cancellation.Token);
+                cancellation.Token.ThrowIfCancellationRequested();
                 picker = new RegionPicker(this, snapshot, frame, 1);
             }
             using var abortPicker = cancellation.Token.Register(() => Dispatcher.BeginInvoke(() => picker.Close()));
@@ -41,7 +39,7 @@ public partial class MainWindow
             TestResultLabel.Text = "Colour selected. Add Action or Save changes to keep it.";
         }
         catch (OperationCanceledException) { ReasonLabel.Text = "Colour selection cancelled."; }
-        catch (Exception ex) { ReasonLabel.Text = ex.Message; }
+        catch (Exception ex) { ReasonLabel.Text = ex.Message; AppLog.Failure("Pick colour", ex); Activate(); }
         finally { runtime.Control.StopRequested -= Cancel; quickCancellation = null; operations.End(Operation.Quick); operations.End(Operation.Dialog); RefreshStatus(); }
     }
 }
