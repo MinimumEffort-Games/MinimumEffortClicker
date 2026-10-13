@@ -34,7 +34,7 @@ published.
 4. **F8** starts/stops Actions, **F9** stops all Actions/toggles/recording, and
    **F10** starts/stops recording by default. Check Settings if you change keys.
 
-Playback starts stopped. Loading/importing and restored focus never start it.
+Playback starts stopped. Loading/importing and restored focus never start it. If the target window goes behind another window during a run, the run pauses and continues by itself when the window is back in front.
 Checked toggles are available for their shortcut, not automatically running.
 Use Stop All before exiting; forced process termination cannot guarantee input
 cleanup. Closing may minimize to the notification area; use the tray **Exit**

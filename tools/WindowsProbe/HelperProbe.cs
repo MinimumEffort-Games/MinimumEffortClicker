@@ -240,7 +240,7 @@ internal static class HelperProbe
             Require(afterHorizontal.HorizontalWheelDelta == beforeHorizontal.HorizontalWheelDelta + 360 && !runtime.Snapshot.CleanupPending, "Horizontal wheel receipt mismatch.");
             report.Checks.Add("Three horizontal wheel steps were received.");
 
-            report.Stage = "Focus-loss held-key cleanup";
+            report.Stage = "Focus-loss held-key cleanup and automatic resume";
             var hold = key with { Mode = HelperMode.Hold, Count = 0 };
             Require(runtime.TryStart(hold), runtime.Snapshot.Reason);
             await WaitFor(() => runtime.Snapshot.InputsSent == 1, deadline.Token);
@@ -252,15 +252,16 @@ internal static class HelperProbe
             Require(!runtime.TryResume(), "Resume accepted an inactive target.");
             await Request(pipe, "focus");
             await WaitFor(() => runtime.Current?.IsAvailable == true, deadline.Token);
+            // The window has to stay in front for half a second before anything is sent again.
             await Task.Delay(150, deadline.Token);
-            Require(runtime.CanResume && !runtime.Snapshot.PlaybackActive && (await Request(pipe, "state")).KeysDown == "None observed", "Focus restoration restarted input.");
-            Require(runtime.Snapshot.TotalActiveTime == pausedActive, "Paused time entered the active-time budget.");
-            Require(runtime.TryResume(), "Explicit resume was refused after target restoration.");
+            Require(runtime.Snapshot.InputsSent == 2 && (await Request(pipe, "state")).KeysDown == "None observed", "Input restarted before the target settled in front.");
             await WaitFor(() => runtime.Snapshot.InputsSent == 3, deadline.Token);
+            Require((await Request(pipe, "state")).KeysDown.Contains("W", StringComparison.Ordinal), "Automatic resume did not press W again.");
+            Require(runtime.Snapshot.TotalActiveTime - pausedActive < TimeSpan.FromMilliseconds(400), "Paused time entered the active-time budget.");
             runtime.Stop("Resume fixture complete.");
             await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
             Require(runtime.Snapshot.InputsSent == 4 && !runtime.Snapshot.CleanupPending, "Resumed hold cleanup failed.");
-            report.Checks.Add("Focus loss paused and released W; inactive-target resume was refused; restoration emitted nothing and paused time stayed excluded; explicit resume reacquired W and Stop released it.");
+            report.Checks.Add("Focus loss paused and released W; inactive-target resume was refused; nothing was sent until the target had settled in front, then W was pressed again by itself with paused time excluded; Stop released it.");
 
 
             report.Stage = "Profile binding enable and disable";

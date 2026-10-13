@@ -19,6 +19,11 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
     public PlaybackControl? Playback { get; set; }
     // Scheduler-thread callback, outside the dispatch gate; used for scoped power/status changes.
     public Action<bool>? PlaybackPaused { get; set; }
+    /// <summary>
+    /// When the bound target is not in front, wait (an automatic pause) instead of ending the run. Set by the runtime for
+    /// a run that targets a window; the runtime resumes the pause once that window is back in front.
+    /// </summary>
+    public bool PauseOnTargetLoss { get; set; }
     private PlaybackControl? playback;
     private Run? activeRun;
     private Guid activeTarget;
@@ -82,11 +87,16 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
         lock (gate) due = lastClick is { } last ? last + clickRateLimit.MinimumGap : clock.Elapsed;
         return WaitDeadline(due, stop);
     }
-    private bool WaitDeadline(TimeSpan due, CancellationToken stop, CancellationToken? changed = null)
+    private bool WaitDeadline(TimeSpan due, CancellationToken stop, CancellationToken? changed = null, bool needsTarget = true)
     {
+        // Every step waits here first, so a target that left the front pauses the run at the step instead of ending it.
+        // Checked before and after each wait: the window may leave while the wait runs, before the runtime's pause arrives.
+        bool TargetGone() => needsTarget && PauseOnTargetLoss && playback is { } awaiting && activeRun is not null
+            && !TargetMatches(activeTarget) && (awaiting.RequestPause(automatic: true) || awaiting.IsPaused);
         while (true)
         {
         PauseCheckpoint(stop);
+        if (TargetGone()) continue;
         stop.ThrowIfCancellationRequested();
         ServiceConcurrentInputs(stop);
         var remaining = RemainingRunTime;
@@ -108,6 +118,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
             if (changed?.IsCancellationRequested == true) return false;
             if (sessionChange.IsCancellationRequested) continue;
             if (reached && wakeDue < due) continue;
+            if (TargetGone()) continue;
             return reached;
         }
         if (playback is { } control)
@@ -115,6 +126,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
             using var signal = changed is { } update ? CancellationTokenSource.CreateLinkedTokenSource(control.Changed, update) : null;
             bool reached = waits.WaitUntilOrChanged(physicalDue, stop, signal?.Token ?? control.Changed);
             if (control.IsPaused) { PauseCheckpoint(stop); continue; }
+            if (TargetGone()) continue;
             return reached;
         }
         if (changed is { } change) return waits.WaitUntilOrChanged(physicalDue, stop, change);
@@ -130,26 +142,35 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
     {
         if (playback is not { IsPaused: true } control || activeRun is not { } run) return;
         InputControl[] reacquire;
+        bool automatic = control.Automatic;
         lock (gate)
         {
             stop.ThrowIfCancellationRequested();
-            // Replaying a partial click or drag can duplicate side effects. Hold toggles are re-pressed on resume.
-            if (owned.Any(i => i.Kind == InputKind.MouseButton && !(sessionHeld.Values.Contains(i) && actionSession?.KeepHold(i) == true)))
+            bool KeptHold(InputControl i) => sessionHeld.Values.Contains(i) && actionSession?.KeepHold(i) == true;
+            // A pause the user asked for mid-click ends the run: replaying a partial click or drag can duplicate side effects.
+            // A pause because the target left the front lets the click finish where it is and carries on after it.
+            if (!automatic && owned.Any(i => i.Kind == InputKind.MouseButton && !KeptHold(i)))
             {
                 run.Outcome = ClickRunOutcome.Paused;
                 run.Error = "Interaction interrupted. Inputs released; review and explicitly restart the selected step or stop. Delivered effects cannot be undone.";
                 throw new InterruptedPlaybackException();
             }
-            reacquire = owned.ToArray();
+            // Held keys and hold toggles are pressed again on resume; a finished partial click is not.
+            reacquire = owned.Where(i => i.Kind != InputKind.MouseButton || KeptHold(i)).ToArray();
             if (!Release(run)) { run.Outcome = ClickRunOutcome.CleanupFailed; throw new InterruptedPlaybackException(); }
-            clock.Pause(); Publish(run, "Paused", "Manual resume required");
+            clock.Pause(); Publish(run, "Paused", automatic ? "Waiting for the target window" : "Manual resume required");
         }
         bool announced = false;
         try
         {
             control.Acknowledge(); PlaybackPaused?.Invoke(true); announced = true;
-            control.WaitForResume(stop); stop.ThrowIfCancellationRequested();
-            if (!TargetMatches(activeTarget)) { run.Outcome = ClickRunOutcome.TargetUnavailable; throw new InterruptedPlaybackException(); }
+            while (true)
+            {
+                control.WaitForResume(stop); stop.ThrowIfCancellationRequested();
+                if (TargetMatches(activeTarget)) break;
+                if (!PauseOnTargetLoss) { run.Outcome = ClickRunOutcome.TargetUnavailable; throw new InterruptedPlaybackException(); }
+                control.Repause();
+            }
             lock (gate)
             {
                 stop.ThrowIfCancellationRequested();
@@ -160,7 +181,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                     { run.Outcome = ClickRunOutcome.InputRejected; throw new InterruptedPlaybackException(); }
                     owned.Add(input); run.Sent++;
                 }
-                Publish(run, "Resumed explicitly");
+                Publish(run, automatic ? "Resumed: target back in front" : "Resumed explicitly");
             }
             control.CompleteResume();
         }
@@ -184,9 +205,13 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                 if (playback?.IsPaused == true) continue; // discard pre-pause observations
                 if (result.Outcome == ConditionOutcome.Paused && playback is { } pending)
                 {
-                    pending.RequestPause(); // Resume explicitly re-observes this condition, never earlier actions.
+                    pending.RequestPause(); // A timed-out wait set to pause: the user resumes; it re-observes this condition, never earlier actions.
                     continue;
                 }
+                // Capture fails while the target is behind another window: wait for it to return, then look again.
+                if (result.Outcome == ConditionOutcome.Unavailable && PauseOnTargetLoss && playback is { } lost && !TargetMatches(activeTarget)
+                    && lost.RequestPause(automatic: true))
+                    continue;
                 return result;
             }
             catch (OperationCanceledException) when (!stop.IsCancellationRequested && playback?.IsPaused == true) { }
@@ -353,7 +378,8 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                     || plan.Conditions[conditionIndex].Offset == plan.Inputs[index].Offset && plan.Conditions[conditionIndex].StepIndex < plan.Inputs[index].StepIndex))
                 {
                     var condition = plan.Conditions[conditionIndex++];
-                    WaitDeadline(origin + condition.Offset, stop);
+                    // A "window is active" wait observes an inactive target on purpose; every other step needs it in front.
+                    WaitDeadline(origin + condition.Offset, stop, needsTarget: condition.Definition.Kind != ConditionKind.WindowActive);
                     lock (gate)
                     {
                         // The same budget checks as CanContinue, without the foreground check: a window wait may observe an inactive target.

@@ -7,7 +7,7 @@ Windows 11 x64, C#/.NET 10 and WPF. Core/Engine stay independent of WPF/native a
 The four pages (Actions, Toggles, Screenshot, Settings) are the whole product; code that no page can reach is deleted, not kept.
 Default tests use fake inputs/time/targets; never synthesize desktop input in CI.
 Native probes are opt-in inside an isolated virtual machine (MEC_ISOLATED_VM=1, standard user, F9 stop route).
-Keep runtime offline and stopped on startup; loading a macro or restored focus never starts it.
+Keep runtime offline and stopped on startup; loading a macro or restored focus never starts it. A running window-target run that pauses because its window left the front resumes by itself once the window is back in front for half a second (Roy, 2026-10-13); a pause the user asked for stays paused.
 Use scripts/Build.ps1 and scripts/Test.ps1; scripts/Build-Public.ps1 writes the ZIP under artifacts/package.
 Maintain pins, lock files and licence notices. Saved data migrates forward and is never reset.
 No drivers, injection, automatic elevation, background-game automation or services.
