@@ -125,19 +125,35 @@ public sealed partial class DesktopRuntime
         finally { EndTargetPreview("Condition test finished. Playback remains stopped."); }
     }
 
-    public WindowSnapshot CaptureAuthoringPreview(CancellationToken stop)
+    /// <summary>
+    /// A still picture of the Click target window for the area and colour picker, with the frame it was taken in.
+    /// The window may stay behind others: Windows captures its own content. A minimised window is restored without
+    /// taking focus. Sends no input and never moves the clicker.
+    /// </summary>
+    public (WindowSnapshot Picture, TargetClientFrame Frame) CaptureTargetPicture(CancellationToken stop)
     {
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(stop);
-        BeginTargetPreview(reason => { _ = cancelled.CancelAsync(); });
+        RestoreTargetWithoutFocus(cancelled.Token);
+        BeginTargetPreview(reason => { _ = cancelled.CancelAsync(); }, needsFront: false);
         try
         {
             var selected = target ?? throw new InvalidOperationException("Choose a Click target first.");
             var frame = GetTargetFrame();
             var region = new CaptureRegion(new(0, 0, frame.Width, frame.Height, frame.Dpi), frame.Width, frame.Height);
-            using var capture = new WindowRegionCapture(selected.Handle, region, () => TargetAvailable, authoringPreview: true);
-            return capture.CapturePreview(cancelled.Token);
+            using var capture = new WindowRegionCapture(selected.Handle, region, () => TargetIdentityAvailable, authoringPreview: true, requireForeground: false);
+            return (capture.CapturePreview(cancelled.Token), frame);
         }
-        finally { EndTargetPreview("Snapshot ready. Playback remains stopped."); }
+        finally { EndTargetPreview("Picture ready. Playback remains stopped."); }
+    }
+
+    /// <summary>Window capture needs a window that is not minimised; restore it without bringing it to the front.</summary>
+    private void RestoreTargetWithoutFocus(CancellationToken stop)
+    {
+        if (target is not { } selected || !TargetIdentityAvailable || !ProbeNative.IsIconic(selected.Handle)) return;
+        DesktopNative.ShowWindow(selected.Handle, 4); // SW_SHOWNOACTIVATE
+        // Give the restore animation time to finish before the frame is read.
+        for (int i = 0; i < 20 && ProbeNative.IsIconic(selected.Handle); i++) Task.Delay(25, stop).Wait(stop);
+        Task.Delay(250, stop).Wait(stop);
     }
 
     /// <summary>Desktop mode: a still picture of one monitor for the area and colour picker. Sends no input.</summary>
@@ -154,12 +170,14 @@ public sealed partial class DesktopRuntime
         // Monitor areas are cut from the app's monitor pictures, taken with the clicker out of the way.
         if (region.Origin.Space != CoordinateSpace.WindowClient) throw new InvalidOperationException("This area is on a monitor. Capture it from the monitor picker.");
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(stop);
-        BeginTargetPreview(reason => { _ = cancelled.CancelAsync(); });
+        RestoreTargetWithoutFocus(cancelled.Token);
+        BeginTargetPreview(reason => { _ = cancelled.CancelAsync(); }, needsFront: false);
         bool captured = false;
         try
         {
-            var selected = target ?? throw new InvalidOperationException("Choose a target first.");
-            using var capture = new WindowRegionCapture(selected.Handle, region, () => TargetAvailable);
+            var selected = target ?? throw new InvalidOperationException("Choose a Click target first.");
+            // Like the area picture, the template is read from the window itself; it may stay behind other windows.
+            using var capture = new WindowRegionCapture(selected.Handle, region, () => TargetIdentityAvailable, requireForeground: false);
             var image = capture.Capture(cancelled.Token).Image;
             captured = true;
             return image;

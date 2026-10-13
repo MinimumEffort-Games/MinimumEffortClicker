@@ -74,6 +74,8 @@ public partial class MainWindow
             "With a portable.mode file next to the app, everything is stored in the Data folder beside it. Otherwise it is in your local app data folder.",
             "",
             "No account, no internet, no tracking. This build is not signed, so Windows may show a warning the first time it runs.",
+            "",
+            "When something goes wrong, the clicker writes it to log.txt in the same folder. It stays on your PC. Attach it to a bug report if you send one.",
         ]),
     ];
 

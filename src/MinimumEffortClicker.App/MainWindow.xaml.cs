@@ -41,6 +41,7 @@ public partial class MainWindow : Window
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MinimumEffortClicker"));
         preferences = new(store.DirectoryPath);
         bindingsStore = new(store.DirectoryPath);
+        if (!previewOnly) AppLog.Initialize(store.DirectoryPath);
         InitializeComponent();
         SizeChanged += (_, _) => UpdateActionsListSize();
         StartupMeasurement.Mark("Main XAML initialized");
@@ -198,6 +199,7 @@ public partial class MainWindow : Window
         if (runtime is null || allowClose) return;
         statusRefreshCount++;
         var snapshot = runtime.Snapshot;
+        AppLog.RunState(snapshot);
         if (!snapshot.Busy && desktopPlaybackFrom is { } previous)
         {
             desktopPlaybackFrom = null;
