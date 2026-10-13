@@ -11,8 +11,8 @@ or configured.
 
 The R34.16 private baseline recorded 297 fake-only passing tests and bounded
 Windows regression, recovery, capture and spam checks in the isolated VM. After
-the October 2026 cleanup the suite is 245 tests; the removed tests covered
-features that no longer exist.
+the October 2026 cleanup the suite is 254 tests (9 TestTarget, 111 Engine, 134 Core); the removed tests covered
+features that no longer exist and new regression tests cover the bug fixes.
 The public snapshot must independently pass `scripts/Test.ps1`, locked restore
 and Release build. Its release manifest records the actual source commit,
 runtime and per-file hashes. Do not infer full hardware acceptance from these

@@ -20,6 +20,7 @@ internal static class DesktopNative
     [StructLayout(LayoutKind.Sequential)] private struct Input { public uint Type; public Union Data; }
     [DllImport("user32.dll")] internal static extern bool EnumWindows(EnumWindow callback, nint parameter);
     [DllImport("user32.dll")] internal static extern bool IsWindowVisible(nint hwnd);
+    [DllImport("user32.dll")] internal static extern nint GetShellWindow();
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern int GetWindowText(nint hwnd, StringBuilder text, int max);
     [DllImport("user32.dll")] internal static extern bool GetClientRect(nint hwnd, out ProbeNative.Rect rect);
     [DllImport("user32.dll")] internal static extern bool ClientToScreen(nint hwnd, ref ProbeNative.Point point);

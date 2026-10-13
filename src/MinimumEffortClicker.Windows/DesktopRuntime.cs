@@ -159,9 +159,11 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     public static IReadOnlyList<TargetWindow> ListTargets()
     {
         var result = new List<TargetWindow>();
+        // The desktop itself is a visible titled window ("Program Manager"); clicking it is never what a user means.
+        nint shell = DesktopNative.GetShellWindow();
         DesktopNative.EnumWindows((hwnd, _) =>
         {
-            if (!DesktopNative.IsWindowVisible(hwnd)) return true;
+            if (hwnd == shell || !DesktopNative.IsWindowVisible(hwnd)) return true;
             // Suspended Store apps keep a visible but cloaked frame window; it can never be brought forward.
             if (DesktopNative.DwmGetWindowAttribute(hwnd, 14, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
             ProbeNative.GetWindowThreadProcessId(hwnd, out uint pid);
