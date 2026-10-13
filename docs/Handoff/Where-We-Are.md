@@ -5,6 +5,11 @@ Goal: a proper open-source launch and a Steam store launch.
 Every item below was read in the source and re-checked; line numbers refer to this commit.
 Nothing has been changed yet. The build was not run here: the PC has SDK 10.0.400 and `global.json` pins 10.0.401 with roll-forward disabled.
 
+## Progress log
+
+- 2026-10-13: App cleanup committed (hidden library page, sequence editor, wizard, overlay editing, MVVM package removed; Help button added). Build and 297 tests green; app starts.
+- 2026-10-13: Core/Engine/Windows/Storage cleanup: text, subsequence and branch steps, logical-key and Unicode input kinds, "Run together" helper sets, rehearsal, finish-loop, resume countdown and armed-plan paths removed. Profile schema is 16; schema 2–15 files are upgraded on load and the app reports how many retired actions were dropped. 245 tests green (tests for removed features deleted, one migration test added). Spam cadence bug (press equal to interval) fixed on the way. The GitHub Desktop commit "Clean-up" (e88a05f) was made mid-work and does not build on its own; the next commit completes it.
+
 ## Roy's open list
 
 Struck items are done. Never resurrect them.

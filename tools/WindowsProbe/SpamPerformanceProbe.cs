@@ -21,7 +21,7 @@ internal static class SpamPerformanceProbe
             var id = Guid.NewGuid();
             var helper = new HelperPlan(mouse ? InputControl.Mouse(PointerButton.Left) : InputControl.Key(0x12),
                 HelperMode.Repeat, TimeSpan.FromMilliseconds(interval), TimeSpan.FromMilliseconds(2), 0);
-            Require(await runtime.ConfigureHelpersAsync([new(new(id, 0x75, false), helper, DisplayName: "Spam benchmark", IsToggle: true)]), "F6 unavailable.");
+            Require(await runtime.ConfigureHelpersAsync([new(new(id, 0x75, false), helper, "Spam benchmark")]), "F6 unavailable.");
             var before = await Request(pipe, "state");
             process.Refresh(); receiverProcess.Refresh();
             var cpu = process.TotalProcessorTime; var receiverCpu = receiverProcess.TotalProcessorTime;
