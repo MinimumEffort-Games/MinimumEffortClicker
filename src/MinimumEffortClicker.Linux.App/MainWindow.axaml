@@ -24,6 +24,7 @@
                             <Border.OpacityMask><ImageBrush Source="/Assets/Logo.png" SourceRect="0%,24%,100%,42%" Stretch="Uniform" /></Border.OpacityMask>
                         </Border>
                     </Button>
+                    <Button Content="Help" Click="Help_Click" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Help" />
                 </StackPanel>
                 <CheckBox Grid.Column="1" x:Name="OverlayBox" Content="Show overlay" IsChecked="True" VerticalAlignment="Center" IsCheckedChanged="Overlay_Changed" Margin="16,0,0,0" />
             </Grid>
@@ -169,11 +170,9 @@
                             </StackPanel>
                             <WrapPanel x:Name="QuickEditorTools" Margin="0,4,0,12">
                                 <Button x:Name="AddActionButton" Content="Add Action" Click="AddAction_Click" IsEnabled="False" Classes="green" />
-                                <Button x:Name="TestActionButton" Content="Test action" Click="TestAction_Click" IsEnabled="False" Classes="blue" />
                                 <Button Content="Clear editor" Click="NewAction_Click" ToolTip.Tip="Clear the settings to create another action. The Action List is kept." />
                             </WrapPanel>
                             <TextBlock x:Name="TestResultLabel" Classes="secondary optional" Margin="0,0,0,5" />
-                            <Button x:Name="AbortTestButton" Content="Abort test" Click="AbortTest_Click" IsVisible="False" Classes="red" HorizontalAlignment="Left" Margin="0,0,0,6" />
                         </StackPanel>
                     </ScrollViewer>
                     <ScrollViewer Grid.Column="2" Grid.Row="2" Padding="0,0,16,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -185,13 +184,16 @@
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <Border Background="{Binding Background}" Padding="6,4" CornerRadius="3">
-                                                    <StackPanel>
-                                                        <Grid ColumnDefinitions="*,Auto">
-                                                            <TextBlock Text="{Binding Title}" Foreground="{Binding Foreground}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
-                                                            <CheckBox Grid.Column="1" Content="Active" Foreground="{Binding Foreground}" IsChecked="{Binding Step.Enabled, Mode=OneWay}" Click="QuickActive_Click" Margin="10,0,0,0" VerticalAlignment="Center" ToolTip.Tip="Unchecked actions stay in the list and are skipped." />
-                                                        </Grid>
-                                                        <TextBlock Text="{Binding Detail}" Foreground="{Binding Foreground}" FontSize="12" TextWrapping="Wrap" />
-                                                    </StackPanel>
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <StackPanel VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Title}" Foreground="{Binding Foreground}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                            <TextBlock Text="{Binding Detail}" Foreground="{Binding Foreground}" FontSize="12" TextWrapping="Wrap" />
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                            <CheckBox Content="Active" Foreground="{Binding Foreground}" IsChecked="{Binding Step.Enabled, Mode=OneWay}" Click="QuickActive_Click" ToolTip.Tip="Unchecked actions stay in the list and are skipped." />
+                                                            <Button Content="Test" Click="RowTest_Click" Classes.green="{Binding TestPassed}" Classes.red="{Binding TestFailed}" IsVisible="{Binding TestVisible}" ToolTip.Tip="{Binding TestTip}" AutomationProperties.Name="Test this action" Padding="10,2" Margin="0,4,0,0" MinHeight="0" FontSize="12" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Grid>
                                                 </Border>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
@@ -238,23 +240,8 @@
                     </ScrollViewer>
                 </Grid>
 
-                <!-- Page 1: saved macro folders. Hidden in this release, as in the Windows build; the
-                     Toggles page and macro files share its library code. -->
-                <Grid x:Name="ProfilesPage" IsVisible="False">
-                    <StackPanel>
-                        <TextBox x:Name="ProfileNameBox" Text="My helper" MaxLength="100" />
-                        <ListBox x:Name="ProfileList" SelectionChanged="ProfileSelection_Changed" DisplayMemberBinding="{Binding Name, x:DataType=core:ProfileDefinition}" />
-                        <CheckBox x:Name="ProfileEnabledBox" Content="Enable selected folder" IsCheckedChanged="Availability_Changed" />
-                        <ListBox x:Name="MacroList" SelectionChanged="MacroSelection_Changed" DisplayMemberBinding="{Binding Name, x:DataType=core:MacroDefinition}" />
-                        <TextBox x:Name="MacroNameBox" MaxLength="100" />
-                        <TextBlock x:Name="MacroSummary" />
-                        <Button x:Name="MacroKeyBox" Content="Choose a key…" Click="CaptureMacroKey_Click" />
-                        <CheckBox x:Name="MacroHoldBox" Content="Run only while holding this macro hotkey" />
-                        <CheckBox x:Name="MacroEnabledBox" Content="Enable selected macro" IsCheckedChanged="Availability_Changed" />
-                        <TextBlock x:Name="AvailabilityLabel" Text="Saved macro hotkeys start off." />
-                    </StackPanel>
-                </Grid>
-                <!-- Retain this empty slot for existing page identifiers. -->
+                <!-- Retain these empty slots for existing page identifiers. -->
+                <Grid IsVisible="False" />
                 <Grid IsVisible="False" />
 
                 <!-- Page 3: Settings -->
@@ -276,7 +263,6 @@
                             <TextBlock Text="Applies to saved clicks on the next Start or Test. Scaling follows the same proportional position; it does not recognise buttons. Colour areas and drags still need recalibration." Classes="secondary" />
                             <TextBlock Text="Status overlay" Classes="heading" Margin="0,18,0,8" />
                             <CheckBox x:Name="IdleOverlayBox" Content="Keep an idle indicator visible" IsCheckedChanged="OverlayOptions_Changed" />
-                            <CheckBox x:Name="AnchorOverlayBox" IsVisible="False" IsCheckedChanged="OverlayOptions_Changed" />
                             <TextBlock Text="Opacity" />
                             <Slider x:Name="OverlayOpacity" Width="300" HorizontalAlignment="Left" Minimum="0.4" Maximum="1" Value="0.94" ValueChanged="OverlayOptions_Changed" AutomationProperties.Name="Overlay opacity" />
                             <TextBlock Text="Size" />
@@ -362,13 +348,28 @@
                                 <StackPanel>
                                     <TextBlock x:Name="ToggleEmptyLabel" Text="Create your first toggle on the left." Classes="secondary" />
                                     <DataGrid x:Name="ToggleList" MinHeight="200" MaxHeight="320" AutoGenerateColumns="False" CanUserReorderColumns="False" CanUserResizeColumns="False" IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column" RowHeight="40" GridLinesVisibility="All" SelectionChanged="ToggleSelection_Changed" AutomationProperties.Name="Saved toggles" x:CompileBindings="False">
+                                        <DataGrid.Styles>
+                                            <!-- Headers stretch so each column's own header text decides its alignment. -->
+                                            <Style Selector="DataGridColumnHeader"><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style>
+                                        </DataGrid.Styles>
                                         <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" MinWidth="80" />
-                                            <DataGridTextColumn Header="Hotkey" Binding="{Binding Shortcut}" Width="130" />
-                                            <DataGridTemplateColumn Header="Toggle" Width="100">
+                                            <DataGridTemplateColumn Width="*" MinWidth="80">
+                                                <DataGridTemplateColumn.Header><TextBlock Text="Name" Margin="6,0" /></DataGridTemplateColumn.Header>
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding Name}" Margin="14,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="130">
+                                                <DataGridTemplateColumn.Header><TextBlock Text="Hotkey" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding Shortcut}" Margin="8,0" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" /></DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="100">
+                                                <DataGridTemplateColumn.Header><TextBlock Text="Toggle" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>
-                                                        <CheckBox Content="Active" IsChecked="{Binding Enabled, Mode=OneWay}" Click="ToggleEnabled_Changed" ToolTip.Tip="Enable this shortcut; press it to hold or release." AutomationProperties.Name="Enable toggle shortcut" Margin="6,0" VerticalAlignment="Center" />
+                                                        <CheckBox Content="Active" IsChecked="{Binding Enabled, Mode=OneWay}" Click="ToggleEnabled_Changed" ToolTip.Tip="Enable this shortcut; press it to hold or release." AutomationProperties.Name="Enable toggle shortcut" Margin="8,0" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>

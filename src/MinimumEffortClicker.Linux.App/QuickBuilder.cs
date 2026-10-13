@@ -28,9 +28,12 @@ public partial class MainWindow
     private readonly ObservableCollection<QuickChildRow> quickChildren = [];
     private readonly ObservableCollection<string> quickInputNames = [];
     private readonly Dictionary<string, InputControl> quickInputs = SequenceKeys.Supported.ToDictionary(k => k.Key, k => InputControl.Key(k.Value));
-    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground)
+    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground, bool? Tested = null, string TestTip = "")
     {
-        public bool UsesColour => Step.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears };
+        // Testing a pause would only wait, so pause rows have no Test button.
+        public bool TestVisible => Step.Kind != StepKind.Wait;
+        public bool TestPassed => Tested == true;
+        public bool TestFailed => Tested == false;
     }
     private static SolidColorBrush ColourBrush(int rgb) => new(Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
     private static IBrush ColourText(int rgb)
@@ -79,7 +82,6 @@ public partial class MainWindow
     private static TimeSpan OptionalPause(TextBox box) => string.IsNullOrWhiteSpace(box.Text) ? TimeSpan.Zero : Milliseconds(box);
     private SequenceDefinition ApplyListOptions(SequenceDefinition source) => QuickActions.WithClickMovement(
         QuickActions.WithCursorFree(source, false), RecordMovementBox.IsChecked == true);
-    private static string QuickSummary(SequenceDefinition sequence) => $"{sequence.Steps.Count} action{(sequence.Steps.Count == 1 ? "" : "s")} · {sequence.Repetition ?? new()}";
     private bool TryQuickSequence(out SequenceDefinition? definition, out SequencePlan? plan, out string error)
     {
         definition = null; plan = null; error = "";
@@ -100,7 +102,7 @@ public partial class MainWindow
         if (!initialized || loadingQuick || runtime is null) return;
         quickValid = TryQuickSequence(out var definition, out _, out var error);
         RunButton.ToolTip = quickValid ? null : error;
-        runtime.ArmedPlan = null; runtime.QuickSequenceArmed = quickValid;
+        runtime.QuickSequenceArmed = quickValid;
         RefreshStatus();
     }
     private void RefreshQuickAvailability(RuntimeSnapshot snapshot)
@@ -152,7 +154,7 @@ public partial class MainWindow
         ScreenshotActionFields.Visibility = ModeBox.SelectedIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
         ScanIntervalFields.Visibility = ConditionFields.Visibility = ModeBox.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         ComplexFields.Visibility = complex ? Visibility.Visible : Visibility.Collapsed;
-        AddActionButton.IsEnabled = TestActionButton.IsEnabled = ModeBox.SelectedIndex >= 0 || complex;
+        AddActionButton.IsEnabled = ModeBox.SelectedIndex >= 0 || complex;
         AddActionButton.Content = editingQuick is null ? "Add Action" : "Save changes";
         PressLabel.Text = ClickKindBox.SelectedIndex == 2 && ModeBox.SelectedIndex == 0 || HoldKeyBox.IsChecked == true && ModeBox.SelectedIndex == 1 ? "Hold duration (ms)" : "Press duration (ms)";
         ShowTimingOptions();
@@ -304,9 +306,14 @@ public partial class MainWindow
         quickChildren.Clear(); TestResultLabel.Text = ""; AddActionButton.Content = "Add Action";
         loadingQuick = false; Location_Changed(sender, e); ShowQuickFields(); ShowConditionColour();
     }
-    private QuickRow[] QuickRows(IEnumerable<SequenceStep> steps) => steps.Select((s, i) => new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
+    private QuickRow[] QuickRows(IEnumerable<SequenceStep> steps) => steps.Select((s, i) =>
+    {
+        var (passed, testTip) = RowTestResult(s);
+        return new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
             s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } colour ? ColourBrush(colour.Color) : Brushes.Transparent,
-            s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (IBrush)this.FindResource("TextPrimary")!)).ToArray();
+            s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (IBrush)this.FindResource("TextPrimary")!,
+            passed, testTip);
+    }).ToArray();
     /// <summary>Shows actions captured so far below the existing list while recording runs.</summary>
     private void ShowRecordingPreview(IReadOnlyList<SequenceStep> recorded)
     {
