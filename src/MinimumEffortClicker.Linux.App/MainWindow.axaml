@@ -24,6 +24,7 @@
                             <Border.OpacityMask><ImageBrush Source="/Assets/Logo.png" SourceRect="0%,24%,100%,42%" Stretch="Uniform" /></Border.OpacityMask>
                         </Border>
                     </Button>
+                    <Button Content="Help" Click="Help_Click" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Help" />
                 </StackPanel>
                 <CheckBox Grid.Column="1" x:Name="OverlayBox" Content="Show overlay" IsChecked="True" VerticalAlignment="Center" IsCheckedChanged="Overlay_Changed" Margin="16,0,0,0" />
             </Grid>
