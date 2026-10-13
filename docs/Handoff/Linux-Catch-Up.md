@@ -2,15 +2,16 @@
 
 Paste this to the session in the VM:
 
-> Pull branch `cleanup/match-ui` (`git fetch && git checkout cleanup/match-ui && git pull --ff-only`) and read
+> Update `main` (`git fetch && git checkout main && git pull --ff-only`), create a branch `linux-catch-up`, and read
 > `AGENTS.md`, `docs/Handoff/Where-We-Are.md` and this file. Then bring the Linux app level with the Windows app, one
 > item at a time, building with `scripts/linux/build.sh` and testing with `scripts/linux/test.sh` after each, and
-> commit each item on `cleanup/match-ui` with a message that says what changed for the player. Do not touch the
+> commit each item on that branch with a message that says what changed for the player, then push it and open a
+> pull request into `main` (main is protected; Roy merges). Do not touch the
 > Windows projects. Report what you could and could not verify under GNOME.
 
 ## Where things stand (2026-10-13)
 
-The Linux preview was merged into `cleanup/match-ui`. That branch also holds a day of Windows work done on top of the
+The Linux preview and a day of Windows work are now both on `main` (PR #1). The Windows work was done on top of the
 original code. To make Linux build again, these features were removed from the Linux code because the shared code no
 longer has them and no Linux screen reaches them: run-together helper sets, logical and Unicode keys, finish-loop,
 resume countdown, check-only waits, overlay placement (anchor/drag) and subsequences. The Linux solution builds with
