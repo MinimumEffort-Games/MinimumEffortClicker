@@ -169,11 +169,9 @@
                             </StackPanel>
                             <WrapPanel x:Name="QuickEditorTools" Margin="0,4,0,12">
                                 <Button x:Name="AddActionButton" Content="Add Action" Click="AddAction_Click" IsEnabled="False" Classes="green" />
-                                <Button x:Name="TestActionButton" Content="Test action" Click="TestAction_Click" IsEnabled="False" Classes="blue" />
                                 <Button Content="Clear editor" Click="NewAction_Click" ToolTip.Tip="Clear the settings to create another action. The Action List is kept." />
                             </WrapPanel>
                             <TextBlock x:Name="TestResultLabel" Classes="secondary optional" Margin="0,0,0,5" />
-                            <Button x:Name="AbortTestButton" Content="Abort test" Click="AbortTest_Click" IsVisible="False" Classes="red" HorizontalAlignment="Left" Margin="0,0,0,6" />
                         </StackPanel>
                     </ScrollViewer>
                     <ScrollViewer Grid.Column="2" Grid.Row="2" Padding="0,0,16,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -185,13 +183,16 @@
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <Border Background="{Binding Background}" Padding="6,4" CornerRadius="3">
-                                                    <StackPanel>
-                                                        <Grid ColumnDefinitions="*,Auto">
-                                                            <TextBlock Text="{Binding Title}" Foreground="{Binding Foreground}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
-                                                            <CheckBox Grid.Column="1" Content="Active" Foreground="{Binding Foreground}" IsChecked="{Binding Step.Enabled, Mode=OneWay}" Click="QuickActive_Click" Margin="10,0,0,0" VerticalAlignment="Center" ToolTip.Tip="Unchecked actions stay in the list and are skipped." />
-                                                        </Grid>
-                                                        <TextBlock Text="{Binding Detail}" Foreground="{Binding Foreground}" FontSize="12" TextWrapping="Wrap" />
-                                                    </StackPanel>
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <StackPanel VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Title}" Foreground="{Binding Foreground}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                            <TextBlock Text="{Binding Detail}" Foreground="{Binding Foreground}" FontSize="12" TextWrapping="Wrap" />
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                            <CheckBox Content="Active" Foreground="{Binding Foreground}" IsChecked="{Binding Step.Enabled, Mode=OneWay}" Click="QuickActive_Click" ToolTip.Tip="Unchecked actions stay in the list and are skipped." />
+                                                            <Button Content="Test" Click="RowTest_Click" Classes.green="{Binding TestPassed}" Classes.red="{Binding TestFailed}" IsVisible="{Binding TestVisible}" ToolTip.Tip="{Binding TestTip}" AutomationProperties.Name="Test this action" Padding="10,2" Margin="0,4,0,0" MinHeight="0" FontSize="12" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Grid>
                                                 </Border>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
