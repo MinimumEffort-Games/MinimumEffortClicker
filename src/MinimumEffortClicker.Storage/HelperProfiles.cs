@@ -68,6 +68,9 @@ public sealed class HelperProfiles(string directory)
             { file.Write(bytes); file.Flush(true); }
             if (File.Exists(PathName))
             {
+                // Windows refuses to replace a read-only file; Linux renames over it. Refuse on both.
+                if (File.GetAttributes(PathName).HasFlag(FileAttributes.ReadOnly))
+                    throw new UnauthorizedAccessException("The saved profiles file is read-only. Make it writable before saving.");
                 bool valid;
                 try { ReadAll(PathName, out _); valid = true; }
                 catch (Exception ex) when (ex is JsonException or ArgumentException) { valid = false; }

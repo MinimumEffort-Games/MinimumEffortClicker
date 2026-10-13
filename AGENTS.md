@@ -5,6 +5,9 @@ Then README.md, CONTRIBUTING.md and docs/RELEASE_STATUS.md.
 
 Windows 11 x64, C#/.NET 10 and WPF. Core/Engine stay independent of WPF/native adapters.
 The four pages (Actions, Toggles, Screenshot, Settings) are the whole product; code that no page can reach is deleted, not kept.
+Linux preview: Avalonia app + MinimumEffortClicker.Linux adapters, built from MinimumEffortClicker.Linux.slnx
+with scripts/linux/*.sh. Keep the Windows solution, lock files and behaviour unchanged by Linux work.
+Linux native probes run only in the private headless GNOME Shell (scripts/linux/run-headless-probe.sh).
 Default tests use fake inputs/time/targets; never synthesize desktop input in CI.
 Native probes are opt-in inside an isolated virtual machine (MEC_ISOLATED_VM=1, standard user, F9 stop route).
 Keep runtime offline and stopped on startup; loading a macro or restored focus never starts it. A running window-target run that pauses because its window left the front resumes by itself once the window is back in front for half a second (Roy, 2026-10-13); a pause the user asked for stays paused.
