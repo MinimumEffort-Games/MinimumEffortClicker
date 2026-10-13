@@ -30,7 +30,7 @@ function Invoke-VmCheck([string[]]$Arguments, [int]$TimeoutMs = 15000) {
         } elseif ($output -match '(?i)incorrect password|password.*invalid') {
             'VM encryption password was not accepted.'
         } elseif ($output -match '(?i)program could not run') {
-            'VMware authenticated but could not launch the guest program. Sign into the GPT desktop before retrying.'
+            'VMware authenticated but could not launch the guest program. Sign into the guest desktop before retrying.'
         } elseif ($output -match '(?i)permission|access.*denied') {
             'Guest Windows denied permission for this operation.'
         } elseif ($output -match '(?i)unrecognized command|unknown command|invalid command|invalid parameters|usage:') {

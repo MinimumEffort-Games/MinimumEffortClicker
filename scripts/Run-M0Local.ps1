@@ -1,11 +1,12 @@
-# Opt-in only. Sends bounded input exclusively to the probe's own TestTarget in this VMware session.
+# Opt-in only. Sends bounded input exclusively to the probe's own TestTarget inside an isolated virtual machine.
+# Run it as a standard user in the guest with MEC_ISOLATED_VM=1 set; never on a real desktop or in CI.
 param([switch]$IsolatedVm, [switch]$Helpers, [switch]$Recovery, [switch]$Performance)
 . "$PSScriptRoot/Common.ps1"
 if (!$IsolatedVm) { throw 'Explicit -IsolatedVm opt-in is required. F9 stops the bounded probe.' }
 if (([int]$Helpers.IsPresent + [int]$Recovery.IsPresent + [int]$Performance.IsPresent) -gt 1) { throw 'Choose one probe mode.' }
-if ($env:USERNAME -ne 'GPT') { throw 'Probe requires the dedicated GPT account.' }
+if ($env:MEC_ISOLATED_VM -ne '1') { throw 'Set MEC_ISOLATED_VM=1 inside the isolated virtual machine before running the probe.' }
 $system = Get-CimInstance Win32_ComputerSystem
-if ($system.Manufacturer -notlike '*VMware*') { throw 'Probe requires the isolated VMware guest.' }
+if ($system.Manufacturer -notmatch 'VMware|VirtualBox|innotek|QEMU|Parallels|Xen' -and $system.Model -notmatch 'Virtual') { throw 'Probe requires an isolated virtual machine guest.' }
 $identity = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
 if ($identity.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run as a standard user.' }
 $probe = Join-Path $ProjectRoot 'artifacts/m0-probe/bundle-shared-runtime/probe/MinimumEffortClicker.WindowsProbe.exe'

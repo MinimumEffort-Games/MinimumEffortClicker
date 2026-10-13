@@ -21,17 +21,13 @@ jobs:
           global-json-file: global.json
       - name: Test and package (no native input)
         shell: pwsh
-        run: |
-          $destination = Join-Path $env:USERPROFILE 'Desktop/Clicker/MinimumEffortClicker-0.5.0-preview.34.16-win-x64'
-          New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-          ./scripts/Build-Public.ps1 -Destination $destination -Zip
-          "MEC_PACKAGE=$destination" >> $env:GITHUB_ENV
+        run: ./scripts/Build-Public.ps1 -Zip
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Windows-x64-unsigned-preview
           path: |
-            ~/Desktop/Clicker/*.zip
-            ~/Desktop/Clicker/*.zip.sha256
+            artifacts/package/*.zip
+            artifacts/package/*.zip.sha256
           if-no-files-found: error
 
   release:
@@ -52,10 +48,8 @@ jobs:
           [xml]$properties = Get-Content Directory.Build.props -Raw
           $version = [string]$properties.Project.PropertyGroup.Version
           if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Release tag must match the pinned app version.' }
-          $destination = Join-Path $env:USERPROFILE "Desktop/Clicker/MinimumEffortClicker-$version-win-x64"
-          New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-          ./scripts/Build-Public.ps1 -Destination $destination -Zip
-          "MEC_PACKAGE=$destination" >> $env:GITHUB_ENV
+          ./scripts/Build-Public.ps1 -Zip
+          "MEC_PACKAGE=$(Join-Path (Get-Location) "artifacts/package/MinimumEffortClicker-$version-win-x64")" >> $env:GITHUB_ENV
       - name: Publish unsigned prerelease
         shell: pwsh
         env:
