@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Linux native adapters: GNOME Shell helper (D-Bus), evdev and logind. No WPF or Windows APIs. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MinimumEffortClicker.Engine/MinimumEffortClicker.Engine.csproj" />
+    <PackageReference Include="Tmds.DBus.Protocol" />
+    <InternalsVisibleTo Include="Linux.Tests" />
+  </ItemGroup>
+</Project>

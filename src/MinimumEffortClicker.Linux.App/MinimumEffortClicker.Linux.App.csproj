@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>MinimumEffortClicker</AssemblyName>
+    <RootNamespace>MinimumEffortClicker.App</RootNamespace>
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="../../assets/brand/source/logo-owner-transparent.png" Link="Assets/Logo.png" />
+    <AvaloniaResource Include="../../assets/brand/rounded-r26/shrug-rounded-r26.png" Link="Assets/App.png" />
+    <ProjectReference Include="../MinimumEffortClicker.Linux/MinimumEffortClicker.Linux.csproj" />
+    <ProjectReference Include="../MinimumEffortClicker.Storage/MinimumEffortClicker.Storage.csproj" />
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" />
+  </ItemGroup>
+  <!-- Keep builds offline: skip Avalonia's build-time usage statistics (same effect as AVALONIA_TELEMETRY_OPTOUT=1). -->
+  <Target Name="MecSkipAvaloniaStats" BeforeTargets="AvaloniaStats">
+    <PropertyGroup><UsedAvaloniaProducts></UsedAvaloniaProducts></PropertyGroup>
+  </Target>
+</Project>

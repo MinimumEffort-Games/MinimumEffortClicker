@@ -1,0 +1,162 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- The Windows build's control treatment, rebuilt over Avalonia's Fluent theme. Brushes come
+         from AppTheme, so light and dark modes match the WPF palette. -->
+    <Styles.Resources>
+        <!-- Simple line icons drawn for this app (24 × 24). The Windows build uses Segoe Fluent Icons. -->
+        <StreamGeometry x:Key="IconUp">M12,4 L19.5,12 L14.5,12 L14.5,20 L9.5,20 L9.5,12 L4.5,12 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconDown">M12,20 L4.5,12 L9.5,12 L9.5,4 L14.5,4 L14.5,12 L19.5,12 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconCopy">F1 M8,8 L20,8 L20,20 L8,20 Z M10,10 L10,18 L18,18 L18,10 Z M4,4 L16,4 L16,6 L6,6 L6,16 L4,16 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconDelete">F1 M9,2 L15,2 L15,4 L20,4 L20,6 L4,6 L4,4 L9,4 Z M5.5,7.5 L18.5,7.5 L17.5,22 L6.5,22 Z M9,10 L9,19.5 L10.5,19.5 L10.5,10 Z M13.5,10 L13.5,19.5 L15,19.5 L15,10 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconUndo">M9,4 L2.5,9.5 L9,15 L9,11.5 C13.5,11.5 17,13 19.5,18.5 C19.5,12 15.5,8 9,8 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconRedo">M15,4 L21.5,9.5 L15,15 L15,11.5 C10.5,11.5 7,13 4.5,18.5 C4.5,12 8.5,8 15,8 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconClear">M6.4,5 L12,10.6 L17.6,5 L19,6.4 L13.4,12 L19,17.6 L17.6,19 L12,13.4 L6.4,19 L5,17.6 L10.6,12 L5,6.4 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconSun">M12,7 A5,5 0 1 1 11.99,7 Z M11,1 L13,1 L13,4.5 L11,4.5 Z M11,19.5 L13,19.5 L13,23 L11,23 Z M1,11 L4.5,11 L4.5,13 L1,13 Z M19.5,11 L23,11 L23,13 L19.5,13 Z M3.9,5.3 L5.3,3.9 L7.8,6.4 L6.4,7.8 Z M16.2,17.6 L17.6,16.2 L20.1,18.7 L18.7,20.1 Z M3.9,18.7 L6.4,16.2 L7.8,17.6 L5.3,20.1 Z M16.2,6.4 L18.7,3.9 L20.1,5.3 L17.6,7.8 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconMoon">M14,2.5 A9.5,9.5 0 1 0 21.5,14 A7.5,7.5 0 1 1 14,2.5 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconSave">F1 M3,3 L17,3 L21,7 L21,21 L3,21 Z M6,5 L6,10 L15,10 L15,5 Z M7,14 L7,19 L17,19 L17,14 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconAdd">M11,4 L13,4 L13,11 L20,11 L20,13 L13,13 L13,20 L11,20 L11,13 L4,13 L4,11 L11,11 Z</StreamGeometry>
+    </Styles.Resources>
+
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{DynamicResource AppBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <Style Selector="TextBlock.heading">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="TextBlock.secondary">
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource Surface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="10" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+
+    <!-- Buttons: the pre-pixel treatment with compact spacing. -->
+    <Style Selector="Button">
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="Background" Value="{DynamicResource RaisedSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.green">
+        <Setter Property="Background" Value="{DynamicResource SuccessFill}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
+        <Setter Property="Foreground" Value="{DynamicResource ColourButtonText}" />
+    </Style>
+    <Style Selector="Button.blue">
+        <Setter Property="Background" Value="{DynamicResource ActionFill}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ActionBorder}" />
+        <Setter Property="Foreground" Value="{DynamicResource ColourButtonText}" />
+    </Style>
+    <Style Selector="Button.red">
+        <Setter Property="Background" Value="{DynamicResource StopFill}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource StopBorder}" />
+        <Setter Property="Foreground" Value="{DynamicResource ColourButtonText}" />
+    </Style>
+    <Style Selector="Button.icon">
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,5,0" />
+    </Style>
+    <Style Selector="Button.icon PathIcon">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource FocusRing}" />
+        <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+    </Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource FocusRing}" />
+        <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+    </Style>
+    <Style Selector="Button:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+        <Setter Property="BorderBrush" Value="{Binding $parent[Button].BorderBrush}" />
+        <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        <Setter Property="Opacity" Value="0.45" />
+    </Style>
+
+    <Style Selector="TextBox">
+        <Setter Property="Margin" Value="0,4,0,8" />
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style Selector="ComboBox">
+        <Setter Property="Margin" Value="0,4,0,8" />
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="CheckBox">
+        <Setter Property="Margin" Value="0,2" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="FontSize" Value="14" />
+    </Style>
+
+    <!-- Navigation and list rows. -->
+    <Style Selector="ListBox">
+        <Setter Property="Background" Value="{DynamicResource Surface}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
+    </Style>
+    <Style Selector="ListBoxItem">
+        <Setter Property="Padding" Value="8,5" />
+        <Setter Property="Margin" Value="0,2" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource RaisedSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+    <Style Selector="ListBoxItem:selected">
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource RaisedSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+    <Style Selector="ListBox.navigation ListBoxItem">
+        <Setter Property="Padding" Value="18,8" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="FontSize" Value="14" />
+    </Style>
+
+    <Style Selector="DataGrid">
+        <Setter Property="Background" Value="{DynamicResource Surface}" />
+        <Setter Property="RowBackground" Value="{DynamicResource Surface}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
+        <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource Border}" />
+        <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource Border}" />
+    </Style>
+    <Style Selector="DataGridColumnHeader">
+        <Setter Property="Background" Value="{DynamicResource RaisedSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+</Styles>

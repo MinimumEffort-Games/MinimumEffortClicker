@@ -33,7 +33,7 @@ public static class ScreenshotFiles
             {
                 cancellation.ThrowIfCancellationRequested();
                 string path = Path.Combine(folder, name + (suffix == 1 ? "" : $" ({suffix})") + ".png");
-                try { File.Move(temporary, path, false); return path; }
+                try { Claim(temporary, path); return path; }
                 catch (IOException) when (File.Exists(path) || Directory.Exists(path)) { }
             }
             throw new IOException("Too many screenshots already use this name and time.");
@@ -42,6 +42,16 @@ public static class ScreenshotFiles
         {
             if (created && File.Exists(temporary)) File.Delete(temporary);
         }
+    }
+
+    private static void Claim(string temporary, string path)
+    {
+        if (OperatingSystem.IsWindows()) { File.Move(temporary, path, false); return; }
+        // On Linux a no-overwrite move checks and then renames, so two saves can race onto one name.
+        // Claim the name atomically (O_EXCL) first; the rename then replaces only our own placeholder.
+        using (new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
+        try { File.Move(temporary, path, true); }
+        catch { File.Delete(path); throw; }
     }
 
     public static string DestinationDirectory(string folder, bool dailyFolders, DateTime capturedAt) =>
