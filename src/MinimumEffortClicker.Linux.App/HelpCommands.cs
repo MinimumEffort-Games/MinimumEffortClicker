@@ -124,15 +124,4 @@ public partial class MainWindow
         DockPanel.SetDock(close, Dock.Bottom); panel.Children.Add(close); panel.Children.Add(scroll);
         dialog.ShowDialog();
     }
-
-    private readonly Queue<string> diagnosticStates = new();
-    private string? lastDiagnosticState;
-    private void RecordDiagnosticState(RuntimeSnapshot snapshot)
-    {
-        if (snapshot.State == lastDiagnosticState) return;
-        lastDiagnosticState = snapshot.State;
-        if (diagnosticStates.Count == 64) diagnosticStates.Dequeue();
-        // Only application-defined states and counts: no keys, names, titles, paths or images.
-        diagnosticStates.Enqueue($"{DateTimeOffset.UtcNow:O}  {snapshot.State}; inputs={snapshot.InputsSent}; loops={snapshot.CompletedCycles}; cleanup={snapshot.CleanupPending}");
-    }
 }

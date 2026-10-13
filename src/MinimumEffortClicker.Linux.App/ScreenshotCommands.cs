@@ -108,12 +108,6 @@ public partial class MainWindow
         ScreenshotFolderBox.Text = folder; PersistPreferences();
     }
 
-    private void ScreenshotSettings_Click(object? sender, RoutedEventArgs e)
-    {
-        Navigate(3);
-        Dispatcher.Post(() => ScreenshotHotkeyPanel.BringIntoView(), DispatcherPriority.Loaded);
-    }
-
     private void ScreenshotOpenFolder_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -161,10 +155,9 @@ public partial class MainWindow
                 throw new InvalidOperationException("Screenshot saving is unavailable while closing.");
         }
         if (runtime is null || !initialized || closing || allowClose || screenshotBusy || Environment.TickCount64 - screenshotFinishedAt < 750) return;
-        if ((!fromAction && quickOperation) || quickEditorOpen || bindingBusy || ioBusy || macroFileBusy || DialogWindow.OpenCount > 0
-            || overlay?.IsEditing == true)
+        if ((!fromAction && quickOperation) || quickEditorOpen || bindingBusy || ioBusy || macroFileBusy || DialogWindow.OpenCount > 0)
         {
-            ScreenshotStatus.Text = "Finish the open dialog, recording, test, or overlay adjustment before taking a screenshot.";
+            ScreenshotStatus.Text = "Finish the open dialog, recording or test before taking a screenshot.";
             if (fromAction) throw new InvalidOperationException(ScreenshotStatus.Text);
             return;
         }

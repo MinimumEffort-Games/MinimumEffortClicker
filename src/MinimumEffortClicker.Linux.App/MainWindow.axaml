@@ -240,23 +240,8 @@
                     </ScrollViewer>
                 </Grid>
 
-                <!-- Page 1: saved macro folders. Hidden in this release, as in the Windows build; the
-                     Toggles page and macro files share its library code. -->
-                <Grid x:Name="ProfilesPage" IsVisible="False">
-                    <StackPanel>
-                        <TextBox x:Name="ProfileNameBox" Text="My helper" MaxLength="100" />
-                        <ListBox x:Name="ProfileList" SelectionChanged="ProfileSelection_Changed" DisplayMemberBinding="{Binding Name, x:DataType=core:ProfileDefinition}" />
-                        <CheckBox x:Name="ProfileEnabledBox" Content="Enable selected folder" IsCheckedChanged="Availability_Changed" />
-                        <ListBox x:Name="MacroList" SelectionChanged="MacroSelection_Changed" DisplayMemberBinding="{Binding Name, x:DataType=core:MacroDefinition}" />
-                        <TextBox x:Name="MacroNameBox" MaxLength="100" />
-                        <TextBlock x:Name="MacroSummary" />
-                        <Button x:Name="MacroKeyBox" Content="Choose a key…" Click="CaptureMacroKey_Click" />
-                        <CheckBox x:Name="MacroHoldBox" Content="Run only while holding this macro hotkey" />
-                        <CheckBox x:Name="MacroEnabledBox" Content="Enable selected macro" IsCheckedChanged="Availability_Changed" />
-                        <TextBlock x:Name="AvailabilityLabel" Text="Saved macro hotkeys start off." />
-                    </StackPanel>
-                </Grid>
-                <!-- Retain this empty slot for existing page identifiers. -->
+                <!-- Retain these empty slots for existing page identifiers. -->
+                <Grid IsVisible="False" />
                 <Grid IsVisible="False" />
 
                 <!-- Page 3: Settings -->
@@ -278,7 +263,6 @@
                             <TextBlock Text="Applies to saved clicks on the next Start or Test. Scaling follows the same proportional position; it does not recognise buttons. Colour areas and drags still need recalibration." Classes="secondary" />
                             <TextBlock Text="Status overlay" Classes="heading" Margin="0,18,0,8" />
                             <CheckBox x:Name="IdleOverlayBox" Content="Keep an idle indicator visible" IsCheckedChanged="OverlayOptions_Changed" />
-                            <CheckBox x:Name="AnchorOverlayBox" IsVisible="False" IsCheckedChanged="OverlayOptions_Changed" />
                             <TextBlock Text="Opacity" />
                             <Slider x:Name="OverlayOpacity" Width="300" HorizontalAlignment="Left" Minimum="0.4" Maximum="1" Value="0.94" ValueChanged="OverlayOptions_Changed" AutomationProperties.Name="Overlay opacity" />
                             <TextBlock Text="Size" />

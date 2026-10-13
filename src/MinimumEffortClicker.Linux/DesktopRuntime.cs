@@ -97,10 +97,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     public long CompletionLimit { get => executor.CompletionLimit; set => executor.CompletionLimit = value; }
     public TimeSpan ActiveTimeLimit { get => executor.ActiveTimeLimit; set => executor.ActiveTimeLimit = value; }
     public bool KeepAwakeWhileRunning { get; set; }
-    private volatile HelperPlan? armedPlan;
     private ArmedHelper[] armedHelpers = [];
     private Guid runningMacro;
-    public HelperPlan? ArmedPlan { get => armedPlan; set => armedPlan = value; }
     private volatile bool quickSequenceArmed;
     public bool QuickSequenceArmed { get => quickSequenceArmed; set => quickSequenceArmed = value; }
 
@@ -433,10 +431,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         }
         if (CanResume) { TryResume(); return; }
         if (Snapshot.Busy) { if (!Control.HoldTrigger) StopPlayback("Stopped with toggle hotkey."); return; }
-        var plan = ArmedPlan;
-        if ((plan is not null || QuickSequenceArmed) && QuickStartRequested is { } start) { start(); return; }
-        if (plan is not null && (plan.LeaveCursorFree || BringTargetForward()))
-            TryStart(plan, TimeSpan.FromMilliseconds(250));
+        if (QuickSequenceArmed && QuickStartRequested is { } start) start();
     }
 
     public async Task<bool> ConfigureHelpersAsync(IReadOnlyList<ArmedHelper> helpers)
@@ -621,31 +616,6 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     }
 
     internal bool CaptureTargetAvailable => TargetAvailable;
-    private bool editingOverlay;
-    public void BeginOverlayEditing(Action<string> finish)
-    {
-        lock (gate)
-        {
-            if (disposed || busy || recording || executor.HasOwnedInput || !Control.Available)
-                throw new InvalidOperationException("Stop playback and finish cleanup before adjusting the overlay.");
-            editingOverlay = true; recording = true; captureStop = finish; capturePause = _ => { };
-            activity = "Overlay placement";
-            inputsSent = 0; completed = 0; elapsed = TimeSpan.Zero;
-            started = Stopwatch.GetTimestamp(); state = "Overlay unlocked";
-            reason = "Playback is blocked while adjusting the overlay. Lock it to finish; nothing resumes automatically.";
-        }
-        NotifyChanged();
-    }
-    public void EndOverlayEditing()
-    {
-        lock (gate)
-        {
-            if (!editingOverlay) return;
-            editingOverlay = false; recording = false; captureStop = null; capturePause = null;
-            elapsed = TimeSpan.Zero; state = "Stopped"; reason = "Overlay locked. Playback remains stopped.";
-        }
-        NotifyChanged();
-    }
     public void BeginTargetPreview(Action<string> finish)
     {
         BeginCapture(finish, finish);

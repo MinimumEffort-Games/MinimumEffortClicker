@@ -30,7 +30,6 @@ public partial class MainWindow
     private readonly Dictionary<string, InputControl> quickInputs = SequenceKeys.Supported.ToDictionary(k => k.Key, k => InputControl.Key(k.Value));
     private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground, bool? Tested = null, string TestTip = "")
     {
-        public bool UsesColour => Step.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears };
         // Testing a pause would only wait, so pause rows have no Test button.
         public bool TestVisible => Step.Kind != StepKind.Wait;
         public bool TestPassed => Tested == true;
@@ -83,7 +82,6 @@ public partial class MainWindow
     private static TimeSpan OptionalPause(TextBox box) => string.IsNullOrWhiteSpace(box.Text) ? TimeSpan.Zero : Milliseconds(box);
     private SequenceDefinition ApplyListOptions(SequenceDefinition source) => QuickActions.WithClickMovement(
         QuickActions.WithCursorFree(source, false), RecordMovementBox.IsChecked == true);
-    private static string QuickSummary(SequenceDefinition sequence) => $"{sequence.Steps.Count} action{(sequence.Steps.Count == 1 ? "" : "s")} · {sequence.Repetition ?? new()}";
     private bool TryQuickSequence(out SequenceDefinition? definition, out SequencePlan? plan, out string error)
     {
         definition = null; plan = null; error = "";
@@ -104,7 +102,7 @@ public partial class MainWindow
         if (!initialized || loadingQuick || runtime is null) return;
         quickValid = TryQuickSequence(out var definition, out _, out var error);
         RunButton.ToolTip = quickValid ? null : error;
-        runtime.ArmedPlan = null; runtime.QuickSequenceArmed = quickValid;
+        runtime.QuickSequenceArmed = quickValid;
         RefreshStatus();
     }
     private void RefreshQuickAvailability(RuntimeSnapshot snapshot)
