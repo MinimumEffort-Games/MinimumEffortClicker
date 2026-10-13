@@ -14,6 +14,8 @@ Nothing has been changed yet. The build was not run here: the PC has SDK 10.0.40
 
 - 2026-10-13: Regression tests for the fixed bugs plus real-clock wait tests (254 tests). Public-repo files added: SECURITY.md, issue and PR templates, CHANGELOG.md, .editorconfig; the release workflow now publishes the artifact the build job tested instead of building twice.
 
+- 2026-10-13: PR #1 opened (https://github.com/MinimumEffort-Games/MinimumEffortClicker/pull/1); the reworked CI passed on it. Code-quality pass committed: operation gate, named default shortcuts and modifier scan codes, one timing sampler. Formatter and analyzer rollout measured and deferred (item 31).
+
 ## Roy's open list
 
 Struck items are done. Never resurrect them.
@@ -71,10 +73,10 @@ App / shell
 
 ### C. Cleanup and launch prep
 
-28. **Structure.** MainWindow is 18 partial files with about 20 ad-hoc busy flags (`quickOperation, macroFileBusy, ioBusy, bindingBusy, screenshotBusy, ...`) checked in different subsets per handler; `DeleteProfile_Click` already forgot `bindingBusy`. `PlaybackCommands.cs` and `ConditionEditor.cs` each hold partials of two classes. `ShellViewModel.cs` is an unreferenced stub and the only reason `CommunityToolkit.Mvvm` is referenced. One operation gate, one class per file, delete the stub and the package.
-29. **Duplicated logic.** `ClickExecutor.SampleDuration` equals `ScheduledTiming.Range`, and the same sample check is in `ClickMotion.cs:18`; the missed-slot catch-up in `ExecuteCore` duplicates `CombinedHelpers.CompleteCycle`; the "mark Completed, RemoveAll" pair appears three times in CombinedHelpers. Dead: `WaitForClick`'s `changed` parameter, `ClickRehearsal`, `DeadlineWait.WaitUntilOrChanged`.
-30. **Magic numbers.** Default keys 0x77/0x78/0x79 appear in four places; scan codes, mouse codes and Win32 style constants are literals across the UI layer. `ShortcutKeys.DefaultStart/Stop/Record`, named scan codes in Core, named constants in `ProbeNative`.
-31. **Readability.** 146 lines over 200 characters, many multi-statement lines. `.editorconfig` added 2026-10-13. Still open: run `dotnet format`, enable `AnalysisLevel=latest-recommended` plus `EnforceCodeStyleInBuild`, move the 68 `DllImport`s to `LibraryImport` (source-generated, analyzer SYSLIB1054).
+28. **Structure.** ~~Busy flags~~ replaced by `OperationGate` 2026-10-13; ~~two-class partial files and the MVVM stub~~ gone with the cleanup. Still open, low value: many files hold a record plus its helper type (about 30 files); splitting them is mechanical and only worth doing when a file is touched anyway.
+29. ~~Duplicated logic.~~ Done 2026-10-13: one `TimingSample` for executor, action timing and click motion; the helper-set duplicates are gone; `WaitForClick`'s dead parameter and `ClickRehearsal` removed.
+30. ~~Magic numbers.~~ Done 2026-10-13 for the default shortcuts and modifier scan codes. Win32 style and message constants in `StatusOverlay`, `TargetPreviewWindow` and `ScreenshotSelectionWindow` are still literals with comments; name them when those files are next touched.
+31. **Readability.** `.editorconfig` added 2026-10-13. Measured and deliberately not applied: `dotnet format whitespace` would rewrite about 700 lines of the compact house style, and `AnalysisLevel=latest-recommended` raises about 100 distinct warnings (mostly CA1305 culture-sensitive strings and CA1401 visible P/Invokes) that would all be errors under `TreatWarningsAsErrors`. Do either as its own commit when there is time to review the diff. `LibraryImport` migration is not worth it: the app is untrimmed, and the hooks use delegates that the source generator does not support.
 32. ~~Toolchain friendliness.~~ Done 2026-10-13: `global.json` rolls forward to the latest 10.0.4xx patch.
 33. **CI.** ~~Hard-coded version~~ and ~~double build~~ fixed 2026-10-13: the release job publishes the artifact the build job tested. Still open: a PR check that `dotnet format --verify-no-changes` passes once 31 is done. The new workflow has not run on GitHub yet; the first push will show whether the artifact handoff works.
 34. **Docs for a public repo.** ~~Third-party notices~~, ~~SECURITY.md~~, ~~issue and PR templates~~, ~~CHANGELOG.md~~ done 2026-10-13. Still open: screenshots of the new build in the README (Roy, the old screenshots show the private-era data path), a one-paragraph "is this allowed in my game" section, and shipping the Help text as a markdown file in `docs/`.
