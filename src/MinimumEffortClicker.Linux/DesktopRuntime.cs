@@ -153,6 +153,28 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         catch (ShellHelperException) { return []; }
     }
 
+    /// <summary>
+    /// Brings one of the clicker's own windows back from minimised and in front. GNOME refuses that request from an
+    /// X11 app that is not focused (it shows "is ready" instead), so the shell helper does it. False when it could not.
+    /// </summary>
+    public bool ActivateOwnWindow(string title)
+    {
+        if (Control.Helper is not { } helper) return false;
+        try { return OwnWindow(helper, title) is { } id && helper.ActivateWindow(id); }
+        catch (Exception ex) when (ex is ShellHelperException or InvalidOperationException) { return false; }
+    }
+
+    /// <summary>Whether GNOME shows one of the clicker's own windows as minimised; null when the helper cannot say.</summary>
+    public bool? OwnWindowMinimized(string title)
+    {
+        if (Control.Helper is not { } helper) return null;
+        try { return OwnWindow(helper, title) is { } id ? helper.GetWindow(id).Minimized : null; }
+        catch (Exception ex) when (ex is ShellHelperException or InvalidOperationException) { return null; }
+    }
+
+    private static ulong? OwnWindow(ShellHelper helper, string title) =>
+        helper.ListWindows().FirstOrDefault(w => w.ProcessId == Environment.ProcessId && w.Title == title)?.Id;
+
     private HelperTargetState? Query(TargetWindow? selected)
     {
         if (Control.Helper is not { } helper) return null;

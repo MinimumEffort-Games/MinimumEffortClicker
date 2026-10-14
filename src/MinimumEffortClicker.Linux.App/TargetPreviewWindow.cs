@@ -24,13 +24,13 @@ internal sealed class TargetPreviewWindow : Window
     private string finishReason = "Target preview closed. Nothing was sent.";
     public Task<ClientPoint?> Finished => completion.Task;
 
-    public TargetPreviewWindow(DesktopRuntime runtime, IReadOnlyList<NamedPoint> points, bool picking, TimeSpan? timeout = null, bool clickLocation = false)
+    public TargetPreviewWindow(DesktopRuntime runtime, IReadOnlyList<NamedPoint> points, bool picking, TimeSpan? timeout = null)
     {
         this.runtime = runtime; this.picking = picking; calibration = runtime.GetTargetFrame();
         if (points.Any(p => !p.Position.Matches(calibration.Width, calibration.Height, calibration.Dpi)))
             throw new InvalidOperationException("A named point needs recalibration for this window size/DPI.");
         // The picker shares the overlay's title so playback hit tests and the window list ignore it.
-        Title = picking ? DesktopRuntime.OverlayTitle : clickLocation ? "Click location · no input" : "Named point preview · no input";
+        Title = picking ? DesktopRuntime.OverlayTitle : "Named point preview · no input";
         Width = calibration.Width; Height = calibration.Height;
         WindowDecorations = WindowDecorations.None; CanResize = false;
         TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
@@ -45,7 +45,7 @@ internal sealed class TargetPreviewWindow : Window
             if (!client.IsValid) throw new InvalidOperationException("A fixed desktop point is outside the selected target. Review its coordinates before previewing.");
             return p with { Position = client };
         }).ToArray();
-        markers = new MarkerSurface(projected, picking, clickLocation) { ClipToBounds = true };
+        markers = new MarkerSurface(projected, picking) { ClipToBounds = true };
         Content = markers;
         // Never take focus from the target: markers are also click-through; the picker takes clicks only.
         Opened += (_, _) => { X11Windows.SetNoFocus(this, true); if (!picking) X11Windows.SetClickThrough(this, true); };
@@ -73,7 +73,6 @@ internal sealed class TargetPreviewWindow : Window
         {
             try
             {
-                if (clickLocation) { markers.Pulse = lifetime.Elapsed.TotalSeconds; markers.InvalidateVisual(); }
                 if (lifetime.Elapsed > (timeout ?? TimeSpan.FromSeconds(picking ? 30 : 10)) || runtime.Current?.IsAvailable != true || runtime.GetTargetFrame() != calibration)
                     Finish("Target preview ended after timeout or target change. Nothing was sent.");
             }
@@ -100,9 +99,8 @@ internal sealed class TargetPreviewWindow : Window
     }
     private void Finish(string reason) { if (closed) return; finishReason = reason; Close(); }
 
-    private sealed class MarkerSurface(IReadOnlyList<NamedPoint> points, bool picking, bool clickLocation) : Control
+    private sealed class MarkerSurface(IReadOnlyList<NamedPoint> points, bool picking) : Control
     {
-        public double Pulse { get; set; }
         public override void Render(DrawingContext drawing)
         {
             base.Render(drawing);
@@ -115,33 +113,11 @@ internal sealed class TargetPreviewWindow : Window
             foreach (var point in points)
             {
                 var centre = new Point(point.Position.X / scale, point.Position.Y / scale);
-                if (clickLocation)
-                {
-                    // Attention target: bright centre, contrasting outlines and slowly shrinking rings.
-                    var red = Brushes.Red;
-                    for (int ring = 0; ring < 2; ring++)
-                    {
-                        double phase = (Pulse / 1.2 + ring * 0.5) % 1;
-                        double radius = 14 + 46 * (1 - phase);
-                        using (drawing.PushOpacity(0.35 + phase * 0.65))
-                        {
-                            drawing.DrawEllipse(null, new Pen(Brushes.White, 6), centre, radius, radius);
-                            drawing.DrawEllipse(null, new Pen(red, 3), centre, radius, radius);
-                        }
-                    }
-                    drawing.DrawLine(new Pen(Brushes.White, 5), new(centre.X - 22, centre.Y), new(centre.X + 22, centre.Y));
-                    drawing.DrawLine(new Pen(Brushes.White, 5), new(centre.X, centre.Y - 22), new(centre.X, centre.Y + 22));
-                    drawing.DrawLine(new Pen(red, 2), new(centre.X - 22, centre.Y), new(centre.X + 22, centre.Y));
-                    drawing.DrawLine(new Pen(red, 2), new(centre.X, centre.Y - 22), new(centre.X, centre.Y + 22));
-                    drawing.DrawEllipse(red, new Pen(Brushes.White, 2), centre, 7, 7);
-                    continue;
-                }
                 drawing.DrawEllipse(surface, pen, centre, 13, 13);
                 var label = new FormattedText($"{++number}  {point.Name}", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, 13, ink);
                 drawing.DrawRectangle(surface, null, new Rect(centre.X + 17, centre.Y - 12, label.Width + 12, 26));
                 drawing.DrawText(label, new Point(centre.X + 23, centre.Y - 9));
             }
-            if (clickLocation) return;
             var hint = new FormattedText(picking ? "Pick a point · click is intercepted · right-click or Stop All cancels" : "Named points · no input · click-through · Stop All closes", CultureInfo.CurrentCulture,
                 FlowDirection.LeftToRight, typeface, 14, ink);
             drawing.DrawRectangle(surface, pen, new Rect(12, 12, Math.Max(0, Math.Min(Bounds.Width - 24, hint.Width + 24)), 40));

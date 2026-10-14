@@ -63,11 +63,11 @@ public partial class MainWindow
                 var frame = runtime.GetTargetFrame();
                 SequenceCompiler.Compile(new([step]), quickPoints).ValidateDesktopMode(frame.Width, frame.Height, frame.Dpi);
             }
-            if (WindowState != WindowState.Minimized) { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
+            if (WindowState != WindowState.Minimized) { minimizedFrom = WindowState; WindowState = WindowState.Minimized; await WaitUntilMinimized(cancellation.Token); }
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             if (step.Condition is { } condition && step.Kind == StepKind.Condition)
             {
-                // Let the minimise animation finish so the clicker is not in the picture.
+                // Let the target settle in front so the picture shows it.
                 await Task.Delay(300, cancellation.Token);
                 (passed, detail) = await CheckConditionOnce(condition, cancellation.Token);
                 // GNOME ignores a restore that arrives while the window is still minimising and only shows "is ready".
@@ -91,7 +91,7 @@ public partial class MainWindow
                 bool ran = runtime.Snapshot.State == "Completed";
                 passed = ran ? null : false;
                 detail = ran ? "Ran: the action was sent." : "Failed: " + runtime.Snapshot.Reason;
-                if (ran && IsClick(step) && runtime.PointerPosition is { } pointer) ClickPingWindow.At(pointer.X, pointer.Y);
+                if (ran && IsClick(step)) ShowClickPing(step);
             }
         }
         catch (OperationCanceledException) { runtime.Stop("Action test aborted."); detail = "Aborted with Stop All."; }
@@ -104,6 +104,22 @@ public partial class MainWindow
         rowTests[step.Id] = (row.Step, passed, detail);
         ShowTestSelectedButton();
         ReasonLabel.Text = $"Test of action {row.Index + 1}: {detail}";
+    }
+
+    /// <summary>The green ring where a tested click landed: its saved location, or the pointer for a click at the cursor.</summary>
+    private void ShowClickPing(SequenceStep step)
+    {
+        try
+        {
+            if ((step.Position ?? step.Children?.FirstOrDefault(c => c.Position is not null)?.Position) is { } point)
+            {
+                var frame = runtime!.GetTargetFrame();
+                var screen = point.Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi);
+                ClickPingWindow.At(screen.X, screen.Y, ClickPingWindow.Landed);
+            }
+            else if (runtime?.PointerPosition is { } pointer) ClickPingWindow.At(pointer.X, pointer.Y, ClickPingWindow.Landed);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
     }
 
     private static bool IsClick(SequenceStep step) => step.Control?.Kind == InputKind.MouseButton
