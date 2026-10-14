@@ -91,8 +91,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
     {
         // Every step waits here first, so a target that left the front pauses the run at the step instead of ending it.
         // Checked before and after each wait: the window may leave while the wait runs, before the runtime's pause arrives.
-        bool TargetGone() => needsTarget && PauseOnTargetLoss && playback is { } awaiting && activeRun is not null
-            && !TargetMatches(activeTarget) && (awaiting.RequestPause(automatic: true) || awaiting.IsPaused);
+        bool TargetGone() => needsTarget && !TargetMatches(activeTarget) && RequestTargetLossPause();
         while (true)
         {
         PauseCheckpoint(stop);
@@ -138,6 +137,19 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
     public Func<double> NextRandom { get; set; } = Random.Shared.NextDouble;
 
     private sealed class InterruptedPlaybackException : Exception;
+
+    /// <summary>
+    /// The target is not in front and this run waits for it (PauseOnTargetLoss): ask for the automatic pause. A pause the
+    /// user asked for stays theirs. True when a pause is now pending, so the next wait holds the run there.
+    /// </summary>
+    private bool RequestTargetLossPause() => PauseOnTargetLoss && playback is { } control && activeRun is not null
+        && (control.RequestPause(automatic: true) || control.IsPaused);
+    private bool PausePending => playback?.IsPaused == true;
+    /// <summary>
+    /// A press, click or move was refused. When the target left the front meanwhile (or the automatic pause for that is
+    /// already pending), wait for it and send that same input again afterwards; otherwise the refusal ends the run.
+    /// </summary>
+    private bool PauseForRefusedDown() => (!TargetMatches(activeTarget) || playback?.Automatic == true) && RequestTargetLossPause();
     private void PauseCheckpoint(CancellationToken stop)
     {
         if (playback is not { IsPaused: true } control || activeRun is not { } run) return;
@@ -255,10 +267,21 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                 WaitForClick(plan.Control, stop);
                 if (clock.Elapsed >= end) break;
                 TimeSpan releaseAt;
+                bool retry = false;
                 lock (gate)
                 {
                     if (!CanContinue(run, targetId, stop)) break;
-                    if (!sink.TrySend(new(plan.Control, InputEdge.Down, plan.Position))) { run.Outcome = ClickRunOutcome.InputRejected; break; }
+                    // The target left: wait for it, then send this same press once.
+                    if (PausePending) retry = true;
+                    else if (!sink.TrySend(new(plan.Control, InputEdge.Down, plan.Position)))
+                    {
+                        if (PauseForRefusedDown()) retry = true;
+                        else { run.Outcome = ClickRunOutcome.InputRejected; break; }
+                    }
+                }
+                if (retry) { cycle--; continue; }
+                lock (gate)
+                {
                     AcceptedClick(plan.Control);
                     if (plan.Mode != HelperMode.Scroll) owned.Add(plan.Control);
                     run.Sent++;
@@ -345,9 +368,16 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                 {
                     var screenshot = plan.Screenshots[screenshotIndex++];
                     WaitDeadline(origin + screenshot.Offset, stop);
+                    bool waitForTarget;
                     lock (gate)
                     {
                         if (!CanContinue(run, targetId, stop)) return;
+                        waitForTarget = PausePending;
+                    }
+                    // The target left: wait for it, then take this screenshot.
+                    if (waitForTarget) { screenshotIndex--; continue; }
+                    lock (gate)
+                    {
                         if (owned.Any(i => !sessionHeld.Values.Contains(i))) throw new InvalidOperationException("Release action inputs before a screenshot.");
                         Publish(run, screenshot.Name, "Save image, then pause");
                     }
@@ -427,21 +457,32 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                 WaitDeadline(due, stop);
                 if (item.Down) WaitForClick(item.Control, stop);
                 if (clock.Elapsed > due) origin += clock.Elapsed - due;
+                bool retry = false;
                 lock (gate)
                 {
                     if (!CanContinue(run, targetId, stop)) return;
                     var before = clock.Elapsed;
                     if (item.Down)
                     {
-                        if (!sink.TrySend(new(item.Control, InputEdge.Down, position, item.ClickCount))) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return; }
-                        AcceptedClick(item.Control);
-                        if (item.Control.Kind is not (InputKind.Scroll or InputKind.HorizontalScroll or InputKind.PointerMove)) owned.Add(item.Control);
-                        run.Sent++;
+                        // The target left (before or while this input went out): wait for it, then send only this input,
+                        // once. Inputs that already went out are not sent again. Releases below never wait.
+                        if (PausePending) retry = true;
+                        else if (!sink.TrySend(new(item.Control, InputEdge.Down, position, item.ClickCount)))
+                        {
+                            if (PauseForRefusedDown()) retry = true;
+                            else { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return; }
+                        }
+                        else
+                        {
+                            AcceptedClick(item.Control);
+                            if (item.Control.Kind is not (InputKind.Scroll or InputKind.HorizontalScroll or InputKind.PointerMove)) owned.Add(item.Control);
+                            run.Sent++;
+                        }
                     }
                     else if (!Release(run, item.Control, position)) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return; }
-                    Publish(run, item.Name);
-                    origin += clock.Elapsed - before;
+                    if (!retry) { Publish(run, item.Name); origin += clock.Elapsed - before; }
                 }
+                if (retry) continue;
                 index++;
             }
             lock (gate) Publish(run, owned.Count == 0 ? "Waiting" : null, "Finish sequence");
@@ -476,7 +517,13 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                 if (!CanContinue(run, targetId, stop)) return false;
                 if (owned.Any(i => i.Kind == InputKind.MouseButton)) throw new InvalidOperationException("Release held mouse buttons before smooth movement.");
                 var point = ClickMotion.Interpolate(start, position, (double)part / count);
-                if (!sink.TrySend(new(new(InputKind.PointerMove, 0), InputEdge.Down, point))) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return false; }
+                // The target left: wait for it, then make this same move.
+                if (PausePending) { part--; continue; }
+                if (!sink.TrySend(new(new(InputKind.PointerMove, 0), InputEdge.Down, point)))
+                {
+                    if (PauseForRefusedDown()) { part--; continue; }
+                    run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return false;
+                }
                 run.Sent++;
             }
         }
@@ -493,8 +540,11 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
         if (TotalCompletedClicks >= ClickCompletionLimit) run.Outcome ??= ClickRunOutcome.Cancelled;
         if (RemainingRunTime == TimeSpan.Zero) run.Outcome ??= ClickRunOutcome.Cancelled;
         if (run.Outcome is not null) return false;
-        if (!TargetMatches(targetId)) { run.Outcome = ClickRunOutcome.TargetUnavailable; return false; }
-        return true;
+        if (TargetMatches(targetId)) return true;
+        // The target left: with PauseOnTargetLoss the run waits for it at its next wait. Callers about to send check
+        // PausePending first, so nothing goes out meanwhile.
+        if (RequestTargetLossPause()) return true;
+        run.Outcome = ClickRunOutcome.TargetUnavailable; return false;
     }
 
     private ClickRunResult ExecuteSession(Guid targetId, CancellationToken stop, Action<Run> execute)
