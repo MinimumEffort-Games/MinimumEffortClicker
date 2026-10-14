@@ -396,7 +396,7 @@ internal static class HelperProbe
             runtime.ActiveTimeLimit = TimeSpan.MaxValue;
             report.Checks.Add("Active-time budget ended an indefinite key hold while WPF was blocked; F9 independently cancelled a fake pending shutdown. No OS shutdown was invoked.");
             report.Stage = "Sequence conditions through the shared executor";
-            var conditionPolicy = new ConditionPolicy(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(2), 2);
+            var conditionPolicy = new ConditionPolicy(TimeSpan.FromMilliseconds(100), 2);
             var colourReceiptBefore = await Request(pipe, "state");
             var pixelCondition = new ConditionDefinition(ConditionKind.PixelColor, conditionPolicy, new(capturePoint, 1, 1), 0xD84A31, 2);
             var afterCondition = SequenceStep.Input("Tap after matching red", InputControl.Key(0x12), TimeSpan.FromMilliseconds(20));
@@ -431,15 +431,14 @@ internal static class HelperProbe
                 && conditionTestAfter.KeyUpEvents == conditionTestReceipt.KeyUpEvents && conditionTestAfter.ButtonDownEvents == conditionTestReceipt.ButtonDownEvents,
                 "Condition-only test emitted input or failed to abort/clean up.");
             report.Checks.Add("Colour disappears continued to a clean tap; condition-only test confirmed a stable match, kept scanning a still-present colour until cancellation, and stayed input-free after abort.");
-            var wrongColour = pixelCondition with { Color = 0, Policy = conditionPolicy with { Timeout = TimeSpan.FromMilliseconds(250), StableSamples = 1, TimeoutAction = ConditionTimeoutAction.Pause } };
+            // A wait has no time limit: a colour that never appears keeps the run waiting, input-free, until Stop.
+            var wrongColour = pixelCondition with { Color = 0, Policy = conditionPolicy with { StableSamples = 1 } };
             Require(runtime.TryStart(SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Impossible black", wrongColour), afterCondition]))), runtime.Snapshot.Reason);
-            await WaitFor(() => runtime.CanResume, deadline.Token);
-            Require(runtime.Snapshot.State == "Paused" && runtime.Snapshot.InputsSent == 0, "Visual timeout failed to pause without input.");
-            Require(runtime.TryResume(), "Explicit condition retry was refused.");
-            await WaitFor(() => runtime.CanResume, deadline.Token);
-            Require(runtime.Snapshot.InputsSent == 0, "Resuming an unmatched condition sent input.");
-            runtime.Stop("Condition retry reviewed; stop the still-unmatched fixture.");
+            await Task.Delay(TimeSpan.FromSeconds(2), deadline.Token);
+            Require(runtime.Snapshot.Busy && runtime.Snapshot.InputsSent == 0, "An unmatched wait ended by itself or sent input.");
+            runtime.Stop("Unmatched wait reviewed; stop the fixture.");
             await WaitFor(() => !runtime.Snapshot.Busy, deadline.Token);
+            Require(runtime.Snapshot.InputsSent == 0, "Stopping an unmatched wait sent input.");
             await app.Dispatcher.InvokeAsync(() => banner.Activate());
             await WaitFor(() => ProbeNative.GetForegroundWindow() == bannerHandle, deadline.Token);
             var activeWindow = new ConditionDefinition(ConditionKind.WindowActive, conditionPolicy);
@@ -453,7 +452,7 @@ internal static class HelperProbe
             Require(runtime.Snapshot.State == "Completed" && runtime.Snapshot.InputsSent == 2, "Window-active wait did not continue after fresh foreground observations.");
             final = await Request(pipe, "state");
             Require(final.KeysDown == "None observed" && final.ButtonsDown == "None observed", "Condition checks left input held.");
-            report.Checks.Add("Fresh stable red-pixel wait continued to one key tap; wrong-colour timeout paused with zero input. Inactive concurrent foreground session rejected input; explicit refocus/restart permitted the legacy window-active wait.");
+            report.Checks.Add("Fresh stable red-pixel wait continued to one key tap; a wrong-colour wait kept waiting with zero input until stopped. Inactive concurrent foreground session rejected input; explicit refocus/restart permitted the legacy window-active wait.");
             report.Stage = "Explicit template capture and image conditions";
             var imageRegion = new CaptureRegion(capturePoint, 8, 8);
             var capturedTemplate = ImageTemplate.FromSample(runtime.CaptureTemplate(imageRegion, deadline.Token));

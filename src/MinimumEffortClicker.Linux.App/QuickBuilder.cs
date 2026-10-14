@@ -225,7 +225,7 @@ public partial class MainWindow
         if (runtime is null || runtime.Snapshot.Busy) return;
         var kind = ConditionKindBox.SelectedIndex == 1 ? ConditionKind.ColorDisappears : ConditionKind.RegionColor;
         ConditionDefinition original;
-        try { original = quickCondition is null ? new(kind, new(QuickScanInterval(), TimeSpan.FromSeconds(30))) : ReadQuickCondition(); }
+        try { original = quickCondition is null ? new(kind, new(QuickScanInterval())) : ReadQuickCondition(); }
         catch (ArgumentException ex) { ReasonLabel.Text = ex.Message; return; }
         var dialog = new ConditionEditor(this, runtime, original, coloursOnly: true);
         quickEditorOpen = true;

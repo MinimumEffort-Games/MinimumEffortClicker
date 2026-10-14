@@ -25,8 +25,8 @@ public sealed class ClickExecutorTests
         var f = new Fixture(); var saved = new TaskCompletionSource(); bool checkedCondition = false;
         f.Executor.CaptureScreenshot = _ => saved.Task;
         f.Waits.BeforeWait = (_, _) => { if (f.Clock.Elapsed >= TimeSpan.FromMilliseconds(250)) saved.TrySetResult(); };
-        f.Executor.EvaluateCondition = (_, _) => { Assert.IsTrue(saved.Task.IsCompletedSuccessfully); checkedCondition = true; return new(ConditionOutcome.Matched, 1, 1); };
-        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1)));
+        f.Executor.EvaluateCondition = (_, _) => { Assert.IsTrue(saved.Task.IsCompletedSuccessfully); checkedCondition = true; return new(ConditionOutcome.Matched, 1); };
+        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100)));
         var plan = SequenceCompiler.Compile(new([SequenceStep.Screenshot(), SequenceStep.WaitUntil("Ready", condition), SequenceStep.Input("W", InputControl.Key(0x11), TimeSpan.FromMilliseconds(20))]));
         var result = f.Executor.Execute(plan, f.TargetId, default);
         Assert.AreEqual(ClickRunOutcome.Completed, result.Outcome); Assert.IsTrue(checkedCondition);
@@ -74,9 +74,9 @@ public sealed class ClickExecutorTests
     public void ScreenshotAtSharedBoundaryRunsAfterReleaseAndFreshCondition()
     {
         var f = new Fixture(); bool matched = false; int captures = 0;
-        f.Executor.EvaluateCondition = (_, _) => { matched = true; return new(ConditionOutcome.Matched, 1, 1); };
+        f.Executor.EvaluateCondition = (_, _) => { matched = true; return new(ConditionOutcome.Matched, 1); };
         f.Executor.CaptureScreenshot = _ => { Assert.IsTrue(matched); Assert.IsFalse(f.Executor.HasOwnedInput); captures++; return Task.CompletedTask; };
-        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1)));
+        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100)));
         var plan = SequenceCompiler.Compile(new([SequenceStep.Input("W", InputControl.Key(0x11), TimeSpan.FromMilliseconds(20)),
             SequenceStep.WaitUntil("Ready", condition), SequenceStep.Screenshot()]));
         Assert.AreEqual(ClickRunOutcome.Completed, f.Executor.Execute(plan, f.TargetId, default).Outcome);
@@ -207,31 +207,23 @@ public sealed class ClickExecutorTests
     {
         var f = new Fixture(); using var control = new PlaybackControl(); f.Executor.Playback = control;
         int observations = 0;
-        f.Executor.EvaluateCondition = (_, _) => { if (++observations == 1) control.RequestPause(); return new(ConditionOutcome.Matched, 1, 1); };
+        f.Executor.EvaluateCondition = (_, _) => { if (++observations == 1) control.RequestPause(); return new(ConditionOutcome.Matched, 1); };
         f.Executor.PlaybackPaused = paused => { if (paused) { f.Clock.Advance(TimeSpan.FromMinutes(1)); control.RequestResume(); } };
-        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1)));
+        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100)));
         var result = f.Executor.Execute(SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Window", condition)])), f.TargetId, default);
         Assert.AreEqual(2, observations); Assert.AreEqual(ClickRunOutcome.Completed, result.Outcome);
         Assert.AreEqual(TimeSpan.Zero, f.Executor.TotalActiveTime);
     }
 
     [TestMethod]
-    public void ConditionTimeoutResumeRetriesOnlyTheConditionAndCallbackFailureCleansUp()
+    public void PauseCallbackFailureCleansUp()
     {
-        var f = new Fixture(); using var control = new PlaybackControl(); f.Executor.Playback = control;
-        int observations = 0, pauses = 0;
-        f.Executor.EvaluateCondition = (_, _) => new(++observations == 1 ? ConditionOutcome.Paused : ConditionOutcome.Matched, 1, 1);
-        f.Executor.PlaybackPaused = paused => { if (paused) { pauses++; Assert.AreEqual(2, f.Input.Sent.Count); control.RequestResume(); } };
-        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1)));
+        var f = new Fixture();
         var key = SequenceStep.Input("W", InputControl.Key(0x11), TimeSpan.FromMilliseconds(20));
-        var result = f.Executor.Execute(SequenceCompiler.Compile(new([key, SequenceStep.WaitUntil("Window", condition), key with { Id = Guid.NewGuid() }])), f.TargetId, default);
-        Assert.AreEqual(ClickRunOutcome.Completed, result.Outcome); Assert.AreEqual(4, result.InputsSent);
-        Assert.AreEqual(2, observations); Assert.AreEqual(1, pauses); Assert.IsFalse(f.Executor.HasOwnedInput);
-
         using var broken = new PlaybackControl(); f.Executor.Playback = broken;
         f.Waits.BeforeWait = (_, _) => broken.RequestPause();
         f.Executor.PlaybackPaused = _ => throw new InvalidOperationException("Power transition failed");
-        result = f.Executor.Execute(SequenceCompiler.Compile(new([key])), f.TargetId, default);
+        var result = f.Executor.Execute(SequenceCompiler.Compile(new([key])), f.TargetId, default);
         Assert.AreEqual(ClickRunOutcome.Faulted, result.Outcome); Assert.IsTrue(result.CleanupSucceeded);
         Assert.IsFalse(f.Executor.HasOwnedInput); Assert.IsFalse(broken.CanResume);
     }
@@ -327,28 +319,30 @@ public sealed class ClickExecutorTests
     public void ConditionWaitPreservesActionOrderAndNeverOwnsInput()
     {
         var f = new Fixture();
-        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1)));
+        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100)));
         var steps = new[] { SequenceStep.Input("W", InputControl.Key(0x11), TimeSpan.FromMilliseconds(20)),
             SequenceStep.WaitUntil("Window", condition), SequenceStep.Input("E", InputControl.Key(0x12), TimeSpan.FromMilliseconds(30)) };
         f.Executor.EvaluateCondition = (_, _) =>
         {
             Assert.IsFalse(f.Executor.HasOwnedInput); Assert.HasCount(2, f.Input.Sent);
-            f.Clock.Advance(TimeSpan.FromMilliseconds(500)); return new(ConditionOutcome.Matched, 1, 1);
+            f.Clock.Advance(TimeSpan.FromMilliseconds(500)); return new(ConditionOutcome.Matched, 1);
         };
         Assert.AreEqual(ClickRunOutcome.Completed, f.Executor.Execute(SequenceCompiler.Compile(new(steps)), f.TargetId, default).Outcome);
         CollectionAssert.AreEqual(new double[] { 0, 20, 520, 550 }, f.Input.Sent.Select(x => x.At.TotalMilliseconds).ToArray());
     }
     [TestMethod]
-    public void FailedOrPausedConditionCannotDispatchFollowingInput()
+    public void FailedConditionCannotDispatchFollowingInput()
     {
-        foreach (var outcome in new[] { ConditionOutcome.Stopped, ConditionOutcome.Paused, ConditionOutcome.Ambiguous, ConditionOutcome.Unavailable })
+        foreach (var outcome in new[] { ConditionOutcome.Stopped, ConditionOutcome.Ambiguous, ConditionOutcome.Unavailable })
         {
             var f = new Fixture();
-            var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1)));
-            f.Executor.EvaluateCondition = (_, _) => new(outcome, 1, 1);
+            var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100)));
+            f.Executor.EvaluateCondition = (_, _) => new(outcome, 1);
             var plan = SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Window", condition), SequenceStep.Input("W", InputControl.Key(0x11), TimeSpan.FromMilliseconds(20))]));
             var result = f.Executor.Execute(plan, f.TargetId, default);
-            Assert.AreEqual(outcome == ConditionOutcome.Paused ? ClickRunOutcome.Paused : ClickRunOutcome.Cancelled, result.Outcome);
+            Assert.AreEqual(ClickRunOutcome.Cancelled, result.Outcome);
+            // The status starts with "Stopped:" so the log keeps it and the user sees why.
+            StringAssert.StartsWith(result.Error!, "Stopped: ");
             Assert.HasCount(0, f.Input.Sent); Assert.AreEqual(0, result.CompletedCycles);
         }
     }
@@ -356,8 +350,8 @@ public sealed class ClickExecutorTests
     public void WindowWaitCanObserveAnInactiveTargetButFollowingInputStillChecksForeground()
     {
         var f = new Fixture(); f.Target.Current = new(f.TargetId, false);
-        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1)));
-        f.Executor.EvaluateCondition = (_, _) => new(ConditionOutcome.Matched, 1, 1); // Even a stale/bad match cannot authorize input.
+        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100)));
+        f.Executor.EvaluateCondition = (_, _) => new(ConditionOutcome.Matched, 1); // Even a stale/bad match cannot authorize input.
         var plan = SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Window", condition), SequenceStep.Input("W", InputControl.Key(0x11), TimeSpan.FromMilliseconds(20))]));
         Assert.AreEqual(ClickRunOutcome.TargetUnavailable, f.Executor.Execute(plan, f.TargetId, default).Outcome);
         Assert.HasCount(0, f.Input.Sent);
@@ -420,8 +414,8 @@ public sealed class ClickExecutorTests
     public void ClickLimitStopsBeforeAConditionWaitInsteadOfPollingIt()
     {
         var f = new Fixture(); f.Executor.ClickCompletionLimit = 1; bool observed = false;
-        f.Executor.EvaluateCondition = (_, _) => { observed = true; return new(ConditionOutcome.Matched, 1, 1); };
-        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1)));
+        f.Executor.EvaluateCondition = (_, _) => { observed = true; return new(ConditionOutcome.Matched, 1); };
+        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100)));
         var plan = SequenceCompiler.Compile(new([SequenceStep.Input("Click", InputControl.Mouse(PointerButton.Left), TimeSpan.FromMilliseconds(20)),
             SequenceStep.WaitUntil("Ready", condition), SequenceStep.Input("W", InputControl.Key(0x11), TimeSpan.FromMilliseconds(20))]));
         var result = f.Executor.Execute(plan, f.TargetId, default);

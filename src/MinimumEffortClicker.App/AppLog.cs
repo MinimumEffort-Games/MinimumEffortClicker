@@ -30,21 +30,26 @@ internal static class AppLog
     public static void Note(string action, string message) => Write($"{action}: {message}");
 
     private static string? lastRunProblem;
+    private static bool wasBusy;
     /// <summary>
-    /// Records a run that did not start, could not continue, needs cleanup, or was stopped by a safety rule. The status
-    /// refreshes many times a second, so only a change is written.
+    /// Records why every run ended, however it ended, plus a run that did not start, could not continue, needs cleanup,
+    /// or was paused or stopped by a safety rule. The status refreshes many times a second, so only a change is written.
     /// </summary>
     public static void RunState(MinimumEffortClicker.Windows.RuntimeSnapshot snapshot)
     {
         bool problem = snapshot.Failed || snapshot.Reason.StartsWith("Stopped:", StringComparison.Ordinal)
             || snapshot.Reason.StartsWith("Paused:", StringComparison.Ordinal);
         string? key = problem ? snapshot.State + " | " + snapshot.Reason : null;
+        bool ended;
         lock (gate)
         {
-            if (key == lastRunProblem) return;
+            ended = wasBusy && !snapshot.Busy;
+            wasBusy = snapshot.Busy;
+            if (key == lastRunProblem && !ended) return;
             lastRunProblem = key;
         }
-        if (key is not null) Note($"Run ({snapshot.Activity})", $"{snapshot.State}: {snapshot.Reason}");
+        if (ended) Note($"Run ended ({snapshot.Activity})", $"{snapshot.State}: {snapshot.Reason}");
+        else if (key is not null) Note($"Run ({snapshot.Activity})", $"{snapshot.State}: {snapshot.Reason}");
     }
 
     private static void Write(string text)

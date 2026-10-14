@@ -53,13 +53,13 @@ public sealed class DesktopModeTests
     [TestMethod]
     public void AWindowActiveWaitRequiresSelectedWindow()
     {
-        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(5)));
+        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(500)));
         var plan = SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Wait", condition)]));
         Assert.ThrowsExactly<ArgumentException>(() => plan.ValidateDesktopMode(1920, 1080, 96));
     }
 
     private static ConditionDefinition Colour(ClientPoint origin) => new(ConditionKind.PixelColor,
-        new(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(5)), new CaptureRegion(origin, 1, 1), 0xFF0000, 8);
+        new(TimeSpan.FromMilliseconds(500)), new CaptureRegion(origin, 1, 1), 0xFF0000, 8);
 
     [TestMethod]
     public void AColourWaitOnAnyMonitorRunsInDesktopMode()

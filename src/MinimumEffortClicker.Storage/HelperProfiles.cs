@@ -104,8 +104,9 @@ public sealed class HelperProfiles(string directory)
         return ParseProfile(document.RootElement);
     }
 
-    /// <summary>Schema 16 retired typed-text, subsequence and branch steps and the logical-key and Unicode input kinds.
-    /// Older documents are upgraded in memory and the removed actions are counted so the caller can tell the user.</summary>
+    /// <summary>Schema 16 retired typed-text, subsequence and branch steps and the logical-key and Unicode input kinds;
+    /// schema 17 removed the time limit of waits. Older documents are upgraded in memory and the removed actions are
+    /// counted so the caller can tell the user.</summary>
     private static void UpgradeProfile(JsonObject profile, ref int dropped)
     {
         if (profile["schemaVersion"] is not JsonValue versionValue || !versionValue.TryGetValue<int>(out int version)
@@ -119,9 +120,12 @@ public sealed class HelperProfiles(string directory)
             for (int i = steps.Count - 1; i >= 0; i--)
             {
                 if (steps[i] is not JsonObject step) continue;
-                if (IsRetiredStep(step)) { steps.RemoveAt(i); dropped++; continue; }
+                if (version < 16 && IsRetiredStep(step)) { steps.RemoveAt(i); dropped++; continue; }
                 step.Remove("subsequenceId"); step.Remove("flow"); step.Remove("text");
-                if (step["condition"] is JsonObject condition) condition.Remove("checkOnly");
+                if (step["condition"] is not JsonObject condition) continue;
+                condition.Remove("checkOnly");
+                // A wait now keeps looking until it matches or the run is stopped; its old limit is dropped, not converted.
+                if (condition["policy"] is JsonObject policy) { policy.Remove("timeout"); policy.Remove("timeoutAction"); policy.Remove("retries"); }
             }
         }
     }
@@ -199,7 +203,7 @@ public sealed class HelperProfiles(string directory)
             if (step.TryGetProperty("condition", out var condition) && condition.ValueKind != JsonValueKind.Null)
             {
                 RequireFields(condition, ["kind", "policy", "region", "color", "tolerance", "changedFraction"]);
-                RequireFields(condition.GetProperty("policy"), ["sampleInterval", "timeout", "stableSamples", "timeoutAction", "retries"]);
+                RequireFields(condition.GetProperty("policy"), ["sampleInterval", "stableSamples"]);
                 if (condition.TryGetProperty("template", out var template) && template.ValueKind != JsonValueKind.Null) RequireFields(template, ["width", "height", "bgra"]);
                 if (condition.GetProperty("region").ValueKind != JsonValueKind.Null)
                 {

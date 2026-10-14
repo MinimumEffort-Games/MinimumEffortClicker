@@ -53,21 +53,24 @@ public sealed partial class DesktopRuntime
             {
                 // Desktop mode: the area is in desktop pixels on any monitor and is read straight from the screen.
                 if (condition.Kind == ConditionKind.WindowActive || condition.Region is not { Origin.Space: CoordinateSpace.Desktop } area)
-                    return new(ConditionOutcome.Unavailable, 0, 0);
+                    return new(ConditionOutcome.Unavailable, 0);
                 long screenFrame = 0;
                 return waiter.Wait(condition.Policy, new Observation(token =>
                 {
+                    // The screen can be briefly unreadable or a different size (locked screen, a game switching
+                    // resolution). That is "not there yet": the wait keeps looking until the area is back.
+                    // A test reports it, so a wrong area is not mistaken for a colour that is simply missing.
+                    var unreadable = new ConditionObservation(testing ? ConditionObservationState.Unavailable : ConditionObservationState.NotMet, 0, screenFrame);
                     byte[] pixels;
                     try
                     {
                         var frame = GetTargetFrame();
-                        if (!area.Origin.Matches(frame.Width, frame.Height, frame.Dpi)) return new(ConditionObservationState.Unavailable, 0, screenFrame);
+                        if (!area.Origin.Matches(frame.Width, frame.Height, frame.Dpi)) return unreadable;
                         pixels = DesktopScreenshot.CaptureArea(Helper, area.Origin.X, area.Origin.Y, area.Width, area.Height, token);
                     }
-                    catch (Exception ex) when (ex is InvalidOperationException or ShellHelperException)
-                    { return new(ConditionObservationState.Unavailable, 0, screenFrame); }
+                    catch (Exception ex) when (ex is InvalidOperationException or ShellHelperException) { return unreadable; }
                     return Judge(new RasterSample(area.Width, area.Height, pixels), ++screenFrame, token);
-                }), budget.Token, testing, observed, service);
+                }), budget.Token, observed, service);
             }
             if (condition.Kind == ConditionKind.WindowActive)
             {
@@ -77,9 +80,9 @@ public sealed partial class DesktopRuntime
                     if (targetInvalidated || !Matches(selected, Query(selected)))
                         return new(ConditionObservationState.Unavailable, 0, sample++);
                     return new(TargetAvailable ? ConditionObservationState.Met : ConditionObservationState.NotMet, 0, sample++);
-                }), budget.Token, testing, observed, service);
+                }), budget.Token, observed, service);
             }
-            if (condition.Region is not { Origin.Space: CoordinateSpace.WindowClient } windowArea) return new(ConditionOutcome.Unavailable, 0, 0);
+            if (condition.Region is not { Origin.Space: CoordinateSpace.WindowClient } windowArea) return new(ConditionOutcome.Unavailable, 0);
             RegionCapture? capture = null;
             long lastFrame = 0;
             return waiter.Wait(condition.Policy, new Observation(token =>
@@ -91,10 +94,10 @@ public sealed partial class DesktopRuntime
                 catch (Exception ex) when (ex is InvalidOperationException or ShellHelperException) { return new(ConditionObservationState.Unavailable, 0, lastFrame); }
                 lastFrame = frame.FrameId;
                 return Judge(frame.Image, frame.FrameId, token);
-            }), budget.Token, testing, observed, service);
+            }), budget.Token, observed, service);
         }
         catch (OperationCanceledException) when (budget.IsCancellationRequested && !stop.IsCancellationRequested)
-        { return new(ConditionOutcome.Stopped, 0, 0); }
+        { return new(ConditionOutcome.Stopped, 0); }
         finally { observingWindowActive = false; }
     }
 

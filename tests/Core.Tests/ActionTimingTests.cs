@@ -27,7 +27,7 @@ public sealed class ActionTimingTests
     public void DoubleClickRangesPreserveGapAndShiftFollowingConditionAndKey()
     {
         var click = Click(QuickClickKind.Double) with { Timing = new(Ms(40), Ms(60)) };
-        var condition = SequenceStep.WaitUntil("Colour", new(ConditionKind.RegionColor, new(Ms(500), Ms(1000)), new(new(0, 0, 800, 600, 96), 1, 1)));
+        var condition = SequenceStep.WaitUntil("Colour", new(ConditionKind.RegionColor, new(Ms(500)), new(new(0, 0, 800, 600, 96), 1, 1)));
         var plan = SequenceCompiler.Compile(new([click, condition, QuickActions.Keys([0x1D, 0x11], Ms(20), Ms(20), false)]));
         var sampled = plan.SampleTiming(() => 0.5);
         CollectionAssert.AreEqual(new double[] { 0, 30, 110, 140, 180, 180, 200, 200 }, sampled.Inputs.Select(i => i.Offset.TotalMilliseconds).ToArray());

@@ -41,7 +41,7 @@ public sealed class MacroFileTests
     [TestMethod]
     public void ColourAbsenceAndScanIntervalRoundTripAndOldSchemaTenStillOpens()
     {
-        var policy = new ConditionPolicy(TimeSpan.FromMilliseconds(750), TimeSpan.FromSeconds(30));
+        var policy = new ConditionPolicy(TimeSpan.FromMilliseconds(750));
         var condition = new ConditionDefinition(ConditionKind.ColorDisappears, policy, new(new(2, 3, 100, 100, 96), 1, 1), 0x123456);
         var profile = Profile() with { Macros = [new(Guid.NewGuid(), "Wait", null, Sequence: new([SequenceStep.WaitUntil("Background gone", condition)]))] };
         string path = Path.Combine(directory, "wait.mecprofile"); HelperProfiles.Export(path, profile);
@@ -53,6 +53,25 @@ public sealed class MacroFileTests
         HelperProfiles.Export(path, Profile());
         File.WriteAllText(path, File.ReadAllText(path).Replace($"\"schemaVersion\": {ProfileDefinition.CurrentVersion}", "\"schemaVersion\": 10"));
         Assert.AreEqual(ProfileDefinition.CurrentVersion, HelperProfiles.Open(path).SchemaVersion);
+    }
+    [TestMethod]
+    public void SchemaSixteenWaitWithTimeLimitOpensWithoutTheLimit()
+    {
+        var condition = new ConditionDefinition(ConditionKind.RegionColor, new(TimeSpan.FromMilliseconds(500)), new(new(2, 3, 100, 100, 96), 1, 1), 0x123456);
+        var profile = Profile() with { Macros = [new(Guid.NewGuid(), "Wait", null, Sequence: new([SequenceStep.WaitUntil("Next button", condition)]))] };
+        string path = Path.Combine(directory, "old-wait.mecprofile"); HelperProfiles.Export(path, profile);
+        // Rewrite it the way schema 16 saved a wait: with a 30-second limit that stopped the run.
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+        root["schemaVersion"] = 16;
+        var policy = root["macros"]![0]!["sequence"]!["steps"]![0]!["condition"]!["policy"]!.AsObject();
+        policy["timeout"] = "00:00:30"; policy["timeoutAction"] = 0; policy["retries"] = 0;
+        File.WriteAllText(path, root.ToJsonString());
+        var opened = HelperProfiles.Open(path, out int dropped);
+        Assert.AreEqual(ProfileDefinition.CurrentVersion, opened.SchemaVersion); Assert.AreEqual(0, dropped);
+        Assert.AreEqual(condition, opened.Macros[0].Sequence!.Steps[0].Condition);
+        // A current file never carries the old fields.
+        root["schemaVersion"] = ProfileDefinition.CurrentVersion; File.WriteAllText(path, root.ToJsonString());
+        Assert.ThrowsExactly<System.Text.Json.JsonException>(() => HelperProfiles.Open(path));
     }
     [TestMethod]
     public void InvalidSaveDoesNotDamageExistingMacroFile()

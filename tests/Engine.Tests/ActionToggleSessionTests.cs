@@ -107,7 +107,7 @@ public sealed class ActionToggleSessionTests
     public void ToggleCanBeReleasedDuringAConditionWaitWithoutResettingItsDeadline()
     {
         var f = new Fixture(); using var session = new ActionToggleSession(); var hold = Hold(W); session.Toggle(hold);
-        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(2), 1));
+        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(500), 1));
         session.Start(SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Wait", condition), SequenceStep.Input("Tap E", E, TimeSpan.FromMilliseconds(20))])), "Condition", TimeSpan.Zero);
         bool released = false; int samples = 0;
         f.Waits.Before = _ => { if (!released) { released = true; session.Toggle(hold); } };
@@ -125,7 +125,7 @@ public sealed class ActionToggleSessionTests
         var f = new Fixture(); using var session = new ActionToggleSession();
         var spam = new NamedHelper(Guid.NewGuid(), "Spam", new(W, HelperMode.Repeat, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(2), 0));
         session.Toggle(spam);
-        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1), 1));
+        var condition = new ConditionDefinition(ConditionKind.WindowActive, new(TimeSpan.FromMilliseconds(100), 1));
         session.Start(SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Wait", condition)])), "Condition", TimeSpan.Zero);
         int samples = 0;
         f.Executor.EvaluateCondition = (c, token) => new ConditionWaiter(f.Clock, new ConcurrentWait(f.Clock, f.Executor)).Wait(c.Policy,

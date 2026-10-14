@@ -183,7 +183,7 @@ public static class SequenceCompiler
         var events = new List<ScheduledInput>(); var ids = new HashSet<Guid>();
         var conditions = new List<ScheduledCondition>(); var timings = new List<ScheduledTiming>();
         var screenshots = new List<ScheduledScreenshot>();
-        int stepIndex = -1; TimeSpan conditionBudget = TimeSpan.Zero; int imageBytes = 0;
+        int stepIndex = -1; int imageBytes = 0;
         TimeSpan cursor = TimeSpan.Zero; int actions = 0; TimeSpan pauseBefore = TimeSpan.Zero; var pauseSteps = new List<int>(); int pauseAfterStep = -1;
         foreach (var step in definition.Steps)
         {
@@ -215,11 +215,7 @@ public static class SequenceCompiler
                     imageBytes += step.Condition.Template?.Bgra.Length ?? 0;
                     if (imageBytes > 350000) throw new ArgumentException("Sequence templates exceed the bounded image budget.");
                     if (step.Enabled)
-                    {
-                        conditionBudget += step.Condition.Policy.Timeout * (step.Condition.Policy.Retries + 1);
-                        if (conditionBudget > MaximumDuration) throw new ArgumentException("Combined condition timeout exceeds one day.");
                         conditions.Add(new(cursor, stepIndex, step.Name, step.Condition));
-                    }
                     break;
                 case StepKind.Wait:
                     if (step.Control is not null || step.Children is not null || step.Position is not null || step.EndPosition is not null || step.TargetId is not null) throw new ArgumentException("A wait cannot contain input.");
@@ -300,9 +296,10 @@ public static class SequenceCompiler
                 throw new ArgumentException("Overlapping actions conflict on the same input.");
         }
         if (owned.Count != 0) throw new ArgumentException("Sequence leaves held input.");
-        var worst = cursor + conditionBudget + TimeSpan.FromTicks(timings.Sum(t => t.MaximumDuration.Ticks - t.Duration.Ticks))
+        // Waits have no time limit, so this is the longest the actions themselves can take.
+        var worst = cursor + TimeSpan.FromTicks(timings.Sum(t => t.MaximumDuration.Ticks - t.Duration.Ticks))
             + TimeSpan.FromTicks(ordered.Where(i => i.Down).Sum(i => i.Motion?.MoveDuration.Ticks ?? 0));
-        if (worst > MaximumDuration) throw new ArgumentException("Sequence including random timing and condition timeouts exceeds one day.");
+        if (worst > MaximumDuration) throw new ArgumentException("Sequence including random timing exceeds one day.");
         return new(ordered, cursor, definition.KeyboardLayout, conditions) { Screenshots = screenshots.AsReadOnly(), Timings = timings.AsReadOnly(), WorstCaseDuration = worst, ExecutionActionCount = actions };
 
         ClientPoint? Resolve(ClientPoint? inline, Guid? reference)

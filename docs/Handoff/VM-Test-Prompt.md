@@ -19,7 +19,7 @@ Steps, in order. Run each from the repository root in PowerShell 7 and keep the 
 
 1. `.\scripts\Setup-Sdk.ps1` (downloads the pinned .NET SDK into `.tools`; needs network once).
 2. `.\scripts\Build.ps1` then `.\scripts\Test.ps1`. Expected: build succeeds with 0 warnings, 255 tests pass (9 TestTarget, 112 Engine, 134 Core).
-3. `.\scripts\Build-Public.ps1 -Zip`. Expected: a ZIP under `artifacts\package` and a JSON verification block ending in `"Passed": true` with `"Schema": 16`.
+3. `.\scripts\Build-Public.ps1 -Zip`. Expected: a ZIP under `artifacts\package` and a JSON verification block ending in `"Passed": true` with `"Schema": 17`.
 4. `.\scripts\Build-M0Probe.ps1` to build the probe bundle.
 5. `$env:MEC_ISOLATED_VM = '1'`, then run each probe mode and wait for it to finish; each writes `probe-result.json` under `artifacts\m0-local\<run id>\`:
    - `.\scripts\Run-M0Local.ps1 -IsolatedVm` (basic input, timer and capture checks)

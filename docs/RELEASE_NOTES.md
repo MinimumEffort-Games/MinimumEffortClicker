@@ -21,7 +21,7 @@ additional displays/DPI, suspend/session and accessibility acceptance. Some apps
 ignore synthetic input or cursor-free clicks. Follow the target app's macro rules;
 there is no universal compatibility or account-safety guarantee.
 
-Keep older versions and their Data folders separate. This release uses macro schema 16
+Keep older versions and their Data folders separate. This release uses macro schema 17
 and upgrades older saved macros on load.
 Owner Data and historical unlicensed pixel assets/font are excluded. Build
 provenance and per-file SHA-256 hashes are in `build-manifest.json`; the archive

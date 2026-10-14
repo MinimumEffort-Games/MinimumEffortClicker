@@ -42,7 +42,7 @@ public partial class MainWindow
             if (picker.ShowDialog() != true || picker.Region is not { } point) return;
             // Sampling a new colour preserves an already chosen search region.
             quickCondition = new(ConditionKindBox.SelectedIndex == 1 ? ConditionKind.ColorDisappears : quickCondition?.Kind == ConditionKind.PixelColor ? ConditionKind.PixelColor : ConditionKind.RegionColor,
-                quickCondition?.Policy ?? new(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(30)),
+                quickCondition?.Policy ?? new(TimeSpan.FromMilliseconds(500)),
                 quickCondition?.Region ?? point, picker.Color, quickCondition?.Tolerance ?? 8);
             ConditionLabel.Text = ConditionSummary(quickCondition); ShowConditionColour();
             TestResultLabel.Text = "Colour selected. Add Action or Save changes to keep it.";
