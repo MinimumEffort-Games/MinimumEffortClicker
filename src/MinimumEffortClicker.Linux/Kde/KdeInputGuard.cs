@@ -26,6 +26,12 @@ public static class KdeInputGuard
         { replies.WriteLine("error " + ex.Message); replies.Flush(); return 2; }
         if (input is null) { replies.WriteLine(Denied); replies.Flush(); return 3; }
         using var screen = new LockWatch();
+        if (!screen.Known)
+        {
+            // Without the lock state, a press could reach the lock screen: send nothing at all.
+            input.Dispose();
+            replies.WriteLine("error KDE's screen lock service is not answering, so the clicker sends no input."); replies.Flush(); return 2;
+        }
         var buttons = new HashSet<uint>();
         var keys = new HashSet<int>();
         replies.WriteLine(Ready); replies.Flush();
@@ -89,12 +95,13 @@ public static class KdeInputGuard
         input.Roundtrip();
     }
 
-    /// <summary>Follows org.freedesktop.ScreenSaver, which KWin serves on Plasma. Unknown counts as unlocked.</summary>
+    /// <summary>Follows org.freedesktop.ScreenSaver, which KWin serves on Plasma. <see cref="Known"/> is false when it does not answer.</summary>
     private sealed class LockWatch : IDisposable
     {
         private readonly DBusConnection? connection;
         private volatile bool locked;
         public bool Locked => locked;
+        public bool Known { get; }
 
         public LockWatch()
         {
@@ -106,7 +113,8 @@ public static class KdeInputGuard
                 Task.Run(() => connection.WatchSignalAsync(null, null, "org.freedesktop.ScreenSaver", "ActiveChanged",
                     (m, _) => m.GetBodyReader().ReadBool(), (Notification<bool> n) => { if (n.HasValue) locked = n.Value; },
                     ObserverFlags.None, false, null).AsTask()).Wait(TimeSpan.FromSeconds(2));
-                locked = KdeHelper.ScreenLocked(connection) ?? false;
+                if (KdeHelper.ScreenLocked(connection) is not { } now) return;
+                locked = now; Known = true;
             }
             catch (Exception ex) when (ex is DBusExceptionBase or AggregateException or InvalidOperationException) { }
         }

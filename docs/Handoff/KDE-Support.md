@@ -192,3 +192,12 @@ The "1 in 6" above was measured earlier with the same code as the third row; 20 
 rare there, not gone. Once PR #17 is merged, the workaround (`targetLossPausePending` in the Linux
 `DesktopRuntime`) is redundant and can be removed. The Windows tests still have to run on PR #17 (Roy's Windows
 session).
+
+### Review follow-up (2026-10-15)
+
+Roy's review of #16: remove the Linux runtime workaround once the engine fix is in (two fixes for one problem). Done:
+the engine branch is merged into `kde-support` (it lands on `main` with #17; merging `main` afterwards is clean) and
+`targetLossPausePending` is gone from the Linux `DesktopRuntime`. Headless KWin probe, 20 runs on the result: 0 ended
+instead of pausing, 20 clean. Also from the review: the input guard now refuses to start, and sends nothing, when
+KDE cannot say whether the screen is locked. Before, it assumed unlocked. Checked in a private KWin without a lock
+service: the guard answers "KDE's screen lock service is not answering, so the clicker sends no input." and exits.
