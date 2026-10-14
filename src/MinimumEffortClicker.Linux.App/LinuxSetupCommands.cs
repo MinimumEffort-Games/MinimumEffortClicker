@@ -19,6 +19,9 @@ public partial class MainWindow
             : "Off. Recording, mouse-button shortcuts and the physical-input safety stop need read access to your keyboard and mouse. Run this once in a terminal (it asks for your password):";
         InputAccessCommand.Text = control?.PhysicalInputAvailable == true ? "" : LinuxSetup.InputAccessCommand;
         InputAccessCommand.IsVisible = InputAccessTools.IsVisible = control?.PhysicalInputAvailable != true;
+        // Shown whether access is on or off: the rule is reversible, and people should see how.
+        InputAccessRemoveCommand.Text = LinuxSetup.InputAccessRemoveCommand ?? "";
+        InputAccessScope.IsVisible = InputAccessRemoveCommand.IsVisible = LinuxSetup.InputAccessRemoveCommand is not null;
     }
 
     private void InstallHelper_Click(object? sender, RoutedEventArgs e)

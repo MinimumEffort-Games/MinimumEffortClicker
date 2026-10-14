@@ -81,6 +81,11 @@ public static class LinuxSetup
     }
 
     public static string InputAccessCommand => InputRuleScriptPath is { } script ? $"sudo bash '{script}'" : "The input access script is missing from this copy of the app.";
+    /// <summary>
+    /// Removes the rule again. The rule only gives the person signed in at this computer read access (logind's uaccess),
+    /// instead of adding the account to the input group. Null when the script is missing.
+    /// </summary>
+    public static string? InputAccessRemoveCommand => InputRuleScriptPath is { } script ? $"sudo bash '{script}' --remove" : null;
 
     private static bool Run(string program, params string[] arguments)
     {
