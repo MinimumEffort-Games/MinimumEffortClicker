@@ -96,6 +96,8 @@ public partial class MainWindow
             "Settings and macros are stored in the Data folder beside the app.",
             "",
             "No account, no internet, no tracking.",
+            "",
+            "When something goes wrong, the clicker writes it to log.txt in the same folder. It stays on your PC. Attach it to a bug report if you send one.",
         ]),
     ];
 

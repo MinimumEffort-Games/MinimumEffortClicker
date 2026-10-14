@@ -150,7 +150,7 @@ internal sealed class ConditionEditor : DialogWindow
                 error.Text = "Template captured into this draft. Playback remains stopped.";
             }
             catch (OperationCanceledException) { error.Text = "Template capture cancelled."; }
-            catch (Exception ex) { error.Text = ex.Message; }
+            catch (Exception ex) { error.Text = ex.Message; AppLog.Failure("Capture image template", ex); }
             finally
             {
                 runtime.Control.StopRequested -= StopCapture; pending = null;
@@ -204,7 +204,7 @@ internal sealed class ConditionEditor : DialogWindow
                 }
             }
             catch (OperationCanceledException) { error.Text = "Selection cancelled."; }
-            catch (Exception ex) { error.Text = ex.Message; }
+            catch (Exception ex) { error.Text = ex.Message; AppLog.Failure(colourOnly ? "Eyedropper" : "Select area", ex); }
             finally { runtime.Control.StopRequested -= StopSelection; pending = null; if (!closed) { panel.IsEnabled = save.IsEnabled = true; RefreshFields(); } }
         }
         selectArea.Click += async (_, _) => await SelectArea(false);
