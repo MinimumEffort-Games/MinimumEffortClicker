@@ -305,7 +305,7 @@
                                     <TextBlock x:Name="InputAccessScope" Text="This is only for the current user, remove with" Classes="secondary" Margin="0,10,0,0" TextWrapping="Wrap" />
                                     <SelectableTextBlock x:Name="InputAccessRemoveCommand" FontFamily="monospace" TextWrapping="Wrap" />
                                     <Button x:Name="CopyRemoveCommandButton" Content="Copy command" Click="CopyRemoveCommand_Click" Margin="0,6,0,0" />
-                                    <Button Content="Check again" Click="RefreshPlatform_Click" Margin="0,10,0,0" />
+                                    <Button x:Name="CheckInputAccessButton" Content="Check again" Click="RefreshPlatform_Click" Margin="0,10,0,0" Classes="red" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
