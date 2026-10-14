@@ -60,7 +60,11 @@ public partial class MainWindow
             if (WindowState != WindowState.Minimized) { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
             if (!step.LeaveCursorFree && !runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             if (step.Condition is { } condition && step.Kind == StepKind.Condition)
+            {
+                // A monitor area is read from the screen: let the minimise animation finish so the clicker is not in it.
+                if (minimizedFrom is not null) await Task.Delay(400, cancellation.Token);
                 (passed, detail) = await CheckConditionOnce(condition, cancellation.Token);
+            }
             else
             {
                 // A click at the cursor needs time to put the mouse where it should click; everything else starts after the
@@ -119,19 +123,15 @@ public partial class MainWindow
         };
     }
 
-    /// <summary>Where a tested click landed: the pointer for normal clicks; the saved point for cursor-free clicks.</summary>
+    /// <summary>The green ring where a tested click landed: its saved location, or the pointer for a click at the cursor.</summary>
     private void ShowClickPing(SequenceStep step)
     {
-        if (!step.LeaveCursorFree) { ClickPingWindow.AtCursor(); return; }
         try
         {
-            if ((step.Position ?? step.Children?.FirstOrDefault(c => c.Position is not null)?.Position) is not { } point) return;
-            var frame = runtime!.GetTargetFrame();
-            var resolved = point.InFrame(frame.Width, frame.Height, frame.Dpi);
-            bool desktop = resolved.Space == CoordinateSpace.Desktop;
-            new ClickPingWindow(desktop ? resolved.X : frame.X + resolved.X, desktop ? resolved.Y : frame.Y + resolved.Y).Show();
+            if (ClickScreenPoint(step) is { } screen) ClickPingWindow.At(screen.X, screen.Y, ClickPingWindow.Landed);
+            else ClickPingWindow.AtCursor();
         }
-        catch (InvalidOperationException) { }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
     }
     private int appliedRecordKey = ShortcutKeys.DefaultRecordKey, selectedRecordKey = ShortcutKeys.DefaultRecordKey;
 

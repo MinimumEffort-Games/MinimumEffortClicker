@@ -159,7 +159,7 @@
                     </Grid></Border>
 <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="128"/><ColumnDefinition Width="102"/></Grid.ColumnDefinitions>
                         <TextBox x:Name="ActionMacroNameBox" MaxLength="100" MinWidth="45" Margin="0,0,8,0" VerticalContentAlignment="Center" ToolTip="Macro name" AutomationProperties.Name="Action list macro name"/>
-                        <Button Grid.Column="1" Content="Save Macro" Click="SaveProfile_Click" Style="{StaticResource GreenButton}" Margin="0,0,8,0" Padding="6,7"/>
+                        <Button Grid.Column="1" Content="Save Macro" Click="SaveProfile_Click" Margin="0,0,8,0" Padding="6,7"/>
                         <Button Grid.Column="2" x:Name="LoadMacroButton" Content="Load Macro" Click="LoadMacroFile_Click" Margin="0" Padding="6,7"/>
                       </Grid>
                       <TextBlock Grid.Row="3" x:Name="MacroSaveStatus" Style="{StaticResource OptionalStatus}" Margin="0,4,0,0"/>

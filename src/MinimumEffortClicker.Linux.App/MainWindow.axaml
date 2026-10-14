@@ -220,7 +220,7 @@
                             </Border>
                             <Grid Grid.Row="2" ColumnDefinitions="*,128,102">
                                 <TextBox x:Name="ActionMacroNameBox" MaxLength="100" MinWidth="45" Margin="0,0,8,0" VerticalContentAlignment="Center" ToolTip.Tip="Macro name" AutomationProperties.Name="Action list macro name" />
-                                <Button Grid.Column="1" Content="Save Macro" Click="SaveProfile_Click" Classes="green" Margin="0,0,8,0" Padding="6,7" HorizontalAlignment="Stretch" />
+                                <Button Grid.Column="1" Content="Save Macro" Click="SaveProfile_Click" Margin="0,0,8,0" Padding="6,7" HorizontalAlignment="Stretch" />
                                 <Button Grid.Column="2" x:Name="LoadMacroButton" Content="Load Macro" Click="LoadMacroFile_Click" Margin="0" Padding="6,7" HorizontalAlignment="Stretch" />
                             </Grid>
                             <TextBlock Grid.Row="3" x:Name="MacroSaveStatus" Classes="secondary optional" Margin="0,4,0,0" />
