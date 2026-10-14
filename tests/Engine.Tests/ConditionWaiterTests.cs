@@ -66,7 +66,7 @@ public sealed class ConditionWaiterTests
     [TestMethod]
     public void WaitHasNoTimeLimit()
     {
-        // Roy's case: the button to wait for appears when a level ends, 5–10 minutes later. Twenty minutes still matches.
+        // User's case: the button to wait for appears when a level ends, 5–10 minutes later. Twenty minutes still matches.
         var clock = new FakeClock(); long sample = 0;
         var result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(), new Probe(() =>
             new(clock.Elapsed < TimeSpan.FromMinutes(20) ? ConditionObservationState.NotMet : ConditionObservationState.Met, 1, sample++)), default);

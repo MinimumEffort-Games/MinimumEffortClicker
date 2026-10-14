@@ -5,9 +5,9 @@ and the engine unchanged.
 
 ## Phase 1 (2026-10-14): what KDE offers for each helper call
 
-Measured in Roy's CachyOS VM (KWin 6.7.5, Plasma 6.7.5, libei 1.6.0). Every input test ran in a **private headless
+Measured in User's CachyOS VM (KWin 6.7.5, Plasma 6.7.5, libei 1.6.0). Every input test ran in a **private headless
 KWin** (`kwin_wayland --virtual` inside its own `dbus-run-session`, own runtime and config folders) against a scratch
-copy of `tools/LinuxProbe/probe-target.py`. No input was sent to Roy's desktop. Two read-only calls went to the real
+copy of `tools/LinuxProbe/probe-target.py`. No input was sent to User's desktop. Two read-only calls went to the real
 session: a KWin script that only counted windows and screens, and a ScreenShot2 call that was refused. The throwaway
 tests lived in the session scratchpad; none is in the repository.
 
@@ -78,7 +78,7 @@ new display shows up in `/tmp/.X11-unix`) all worked. Notes: the Wayland socket 
 the runtime folder has to be short. `--scale` on the virtual backend only enlarges the output; use `kscreen-doctor`
 for real scaling. Set `GDK_DEBUG=no-portals` so GTK test windows do not wait for portals.
 
-## Plan for Phase 2 (after Roy's "go")
+## Plan for Phase 2 (after User's "go")
 
 1. **One boundary.** Extract an `IDesktopHelper` interface from today's `ShellHelper` members (same records, one
    exception type). `ShellHelper` becomes the GNOME implementation unchanged. `DesktopControl` connects the helper for
@@ -107,12 +107,12 @@ Each step is built and tested, then committed with what changed for the player, 
 `main`. If `linux-catch-up-2` work lands on `main`, merge it into `kde-support`. The Windows projects, solution and
 lock files are not touched.
 
-**For Roy to decide:** the Settings → Linux setup page today names the GNOME helper. On KDE it would show "KDE
+**For User to decide:** the Settings → Linux setup page today names the GNOME helper. On KDE it would show "KDE
 (built in)" status text instead. That is the only visible page change; is that fine?
 
-## Phase 2 (2026-10-14, after Roy's "go"): built
+## Phase 2 (2026-10-14, after User's "go"): built
 
-Roy said go and that the KDE status text on the Settings page is fine. Commits on `kde-support`, one per piece:
+User said go and that the KDE status text on the Settings page is fine. Commits on `kde-support`, one per piece:
 
 1. **One boundary** (`IDesktopHelper`, `src/MinimumEffortClicker.Linux/IDesktopHelper.cs`). `ShellHelper` became
    `GnomeHelper`, unchanged on the wire; `DesktopHelper.Connect()` picks GNOME or KDE from `XDG_CURRENT_DESKTOP`.
@@ -149,7 +149,7 @@ Roy said go and that the KDE status text on the Settings page is fine. Commits o
   notch. Result: exactly one notch per step in X11 apps; Wayland apps get 10 px smooth. The clicker's own window
   (Avalonia under Xwayland) did not scroll from fake-input wheel events at all; not investigated further.
 
-### Focus race (for Roy)
+### Focus race (for User)
 
 The probe showed a looped run sometimes **ending** instead of pausing when the target lost focus. The KWin answer
 is immediate and the scheduler checks the target between actions; that check ends the run even when a pause for
@@ -162,16 +162,16 @@ What is left is in the shared engine, which this job must not change: when focus
 sent (a few milliseconds per click), `TrySend` refuses the click and `ClickExecutor` ends the run with
 InputRejected instead of pausing (`ClickExecutor.cs`, the `sink.TrySend` calls, and `CanContinue`, which ignores a
 requested pause). The same gap exists on GNOME and Windows in principle; KDE just answers fast enough to hit it.
-Suggested engine change, if Roy agrees: when `PauseOnTargetLoss` is set and the target no longer matches,
+Suggested engine change, if User agrees: when `PauseOnTargetLoss` is set and the target no longer matches,
 `CanContinue` and a refused Down request the automatic pause and repeat that action after the resume, instead of
 ending the run. Until then, `run-headless-kwin-probe.sh` fails its focus-loss stage about one run in six.
 
 ### Not checked
 
-Roy's real Plasma desktop; physical input with the udev rule on KDE; a real game; fractional scaling with the app;
+User's real Plasma desktop; physical input with the udev rule on KDE; a real game; fractional scaling with the app;
 KDE's RemoteDesktop and GlobalShortcuts portals; Sway, Hyprland and other compositors.
 
-### Focus race: engine fix (2026-10-14, Roy said yes)
+### Focus race: engine fix (2026-10-14, User said yes)
 
 Built on its own branch `engine-focus-race`, PR #17 into `main`, separate from this branch. With PauseOnTargetLoss,
 a press, click or move refused because the target just left becomes the automatic pause, and after the resume
@@ -190,12 +190,12 @@ Headless KWin probe, 20 runs each, runs that ended instead of pausing:
 
 The "1 in 6" above was measured earlier with the same code as the third row; 20 runs now showed none. The race is
 rare there, not gone. Once PR #17 is merged, the workaround (`targetLossPausePending` in the Linux
-`DesktopRuntime`) is redundant and can be removed. The Windows tests still have to run on PR #17 (Roy's Windows
+`DesktopRuntime`) is redundant and can be removed. The Windows tests still have to run on PR #17 (User's Windows
 session).
 
 ### Review follow-up (2026-10-15)
 
-Roy's review of #16: remove the Linux runtime workaround once the engine fix is in (two fixes for one problem). Done:
+User's review of #16: remove the Linux runtime workaround once the engine fix is in (two fixes for one problem). Done:
 the engine branch is merged into `kde-support` (it lands on `main` with #17; merging `main` afterwards is clean) and
 `targetLossPausePending` is gone from the Linux `DesktopRuntime`. Headless KWin probe, 20 runs on the result: 0 ended
 instead of pausing, 20 clean. Also from the review: the input guard now refuses to start, and sends nothing, when
