@@ -298,12 +298,11 @@ public partial class MainWindow
         quickChildren.Clear(); TestResultLabel.Text = ""; AddActionButton.Content = "Add Action";
         loadingQuick = false; Location_Changed(sender, e); ShowQuickFields(); ShowConditionColour();
     }
-    private void RefreshQuickList(int selected = -1, bool preserveEditor = false)
+    private QuickRow[] QuickRows(IEnumerable<SequenceStep> steps)
     {
-        loadingQuick = true;
         var untested = TryFindResource(typeof(Button)) as Style;
         var passedStyle = (Style)FindResource("GreenButton"); var failedStyle = (Style)FindResource("RedButton");
-        QuickActionList.ItemsSource = quickHistory.Current.Steps.Select((s, i) =>
+        return steps.Select((s, i) =>
         {
             var (passed, testTip) = RowTestResult(s);
             return new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
@@ -311,6 +310,20 @@ public partial class MainWindow
                 s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (Brush)FindResource("TextPrimary"),
                 passed is true ? passedStyle : passed is false ? failedStyle : untested, testTip);
         }).ToArray();
+    }
+    /// <summary>Shows actions captured so far below the existing list while recording runs.</summary>
+    private void ShowRecordingPreview(IReadOnlyList<SequenceStep> recorded)
+    {
+        loadingQuick = true;
+        var rows = QuickRows([.. quickHistory.Current.Steps, .. recorded]);
+        QuickActionList.ItemsSource = rows;
+        if (rows.Length > 0) QuickActionList.ScrollIntoView(rows[^1]);
+        loadingQuick = false;
+    }
+    private void RefreshQuickList(int selected = -1, bool preserveEditor = false)
+    {
+        loadingQuick = true;
+        QuickActionList.ItemsSource = QuickRows(quickHistory.Current.Steps);
         QuickUndoButton.IsEnabled = quickHistory.CanUndo; QuickRedoButton.IsEnabled = quickHistory.CanRedo;
         if (preserveEditor)
         {

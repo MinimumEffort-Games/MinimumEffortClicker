@@ -22,6 +22,11 @@ public sealed class DesktopRecorder : IDisposable
     private readonly Dictionary<InputControl, ClientPoint> clickPositions = [];
     private readonly HashSet<InputControl> ignoredClicks = [];
     private readonly HashSet<InputControl> dragged = [];
+    // Copy of the captured edges per segment, so the UI can show actions while recording continues.
+    private readonly List<(TimeSpan Start, TimeSpan? End, List<RecordedEdge> Edges)> live = [(TimeSpan.Zero, null, [])];
+    private int liveVersion;
+    /// <summary>Changes whenever an input is captured, paused or resumed.</summary>
+    public int LiveVersion => Volatile.Read(ref liveVersion);
     public Task<string> Finished => finished.Task;
     public int Count => buffer.Count;
     public bool Paused => buffer.Paused;
@@ -79,7 +84,7 @@ public sealed class DesktopRecorder : IDisposable
             if (sample.Down) { if (mouseHolds.Count == 0) lastMove = at - TimeSpan.FromMilliseconds(50); mouseHolds.Add(sample.Control); clickPositions[sample.Control] = point; }
             else { mouseHolds.Remove(sample.Control); clickPositions.Remove(sample.Control); dragged.Remove(sample.Control); }
         }
-        if (!buffer.TryAppend(new(at, sample.Control, sample.Down, point))) Pause("Recording reached its event limit. Finish with the recording hotkey to retain the bounded draft.");
+        if (!Append(new(at, sample.Control, sample.Down, point))) Pause("Recording reached its event limit. Finish with the recording hotkey to retain the bounded draft.");
     }
     private void Capture(InputControl input, bool down)
     {
@@ -97,7 +102,31 @@ public sealed class DesktopRecorder : IDisposable
             if (down) Pause("Unsupported key or modifier encountered. Finish with the recording hotkey and review the draft.");
             return;
         }
-        if (!buffer.TryAppend(new(Stopwatch.GetElapsedTime(origin), input, down))) Pause("Recording reached its event limit. Finish with the recording hotkey to retain the bounded draft.");
+        if (!Append(new(Stopwatch.GetElapsedTime(origin), input, down))) Pause("Recording reached its event limit. Finish with the recording hotkey to retain the bounded draft.");
+    }
+    private bool Append(RecordedEdge edge)
+    {
+        if (!buffer.TryAppend(edge)) return false;
+        var segment = live[^1]; segment.Edges.Add(edge with { At = edge.At - segment.Start });
+        Interlocked.Increment(ref liveVersion); return true;
+    }
+    /// <summary>
+    /// Actions captured so far, normalized like the final draft. Holds still down end now; the final
+    /// draft is taken from the recording itself when it stops.
+    /// </summary>
+    public SequenceDefinition LivePreview()
+    {
+        lock (captureGate)
+        {
+            var now = Stopwatch.GetElapsedTime(origin);
+            var steps = new List<SequenceStep>();
+            foreach (var (start, end, edges) in live)
+            {
+                try { steps.AddRange(RecordingNormalizer.Normalize(edges, (end ?? now) - start).Sequence.Steps); }
+                catch (ArgumentException) { }
+            }
+            return new(steps);
+        }
     }
     public void Stop(string reason = "Recording stopped by you.")
     {
@@ -117,7 +146,8 @@ public sealed class DesktopRecorder : IDisposable
         lock (captureGate)
         {
             if (Volatile.Read(ref ended) != 0 || Interlocked.Exchange(ref active, 0) == 0) return;
-            buffer.Pause(Stopwatch.GetElapsedTime(origin)); mouseHolds.Clear(); clickPositions.Clear(); dragged.Clear(); ignoredClicks.Clear();
+            var at = Stopwatch.GetElapsedTime(origin); buffer.Pause(at);
+            live[^1] = live[^1] with { End = at }; Interlocked.Increment(ref liveVersion); mouseHolds.Clear(); clickPositions.Clear(); dragged.Clear(); ignoredClicks.Clear();
             runtime.CapturePaused(reason + " Interrupted holds end at this boundary; review before playback.");
         }
     }
@@ -129,7 +159,8 @@ public sealed class DesktopRecorder : IDisposable
             runtime.ValidateCaptureResume();
             if (channels.Keyboard && !string.Equals(keyboardLayout, runtime.TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Restore the recorded keyboard layout before resuming this capture.");
-            buffer.Resume(Stopwatch.GetElapsedTime(origin));
+            var at = Stopwatch.GetElapsedTime(origin); buffer.Resume(at);
+            live.Add((at, null, [])); Interlocked.Increment(ref liveVersion);
             Volatile.Write(ref active, 1); runtime.CaptureResumed();
         }
     }

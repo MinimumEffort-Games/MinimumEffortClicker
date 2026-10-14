@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 using MinimumEffortClicker.Core;
 using MinimumEffortClicker.Engine;
 using MinimumEffortClicker.Windows;
@@ -143,10 +144,14 @@ public partial class MainWindow
     }
     private void QuickRecordHotkey() => Dispatcher.BeginInvoke(async () =>
     {
-        if (!operations.Has(Operation.Dialog) && (operations.Has(Operation.Quick) || currentPage == "QuickPage")) await RecordQuick();
+        if (!operations.Has(Operation.Dialog) && (operations.Has(Operation.Quick) || currentPage == "QuickPage")) await RecordQuick(fromHotkey: true);
     });
-    private async void QuickRecord_Click(object sender, RoutedEventArgs e) => await RecordQuick();
-    private async Task RecordQuick()
+    private async void QuickRecord_Click(object sender, RoutedEventArgs e) => await RecordQuick(fromHotkey: false);
+    /// <summary>
+    /// The Record button always minimises the clicker, so the first click lands in the target. The hotkey leaves it
+    /// where it is with a window target, and keeps the time from the key press to the first input as a pause.
+    /// </summary>
+    private async Task RecordQuick(bool fromHotkey)
     {
         if (quickRecorder is not null) { quickRecorder.Stop(); return; }
         if (quickCancellation is not null) { quickCancellation.Cancel(); runtime?.Stop("Current operation cancelled."); return; }
@@ -160,11 +165,11 @@ public partial class MainWindow
         runtime.Control.StopRequested += Cancel; RefreshStatus();
         try
         {
-            if (runtime.IsDesktopMode && WindowState != WindowState.Minimized)
+            if ((runtime.IsDesktopMode || !fromHotkey) && WindowState != WindowState.Minimized)
             { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
-            // Recording starts the moment the key is pressed; the idle time before the first click or key is dropped from the list.
-            // The target was just brought forward, so give the foreground switch a few short retries instead of a fixed countdown.
+            // Recording starts the moment the key or button is pressed. The target was just brought forward, so give the
+            // foreground switch a few short retries instead of a fixed countdown.
             DesktopRecorder? started = null;
             for (int attempt = 0; started is null; attempt++)
             {
@@ -174,10 +179,26 @@ public partial class MainWindow
             using var recorder = started;
             quickRecorder = recorder; RefreshStatus();
             QuickRecordStatus.Text = $"Recording clicks and keys… {ShortcutKeys.Label(appliedRecordKey)} or {stopKey} finishes.";
-            string reason = await recorder.Finished;
+            // Show captured actions as they happen; the list is rebuilt from the full draft on stop.
+            int shown = recorder.LiveVersion;
+            var liveTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(150), DispatcherPriority.Background, (_, _) =>
+            {
+                if (quickRecorder != recorder || recorder.LiveVersion == shown) return;
+                shown = recorder.LiveVersion;
+                try
+                {
+                    var live = RecordedSteps(recorder.LivePreview());
+                    ShowRecordingPreview(live.Steps);
+                    QuickRecordStatus.Text = $"Recording… {live.Steps.Count(s => s.Kind != StepKind.Wait)} actions so far. {ShortcutKeys.Label(appliedRecordKey)} or {stopKey} finishes.";
+                }
+                catch (Exception) { } // A preview that cannot be built yet is simply not shown.
+            }, Dispatcher);
+            string reason;
+            try { reason = await recorder.Finished; }
+            finally { liveTimer.Stop(); }
             var draft = await recorder.GetDraftAsync();
             quickRecorder = null;
-            var sequence = QuickActions.RecordedActions(draft.Sequence, includePauses, movement);
+            var sequence = RecordedSteps(draft.Sequence);
             if (!sequence.Steps.Any(s => s.Kind != StepKind.Wait)) { QuickRecordStatus.Text = "No clicks or keys captured. " + reason; return; }
             if (quickHistory.Current.KeyboardLayout is { } layout && sequence.KeyboardLayout is { } recorded && !string.Equals(layout, recorded, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("The recording uses a different keyboard layout. Use a new macro for it.");
@@ -191,6 +212,15 @@ public partial class MainWindow
         finally
         {
             runtime.Control.StopRequested -= Cancel; quickRecorder = null; quickCancellation = null; operations.End(Operation.Quick); RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus();
+            // A cancelled or empty recording leaves preview rows behind; put the real list back.
+            if (QuickActionList.ItemsSource is QuickRow[] rows && rows.Length != quickHistory.Current.Steps.Count) RefreshQuickList();
+        }
+        SequenceDefinition RecordedSteps(SequenceDefinition recording)
+        {
+            var sequence = QuickActions.RecordedActions(recording, includePauses, movement);
+            if (fromHotkey && includePauses && recording.Steps is [{ Kind: StepKind.Wait } lead, ..] && sequence.Steps.Count > 0)
+                sequence = sequence with { Steps = [QuickActions.Pause(lead.Duration), .. sequence.Steps] };
+            return sequence;
         }
     }
 }
