@@ -18,10 +18,10 @@ public partial class MainWindow
             ? "Ready. Hotkeys work in every app, mouse-button shortcuts and recording are available, and touching your mouse or keyboard stops playback."
             : "Off. Recording, mouse-button shortcuts and the physical-input safety stop need read access to your keyboard and mouse. Run this once in a terminal (it asks for your password):";
         InputAccessCommand.Text = control?.PhysicalInputAvailable == true ? "" : LinuxSetup.InputAccessCommand;
-        InputAccessCommand.IsVisible = InputAccessTools.IsVisible = control?.PhysicalInputAvailable != true;
+        InputAccessCommand.IsVisible = CopyInputCommandButton.IsVisible = control?.PhysicalInputAvailable != true;
         // Shown whether access is on or off: the rule is reversible, and people should see how.
         InputAccessRemoveCommand.Text = LinuxSetup.InputAccessRemoveCommand ?? "";
-        InputAccessScope.IsVisible = InputAccessRemoveCommand.IsVisible = LinuxSetup.InputAccessRemoveCommand is not null;
+        InputAccessScope.IsVisible = InputAccessRemoveCommand.IsVisible = CopyRemoveCommandButton.IsVisible = LinuxSetup.InputAccessRemoveCommand is not null;
     }
 
     private void InstallHelper_Click(object? sender, RoutedEventArgs e)
@@ -36,6 +36,13 @@ public partial class MainWindow
         if (Clipboard is not { } clipboard) return;
         await Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(clipboard, LinuxSetup.InputAccessCommand);
         ReasonLabel.Text = "Command copied. Paste it into a terminal, then choose Check again.";
+    }
+
+    private async void CopyRemoveCommand_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Clipboard is not { } clipboard || LinuxSetup.InputAccessRemoveCommand is not { } command) return;
+        await Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(clipboard, command);
+        ReasonLabel.Text = "Remove command copied. Paste it into a terminal to turn input access off, then choose Check again.";
     }
 
     private async void RefreshPlatform_Click(object? sender, RoutedEventArgs e)
