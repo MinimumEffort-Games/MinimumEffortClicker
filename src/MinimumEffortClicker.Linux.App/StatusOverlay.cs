@@ -56,7 +56,11 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     {
         X11Windows.SetClickThrough(this, true);
         X11Windows.SetNoFocus(this, true);
+        X11Windows.SetAbove(this);
     }
+
+    /// <summary>GNOME forgets "always on top" when a window is hidden, so it is asked again each time the overlay shows.</summary>
+    public void KeepAbove() => Avalonia.Threading.Dispatcher.UIThread.Post(() => X11Windows.SetAbove(this), Avalonia.Threading.DispatcherPriority.Background);
 
     public void Configure(OverlayOptions value)
     {
