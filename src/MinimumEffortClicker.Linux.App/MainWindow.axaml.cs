@@ -46,7 +46,6 @@ public partial class MainWindow : Window
         preferences = new(store.DirectoryPath);
         bindingsStore = new(store.DirectoryPath);
         InitializeComponent();
-        SizeChanged += (_, _) => UpdateActionsListSize();
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();
         ToggleHeldKeyBox.Content = "W"; ToggleShortcutBox.Content = "Choose a key…";
@@ -191,12 +190,6 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(() => { Interlocked.Exchange(ref refreshPending, 0); RefreshStatus(); });
     }
     private long statusRefreshCount, overlayPlacementCount;
-    private void UpdateActionsListSize()
-    {
-        double maximum = Math.Clamp(Bounds.Height - 450, 150, 320);
-        QuickActionList.MinHeight = Math.Min(200, maximum);
-        QuickActionList.MaxHeight = maximum;
-    }
     private void RefreshStatus()
     {
         if (runtime is null || allowClose) return;
