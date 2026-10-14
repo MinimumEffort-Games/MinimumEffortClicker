@@ -11,7 +11,20 @@ namespace MinimumEffortClicker.App;
 
 public partial class MainWindow
 {
-    private void EnsureOverlay() => overlay ??= new();
+    private void EnsureOverlay()
+    {
+        if (overlay is not null) return;
+        overlay = new();
+        overlay.ShowRequested += BringToFront;
+        overlay.ExitRequested += ExitApplication;
+    }
+
+    /// <summary>The overlay's square: shows the clicker in front, also when GNOME would only say it "is ready".</summary>
+    private void BringToFront()
+    {
+        RestoreFromTray();
+        runtime?.ActivateOwnWindow(Title ?? "");
+    }
     private void DisplaysChanged(object? sender, EventArgs e)
     {
         CancelScreenshot("Display changed");

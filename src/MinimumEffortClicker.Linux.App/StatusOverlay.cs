@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -30,6 +31,13 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private OverlayOptions options = new();
     private bool configured;
     private bool recording, active;
+    private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Spacing = 4, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
+    private PixelRect[] clickable = [];
+
+    /// <summary>The overlay's square: bring the clicker window to the front.</summary>
+    public event Action? ShowRequested;
+    /// <summary>The overlay's X: stop whatever runs and quit the clicker.</summary>
+    public event Action? ExitRequested;
 
     public StatusOverlay()
     {
@@ -38,11 +46,43 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
         ShowActivated = false; ShowInTaskbar = false; Topmost = true; CanResize = false; Focusable = false;
         body.Children.Add(activityLabel); body.Children.Add(label);
-        frame = new Border { Background = Idle, BorderBrush = IdleBorder, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 9, 4), Child = body };
+        // On GNOME the clicker has no taskbar entry while it is hidden or minimised, so the overlay offers a way back and out.
+        actions.Children.Add(OverlayButton("Show Minimum Effort Clicker", new Rectangle { Width = 9, Height = 9, Stroke = Brushes.White, StrokeThickness = 1.5 }, () => ShowRequested?.Invoke()));
+        actions.Children.Add(OverlayButton("Quit Minimum Effort Clicker (stops anything running)", new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse("M0,0 L9,9 M9,0 L0,9"), Stroke = Brushes.White, StrokeThickness = 1.5, Width = 9, Height = 9 }, () => ExitRequested?.Invoke()));
+        var row = new DockPanel();
+        DockPanel.SetDock(actions, Dock.Right);
+        row.Children.Add(actions); row.Children.Add(body);
+        frame = new Border { Background = Idle, BorderBrush = IdleBorder, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 6, 4), Child = row };
         scaler.Child = frame;
         Content = scaler;
         ApplyColours();
         Opened += (_, _) => ApplyStyles();
+        LayoutUpdated += (_, _) => UpdateClickable();
+    }
+
+    private static Border OverlayButton(string tip, Control glyph, Action click)
+    {
+        var normal = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)); var hover = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255));
+        var button = new Border { Width = 20, Height = 20, CornerRadius = new CornerRadius(3), Background = normal, Cursor = new Cursor(StandardCursorType.Hand),
+            Child = new Viewbox { Width = 11, Height = 11, Child = glyph, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+        ToolTip.SetTip(button, tip);
+        Avalonia.Automation.AutomationProperties.SetName(button, tip);
+        button.PointerEntered += (_, _) => button.Background = hover;
+        button.PointerExited += (_, _) => button.Background = normal;
+        button.PointerReleased += (_, e) => { if (e.InitialPressMouseButton == MouseButton.Left) { e.Handled = true; click(); } };
+        return button;
+    }
+
+    /// <summary>Clicks reach only the two buttons; the rest of the overlay stays click-through.</summary>
+    private void UpdateClickable()
+    {
+        double scale = RenderScaling;
+        var areas = actions.Children.Select(c => c.TranslatePoint(new Point(0, 0), this) is { } p
+            ? new PixelRect((int)Math.Floor(p.X * scale), (int)Math.Floor(p.Y * scale), (int)Math.Ceiling(c.Bounds.Width * scale), (int)Math.Ceiling(c.Bounds.Height * scale))
+            : default).Where(r => r.Width > 0).ToArray();
+        if (areas.SequenceEqual(clickable)) return;
+        clickable = areas;
+        X11Windows.SetInputRegion(this, areas);
     }
 
     private void ApplyColours()
@@ -54,7 +94,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
 
     private void ApplyStyles()
     {
-        X11Windows.SetClickThrough(this, true);
+        clickable = [];
+        UpdateClickable();
         X11Windows.SetNoFocus(this, true);
         X11Windows.SetAbove(this);
     }

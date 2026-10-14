@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Avalonia;
 using Avalonia.Controls;
 
 namespace MinimumEffortClicker.App;
@@ -31,6 +32,31 @@ internal static class X11Windows
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return false; }
     }
+
+    /// <summary>
+    /// Lets clicks reach the window only inside the given rectangles (window pixels); everywhere else they pass through
+    /// to the app beneath it. An empty list makes the whole window click-through.
+    /// </summary>
+    public static bool SetInputRegion(Window window, IReadOnlyList<PixelRect> areas)
+    {
+        if (window.TryGetPlatformHandle() is not { HandleDescriptor: "XID" } handle) return false;
+        try
+        {
+            lock (gate)
+            {
+                if (display == 0) display = XOpenDisplay(null);
+                if (display == 0) return false;
+                var rectangles = areas.Select(a => new XRectangle { X = (short)a.X, Y = (short)a.Y, Width = (ushort)a.Width, Height = (ushort)a.Height }).ToArray();
+                XShapeCombineRectangles(display, handle.Handle, ShapeInput, 0, 0, rectangles, rectangles.Length, ShapeSet, Unsorted);
+                XFlush(display);
+                return true;
+            }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return false; }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct XRectangle { public short X, Y; public ushort Width, Height; }
 
     /// <summary>
     /// Asks the window manager never to give this window keyboard focus (the X11 "no input" model),
@@ -137,5 +163,6 @@ internal static class X11Windows
     [DllImport("libX11.so.6")] private static extern int XDeleteProperty(nint display, nint window, nint property);
     [DllImport("libX11.so.6")] private static extern int XSendEvent(nint display, nint window, bool propagate, nint mask, ref ClientMessage message);
     [DllImport("libXext.so.6")] private static extern void XShapeCombineRectangles(nint display, nint window, int kind, int x, int y, nint rectangles, int count, int operation, int ordering);
+    [DllImport("libXext.so.6", EntryPoint = "XShapeCombineRectangles")] private static extern void XShapeCombineRectangles(nint display, nint window, int kind, int x, int y, XRectangle[] rectangles, int count, int operation, int ordering);
     [DllImport("libXext.so.6")] private static extern void XShapeCombineMask(nint display, nint window, int kind, int x, int y, nint mask, int operation);
 }

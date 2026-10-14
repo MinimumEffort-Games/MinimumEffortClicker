@@ -71,6 +71,7 @@ public partial class MainWindow
             "- Appearance: light or dark.",
             "- Scale click positions: when the target window is resized, saved positions scale with it.",
             "- Overlay: a small status box beside the target shows what is running. Set its opacity and size here, or hide it.",
+            "- The overlay's square brings the clicker window back to the front (GNOME shows no taskbar icon while it is hidden or minimised). Its X stops anything running and quits the clicker.",
             "- Keys: F8 starts and stops Actions, F9 stops everything, F10 records. Each needs its own key.",
         ]),
         ("Linux setup",
