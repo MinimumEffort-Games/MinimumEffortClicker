@@ -77,4 +77,4 @@ Status 2026-10-14 (branch `linux-catch-up-2`): items 1–4 done. Item 5, the run
 needs a copy that reads its own snapshot plus the ten or so call sites (startup, crash handlers, failed picks, captures,
 recording, failed tests, run state). It is worth more on Linux than on Windows: a run there can also end because the
 GNOME helper is missing or not allowed, input access is off, or Wayland refused a window or capture, and today that
-reason is only in the status line until the next message replaces it. Not built yet; Roy decides.
+reason is only in the status line until the next message replaces it. Roy said yes; built on branch `linux-run-log`.

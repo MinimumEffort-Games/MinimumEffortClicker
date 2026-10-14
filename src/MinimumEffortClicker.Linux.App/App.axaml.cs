@@ -16,6 +16,8 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         Compat.TrackShutdown();
+        // Only recorded: a crash still ends the app, and the GNOME helper lets go of anything it was holding.
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => { if (args.ExceptionObject is Exception exception) AppLog.Crash("the app", exception); };
         if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return;
         var args = desktop.Args ?? [];
         if (args.Length == 2 && args[0] == "--startup-report") StartupMeasurement.Begin(args[1]);

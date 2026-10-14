@@ -48,7 +48,7 @@ public partial class MainWindow
             TestResultLabel.Text = "Colour selected. Add Action or Save changes to keep it.";
         }
         catch (OperationCanceledException) { ReasonLabel.Text = "Colour selection cancelled."; }
-        catch (Exception ex) { ReasonLabel.Text = ex.Message; }
+        catch (Exception ex) { ReasonLabel.Text = ex.Message; AppLog.Failure("Pick colour", ex); }
         finally { runtime.Control.StopRequested -= Cancel; quickCancellation = null; quickOperation = false; quickEditorOpen = false; RefreshStatus(); }
     }
 }
