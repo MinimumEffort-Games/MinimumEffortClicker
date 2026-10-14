@@ -320,11 +320,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             catch (InvalidOperationException) { return false; }
         }
     }
-    // From the moment the runtime asks for the automatic pause until the scheduler has taken it, the target still counts
-    // as present for the scheduler's own checks, so a check that lands in between leads it to the pause instead of
-    // ending the run. Input itself is still checked live (TrySend).
-    private volatile bool targetLossPausePending;
-    public ForegroundTarget? Current => new(targetId, CursorFreeActive ? BackgroundTargetAvailable : TargetAvailable || targetLossPausePending);
+    public ForegroundTarget? Current => new(targetId, CursorFreeActive ? BackgroundTargetAvailable : TargetAvailable);
     public void SetClickRateLimit(int clicksPerSecond)
     {
         lock (gate)
@@ -573,7 +569,6 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             if (!busy || countingDown || cancellation?.IsCancellationRequested != false || playbackControl is not { } control) return false;
             if (control.Automatic) return true;
             if (!control.RequestPause(automatic: true)) return control.IsPaused;
-            targetLossPausePending = true;
             state = "Pausing"; reason = TargetLostReason;
         }
         NotifyChanged(); return true;
@@ -967,7 +962,6 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             using var power = new PowerSession(KeepAwakeWhileRunning && !stop.IsCancellationRequested);
             executor.PlaybackPaused = paused =>
             {
-                targetLossPausePending = false;
                 power.SetPaused(paused);
                 bool automatic;
                 lock (gate)
@@ -1046,7 +1040,6 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 cleanupPendingRecovery = !result.CleanupSucceeded;
                 busy = false; cancellation = null; stop.Dispose();
                 playbackControl?.Dispose(); playbackControl = null; executor.Playback = null; executor.PlaybackPaused = null; runningRequest = null;
-                targetLossPausePending = false;
                 executor.PauseOnTargetLoss = false; targetBackSince = -1; SetAutoResumePolling(false);
                 actionToggleSession?.Dispose(); actionToggleSession = null; executor.SessionActionChanged = null; executor.SessionHoldsChanged = null;
                 Volatile.Write(ref activeControls, []);
