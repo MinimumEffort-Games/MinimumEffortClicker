@@ -16,21 +16,44 @@ public partial class MainWindow
         if (runtime is null) throw new InvalidOperationException("The clicker is still starting.");
         var monitors = runtime.ListMonitors();
         if (monitors.Count == 0) throw new InvalidOperationException("GNOME reported no monitors.");
-        var previous = WindowState;
+        // The clicker and any open dialog (the wait editor) must be out of the picture. GNOME will not minimise a window
+        // while its modal dialog is open, and hiding the dialog would end it, so with a dialog open both are made
+        // see-through for the moment the pictures take. Otherwise the clicker is minimised.
+        var dialogs = OwnedWindows.Where(w => w.IsVisible).ToList();
+        var previous = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
         // The screenshot flag keeps the status overlay hidden while the pictures are taken.
         bool wasBusy = screenshotBusy; screenshotBusy = true;
         overlay?.Hide(); overlayFollowTimer.Stop();
         try
         {
-            if (WindowState != WindowState.Minimized) WindowState = WindowState.Minimized;
-            await Task.Delay(400, stop); // Let the minimise animation finish before copying pixels.
+            if (dialogs.Count > 0)
+            {
+                foreach (var window in dialogs.Prepend(this)) X11Windows.SetInvisible(window, true);
+                await Task.Delay(250, stop); // Until GNOME has drawn a frame without them.
+            }
+            else
+            {
+                if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+                WindowState = WindowState.Minimized;
+                // Wait until GNOME shows it minimised and the animation has ended before copying pixels.
+                await WaitUntilMinimized(stop);
+            }
             var pictures = await Task.Run(() => monitors.Select(m => runtime.CaptureMonitorPreview(m, stop)).ToArray(), stop);
             return (monitors, pictures);
         }
         finally
         {
             screenshotBusy = wasBusy;
-            if (WindowState == WindowState.Minimized && !closing) WindowState = previous == WindowState.Minimized ? WindowState.Normal : previous;
+            if (!closing)
+            {
+                if (dialogs.Count > 0) foreach (var window in dialogs.Prepend(this)) X11Windows.SetInvisible(window, false);
+                else
+                {
+                    // GNOME refuses an X11 window's own request to come back; the helper does not.
+                    WindowState = previous;
+                    runtime.ActivateOwnWindow(Title ?? "");
+                }
+            }
             RefreshStatus();
         }
     }

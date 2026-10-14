@@ -16,6 +16,7 @@ internal sealed class ClickPingWindow : Window
     private const int SizePixels = 120;
     public static readonly Color Landed = Color.FromRgb(0x3D, 0xDC, 0x84), Location = Color.FromRgb(0xE5, 0x39, 0x35);
     private readonly int desktopX, desktopY;
+    private readonly TranslateTransform shift = new();
 
     public ClickPingWindow(int desktopX, int desktopY, Color colour, int times = 1)
     {
@@ -31,7 +32,9 @@ internal sealed class ClickPingWindow : Window
         var rings = new Grid { Width = 100, Height = 100, RenderTransformOrigin = RelativePoint.Center, RenderTransform = scale };
         rings.Children.Add(new Ellipse { Stroke = new SolidColorBrush(Color.FromArgb(170, 0, 0, 0)), StrokeThickness = 9 });
         rings.Children.Add(new Ellipse { Stroke = new SolidColorBrush(colour), StrokeThickness = 5, Margin = new Thickness(2) });
-        Content = new Viewbox { Child = rings };
+        // GNOME keeps a window below the top bar and on screen, so near an edge the window may sit elsewhere than asked;
+        // the ring is then shifted inside it to stay centred on the point (the part beyond the window is cut off).
+        Content = new Viewbox { Child = rings, RenderTransform = shift };
         Opened += (_, _) =>
         {
             X11Windows.SetNoFocus(this, true); X11Windows.SetClickThrough(this, true); X11Windows.SetAbove(this);
@@ -40,6 +43,7 @@ internal sealed class ClickPingWindow : Window
             var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
             timer.Tick += (_, _) =>
             {
+                FollowPoint();
                 double elapsed = (DateTime.UtcNow - started).TotalSeconds;
                 double t = Math.Min(1, elapsed - Math.Floor(Math.Min(elapsed, times - 0.001)));
                 // Grows with an ease-out and fades with an ease-in over one second.
@@ -61,6 +65,15 @@ internal sealed class ClickPingWindow : Window
         var size = PixelSize.FromSize(FrameSize ?? Bounds.Size, DesktopScaling);
         if (size.Width <= 0) size = new PixelSize(SizePixels, SizePixels);
         Position = new PixelPoint(desktopX - size.Width / 2, desktopY - size.Height / 2);
+    }
+
+    /// <summary>Moves the drawing so the ring's centre is on the point wherever GNOME put the window.</summary>
+    private void FollowPoint()
+    {
+        var size = PixelSize.FromSize(FrameSize ?? Bounds.Size, DesktopScaling);
+        double scale = DesktopScaling > 0 ? DesktopScaling : 1;
+        shift.X = (desktopX - size.Width / 2 - Position.X) / scale;
+        shift.Y = (desktopY - size.Height / 2 - Position.Y) / scale;
     }
 
     /// <summary>Shows the ring at a desktop point; failures are ignored because the ring is only a hint.</summary>

@@ -84,14 +84,20 @@ public partial class MainWindow
     /// After asking to minimise, waits until GNOME shows the clicker minimised and its animation has finished, so a
     /// picture taken next shows what is behind it. Gives up after two seconds when the helper cannot tell.
     /// </summary>
-    private async Task WaitUntilMinimized(CancellationToken stop)
+    private Task WaitUntilMinimized(CancellationToken stop) => WaitUntilMinimized([this], stop);
+    private async Task WaitUntilMinimized(IReadOnlyList<Window> windows, CancellationToken stop)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
         bool asked = false;
-        while (DateTime.UtcNow < deadline && runtime?.OwnWindowMinimized(Title ?? "") == false)
+        bool Showing() => windows.Any(w => runtime?.OwnWindowMinimized(w.Title ?? "") == false);
+        while (DateTime.UtcNow < deadline && Showing())
         {
             // GNOME may not have taken the first request (the app can believe it is minimised while it is on screen): ask again once.
-            if (!asked && DateTime.UtcNow > deadline - TimeSpan.FromSeconds(1.5)) { asked = true; WindowState = WindowState.Normal; WindowState = WindowState.Minimized; }
+            if (!asked && DateTime.UtcNow > deadline - TimeSpan.FromSeconds(1.5))
+            {
+                asked = true;
+                foreach (var window in windows) { window.WindowState = WindowState.Normal; window.WindowState = WindowState.Minimized; }
+            }
             await Task.Delay(50, stop);
         }
         // GNOME's minimise animation takes about 0.4 s; the window is drawn until it ends.
