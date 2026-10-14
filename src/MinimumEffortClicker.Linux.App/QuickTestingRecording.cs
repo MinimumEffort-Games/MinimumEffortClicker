@@ -106,6 +106,7 @@ public partial class MainWindow
             RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus();
         }
         rowTests[step.Id] = (row.Step, passed, detail);
+        if (passed == false) AppLog.Note($"Test of action {row.Index + 1} ({row.Step.Name})", detail);
         ShowTestSelectedButton();
         ReasonLabel.Text = $"Test of action {row.Index + 1}: {detail}";
     }
@@ -232,7 +233,7 @@ public partial class MainWindow
             ReasonLabel.Text = reason;
         }
         catch (OperationCanceledException) { QuickRecordStatus.Text = "Recording cancelled."; }
-        catch (Exception ex) { QuickRecordStatus.Text = "Recording ended: " + ex.Message; }
+        catch (Exception ex) { QuickRecordStatus.Text = "Recording ended: " + ex.Message; AppLog.Failure("Recording", ex); }
         finally
         {
             runtime.Control.StopRequested -= Cancel; quickRecorder = null; quickCancellation = null; quickOperation = false; RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus();

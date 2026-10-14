@@ -231,6 +231,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             ScreenshotStatus.Text = "Screenshot failed: " + ex.Message;
+            AppLog.Failure("Screenshot", ex);
             if (!wasVisible) trayIcon?.Notify("Screenshot could not finish", ex.Message);
             if (fromAction) throw new IOException(ScreenshotStatus.Text, ex);
         }
