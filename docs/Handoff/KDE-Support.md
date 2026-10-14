@@ -170,3 +170,25 @@ ending the run. Until then, `run-headless-kwin-probe.sh` fails its focus-loss st
 
 Roy's real Plasma desktop; physical input with the udev rule on KDE; a real game; fractional scaling with the app;
 KDE's RemoteDesktop and GlobalShortcuts portals; Sway, Hyprland and other compositors.
+
+### Focus race: engine fix (2026-10-14, Roy said yes)
+
+Built on its own branch `engine-focus-race`, PR #17 into `main`, separate from this branch. With PauseOnTargetLoss,
+a press, click or move refused because the target just left becomes the automatic pause, and after the resume
+only that one input is sent again. `CanContinue` asks for the automatic pause instead of ending the run. A user
+pause stays the user's. A refused release keeps the old cleanup path. Nine fake-based engine tests; six failed on
+the old engine.
+
+Headless KWin probe, 20 runs each, runs that ended instead of pausing:
+
+| Code | Ended instead of pausing |
+| --- | --- |
+| KDE helper without the Linux runtime workaround | 7 / 20 |
+| Same plus the engine fix | 0 / 20 |
+| `kde-support` as it is (with the workaround) | 0 / 20 |
+| `kde-support` plus the engine fix | 0 / 20 |
+
+The "1 in 6" above was measured earlier with the same code as the third row; 20 runs now showed none. The race is
+rare there, not gone. Once PR #17 is merged, the workaround (`targetLossPausePending` in the Linux
+`DesktopRuntime`) is redundant and can be removed. The Windows tests still have to run on PR #17 (Roy's Windows
+session).
