@@ -47,3 +47,27 @@ can reach is deleted, not kept.
    others with no button), the hidden `AnchorOverlayBox`, and anything else no Linux page reaches.
 
 Check each against `docs/Handoff/Where-We-Are.md` for the exact behaviour Roy asked for.
+
+## Round 2 (2026-10-14): Windows changes to bring over
+
+Round 1 above is done (PR #6). The shared engine, storage and wait rules already behave the same on Linux (waits
+have no time limit, the Once setting runs on Linux and survives editing). What the Linux screens still lack, in order.
+Use a new branch `linux-catch-up-2`; the paste prompt above applies otherwise.
+
+1. **Tall Action List.** The yellow Action List grows with the window instead of stopping at 320 pixels: the right
+   column is a grid at least as tall as its scroll area, the list sits in the one star row, and the old
+   `UpdateActionsListSize` in `MainWindow.axaml.cs` is deleted. On Windows a small `FillHeightPanel` stops the list
+   from asking for the height of all its rows inside the scrolling column; Avalonia needs the same idea. Minimum list
+   height 240; a short window still scrolls the column.
+2. **Test Selected Action.** One button at the top right above the list replaces the Test button on every row. Gray
+   until the selected action is tested; a colour wait turns it green (there now) or red (not there); a click, key or
+   screenshot is tested by doing it (clicks show the ring) and leaves it gray, unless it could not run, then red with
+   the reason in its tooltip. Off for pauses and when nothing is selected. Results stay with the exact action, as now.
+3. **Repeating / Once dropdown** on each row in place of the Test button, default Repeating. Tooltip: "With Loop on:
+   Repeating actions run in every loop. Once actions run only in the first loop and are skipped in every loop after
+   it. Without Loop, every action runs once." A change is one undoable edit; rebuild the list after the dropdown has
+   closed (Windows defers it one dispatcher tick).
+4. **Help:** take the Windows lines for Test Selected Action and Repeating or Once from
+   `src/MinimumEffortClicker.App/HelpCommands.cs`.
+5. **Run log (optional):** Windows writes `log.txt` (why every run ended, failures). Linux has none yet; say whether
+   it is worth adding before building it.

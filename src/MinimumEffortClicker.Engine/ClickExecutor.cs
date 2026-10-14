@@ -302,17 +302,21 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
     {
             if (plan.Repetition.ActiveDuration is { } duration) Interlocked.Exchange(ref sequenceDeadline, (clock.Elapsed + duration).Ticks);
             ClientPoint? carried = null;
+            // Once actions run in the first loop only; every later loop runs the list without them.
+            var later = plan.LaterLoops ?? plan;
+            // A list made only of Once actions has nothing left to repeat: the run is finished after the first loop.
+            bool onlyOnce = plan.LaterLoops is { IsEmpty: true };
             for (int loop = 0; plan.Repetition.Count == 0 || loop < plan.Repetition.Count; loop++)
             {
                 var loopStart = clock.Elapsed;
-                bool loopsAgain = plan.Repetition.Count == 0 || loop + 1 < plan.Repetition.Count;
-                ExecuteSequenceSegment(plan, targetId, stop, run, loopsAgain, ref carried);
+                bool loopsAgain = (plan.Repetition.Count == 0 || loop + 1 < plan.Repetition.Count) && !onlyOnce;
+                ExecuteSequenceSegment(loop == 0 ? plan : later, targetId, stop, run, loopsAgain ? later : null, ref carried);
                 lock (gate)
                 {
                     if (!CanContinue(run, targetId, stop)) return;
                     CompleteLoop(run); Publish(run);
                 }
-                if (run.Outcome is not null || plan.Repetition.Count > 0 && loop + 1 >= plan.Repetition.Count) return;
+                if (run.Outcome is not null || !loopsAgain) return;
                 // Even an empty or immediately-true loop has a bounded wake rate.
                 var next = clock.Elapsed + plan.Repetition.DelayBetweenLoops;
                 if (next < loopStart + TimeSpan.FromMilliseconds(10)) next = loopStart + TimeSpan.FromMilliseconds(10);
@@ -323,8 +327,9 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
     /// <summary>
     /// One pass over the list. <paramref name="carried"/> is the first click's position when the previous loop already moved the
     /// pointer there during its closing pause; on return it holds the position prepared for the next loop, or null.
+    /// <paramref name="next"/> is the list the next loop runs, or null when this is the last loop.
     /// </summary>
-    private void ExecuteSequenceSegment(SequencePlan plan, Guid targetId, CancellationToken stop, Run run, bool loopsAgain, ref ClientPoint? carried)
+    private void ExecuteSequenceSegment(SequencePlan plan, Guid targetId, CancellationToken stop, Run run, SequencePlan? next, ref ClientPoint? carried)
     {
             plan = plan.SampleTiming(NextRandom);
             var clickPositions = new Dictionary<Guid, ClientPoint>();
@@ -443,8 +448,8 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
             var end = origin + plan.Duration;
             // Loop is on and the list ends with a pause: that pause is the travel time to the first click of the next loop,
             // so the pointer moves during it instead of jumping there when the next loop starts.
-            if (loopsAgain && plan.Inputs.Count > 0 && end - clock.Elapsed >= TimeSpan.FromMilliseconds(32)
-                && plan.Inputs[0] is { Down: true, Motion: { UsePreviousPause: true } lead, Position: { } first } leadIn && leadIn.PauseBefore == TimeSpan.Zero)
+            if (next is { Inputs.Count: > 0 } && end - clock.Elapsed >= TimeSpan.FromMilliseconds(32)
+                && next.Inputs[0] is { Down: true, Motion: { UsePreviousPause: true } lead, Position: { } first } leadIn && leadIn.PauseBefore == TimeSpan.Zero)
             {
                 bool free; lock (gate) free = owned.Count == 0;
                 var position = PrepareClickPoint is { } prepare ? prepare(first, lead, NextRandom) : lead.Offset(first, NextRandom);

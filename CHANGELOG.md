@@ -10,6 +10,9 @@
 - A Wait until colour step keeps looking until the colour appears, however long it takes; it used to stop the run
   after 30 seconds without saying why. F9 still stops it. Macro files move to schema 17: older files open with
   their old wait limit dropped. The log now records why every run ended.
+- Each action has a Repeating / Once choice: with Loop on, Once actions run only in the first loop.
+- The Action List grows with the window. One Test Selected Action button above the list replaces the Test
+  button on every row.
 - A Help button in the header explains each page.
 - Safety: an unexpected error now stops playback and releases every held key before it is reported, the Stop All
   hooks can no longer be lost while input is being sent, and the app no longer mistakes its own held key for the

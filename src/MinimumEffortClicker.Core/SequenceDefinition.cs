@@ -11,6 +11,11 @@ public sealed record SequenceStep(Guid Id, string Name, bool Enabled, StepKind K
     public ActionTiming? Timing { get; init; }
     public bool LeaveCursorFree { get; init; }
     public ClickMotion? Motion { get; init; }
+    /// <summary>
+    /// With Loop on, a Once action runs in the first loop only; every later loop skips it like an unticked action.
+    /// Optional in schema 17 files: a missing value means Repeating.
+    /// </summary>
+    public bool Once { get; init; }
     public static SequenceStep Input(string name, InputControl control, TimeSpan duration) =>
         new(Guid.NewGuid(), name, true, StepKind.Input, duration, control, null);
     public static SequenceStep Wait(TimeSpan duration) => new(Guid.NewGuid(), "Wait", true, StepKind.Wait, duration, null, null);
@@ -94,7 +99,8 @@ public sealed class SequencePlan
             return i with { Position = point };
         });
         return new(inputs, Duration, KeyboardLayout, Conditions)
-        { Screenshots = Screenshots, Timings = Timings, Repetition = Repetition, WorstCaseDuration = WorstCaseDuration, ExecutionActionCount = ExecutionActionCount };
+        { Screenshots = Screenshots, Timings = Timings, Repetition = Repetition, WorstCaseDuration = WorstCaseDuration, ExecutionActionCount = ExecutionActionCount,
+          LaterLoops = LaterLoops?.AdaptClickPoints(width, height, dpi, scaleWithWindow) };
     }
     public SequencePlan SampleTiming(Func<double> random)
     {
@@ -118,6 +124,13 @@ public sealed class SequencePlan
     public TimeSpan WorstCaseDuration { get; internal init; }
     public int ExecutionActionCount { get; internal init; }
     public SequenceRepetition Repetition { get; internal set; } = new();
+    /// <summary>
+    /// The list as it runs from the second loop on: the same steps with the Once actions skipped, so step numbers still
+    /// match the Action List. Null when every action repeats.
+    /// </summary>
+    public SequencePlan? LaterLoops { get; internal set; }
+    /// <summary>Nothing to run or wait for: a later loop made only of Once actions.</summary>
+    public bool IsEmpty => Inputs.Count == 0 && Conditions.Count == 0 && Screenshots.Count == 0 && Duration == TimeSpan.Zero;
 }
 
 public static class SequenceCompiler
@@ -173,6 +186,12 @@ public static class SequenceCompiler
         if (plan.LeaveCursorFree && plan.Inputs.Any(i => !i.LeaveCursorFree))
             throw new ArgumentException("A cursor-free list can contain cursor-free clicks and pauses. Enable cursor-free on every click, and keep keyboard actions in a separate macro.");
         plan.Repetition = repetition;
+        if (definition.Steps.Any(s => s is { Enabled: true, Once: true }))
+        {
+            var later = CompileSteps(definition with { Steps = definition.Steps.Select(s => s.Once ? s with { Enabled = false } : s).ToArray() }, points);
+            later.Repetition = repetition;
+            plan.LaterLoops = later;
+        }
         return plan;
     }
     private static SequencePlan CompileSteps(SequenceDefinition definition, IReadOnlyList<NamedPoint>? points)

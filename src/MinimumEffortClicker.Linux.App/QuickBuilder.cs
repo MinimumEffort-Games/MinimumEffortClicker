@@ -275,7 +275,7 @@ public partial class MainWindow
         }
         string enteredName = (ActionNameBox.Text ?? "").Trim();
         bool automatic = useGeneratedName || enteredName.Length == 0 || editingQuick is not null && enteredName == editingQuick.Name && enteredName == originalQuickDefaultName;
-        step = step with { Id = editingQuick?.Id ?? step.Id, Name = automatic ? step.Name : enteredName, Enabled = editingQuick?.Enabled ?? true, Notes = editingQuick?.Notes ?? "" };
+        step = step with { Id = editingQuick?.Id ?? step.Id, Name = automatic ? step.Name : enteredName, Enabled = editingQuick?.Enabled ?? true, Notes = editingQuick?.Notes ?? "", Once = editingQuick?.Once ?? false };
         step = ApplyListOptions(new([step])).Steps[0];
         SequenceCompiler.Compile(quickHistory.Current with { Steps = [step], Repetition = new() }, quickPoints);
         return step;
