@@ -22,7 +22,7 @@ bool WaitFor(Func<bool> condition, int milliseconds = 5000)
 }
 
 // Each helper call on its own, so a failure names the exact call.
-using (var helper = ShellHelper.Connect())
+using (var helper = DesktopHelper.Connect())
 {
     void Try(string name, Func<object?> call)
     {

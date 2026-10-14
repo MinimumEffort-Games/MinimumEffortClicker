@@ -11,6 +11,9 @@ public static class LinuxSetup
     public static string SessionType => Environment.GetEnvironmentVariable("XDG_SESSION_TYPE") ?? "unknown";
     public static string Desktop => Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP") ?? "unknown";
     public static bool IsGnome => Desktop.Split(':').Any(d => d.Equals("GNOME", StringComparison.OrdinalIgnoreCase));
+    public static bool IsKde => Desktop.Split(':').Any(d => d.Equals("KDE", StringComparison.OrdinalIgnoreCase));
+    /// <summary>What the helper for this desktop is called in status lines.</summary>
+    public static string HelperName => IsKde ? "KDE helper" : "GNOME helper";
 
     public static string SessionSummary => $"Session: {(SessionType == "wayland" ? "Wayland" : SessionType == "x11" ? "X11" : SessionType)} · Desktop: {Desktop.Replace(':', ' ')}";
 

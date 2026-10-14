@@ -75,7 +75,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     public DesktopControl Control { get; }
     /// <summary>Title of the click-through status overlay; hit tests look through it.</summary>
     public const string OverlayTitle = "ME Clicker status overlay";
-    private ShellHelper Helper => Control.Helper ?? throw new InvalidOperationException(Control.HelperError ?? "The ME Clicker GNOME helper is not available.");
+    private IDesktopHelper Helper => Control.Helper ?? throw new InvalidOperationException(Control.HelperError ?? "The ME Clicker " + LinuxSetup.HelperName + " is not available.");
     public event Action? Changed;
     public event Action? StopIssued;
     public event Action? QuickStartRequested;
@@ -150,7 +150,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             return helper.ListWindows().Where(w => w.ProcessId > 0 && w.ProcessId != Environment.ProcessId && w.Title.Length > 0)
                 .Select(w => new TargetWindow(w.Id, w.ProcessId, w.Title)).OrderBy(x => x.Title).ToArray();
         }
-        catch (ShellHelperException) { return []; }
+        catch (HelperException) { return []; }
     }
 
     /// <summary>
@@ -161,7 +161,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     {
         if (Control.Helper is not { } helper) return false;
         try { return OwnWindow(helper, title) is { } id && helper.ActivateWindow(id); }
-        catch (Exception ex) when (ex is ShellHelperException or InvalidOperationException) { return false; }
+        catch (Exception ex) when (ex is HelperException or InvalidOperationException) { return false; }
     }
 
     /// <summary>Whether GNOME shows one of the clicker's own windows as minimised; null when the helper cannot say.</summary>
@@ -169,17 +169,17 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     {
         if (Control.Helper is not { } helper) return null;
         try { return OwnWindow(helper, title) is { } id ? helper.GetWindow(id).Minimized : null; }
-        catch (Exception ex) when (ex is ShellHelperException or InvalidOperationException) { return null; }
+        catch (Exception ex) when (ex is HelperException or InvalidOperationException) { return null; }
     }
 
-    private static ulong? OwnWindow(ShellHelper helper, string title) =>
+    private static ulong? OwnWindow(IDesktopHelper helper, string title) =>
         helper.ListWindows().FirstOrDefault(w => w.ProcessId == Environment.ProcessId && w.Title == title)?.Id;
 
     private HelperTargetState? Query(TargetWindow? selected)
     {
         if (Control.Helper is not { } helper) return null;
         try { return helper.QueryTarget(selected?.Handle ?? 0); }
-        catch (ShellHelperException) { return null; }
+        catch (HelperException) { return null; }
     }
     private bool Matches(TargetWindow selected, HelperTargetState? state) => state is { Exists: true } live && live.ProcessId == selected.ProcessId;
     /// <summary>The pointer in GNOME's logical desktop pixels, or null when the helper cannot say.</summary>
@@ -187,12 +187,12 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     private (int X, int Y)? CursorPosition()
     {
         try { return Control.Helper?.GetPointer(); }
-        catch (ShellHelperException) { return null; }
+        catch (HelperException) { return null; }
     }
     private (ulong Id, int ProcessId)? WindowAt(int x, int y, bool includeOverlay = false)
     {
         try { return Control.Helper?.WindowAt(x, y, includeOverlay ? "" : OverlayTitle); }
-        catch (ShellHelperException) { return null; }
+        catch (HelperException) { return null; }
     }
 
     public void SelectTarget(TargetWindow selected)
@@ -246,7 +246,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 if (!window.Exists || window.ProcessId != selected.ProcessId) return null;
                 return window.Title.Length == 0 ? selected.Title : window.Title;
             }
-            catch (ShellHelperException) { return null; }
+            catch (HelperException) { return null; }
         }
     }
     public static bool InputMatchesKey(InputControl input, int key) => input.Kind switch
@@ -273,11 +273,11 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         else if (Query(selected) is not { Focus: var focus } || focus != selected.Handle)
         {
             bool raised = false;
-            try { raised = Helper.ActivateWindow(selected.Handle); } catch (Exception ex) when (ex is ShellHelperException or InvalidOperationException) { }
+            try { raised = Helper.ActivateWindow(selected.Handle); } catch (Exception ex) when (ex is HelperException or InvalidOperationException) { }
             // GNOME activates asynchronously; give the focus change a moment to land.
             for (int i = 0; raised && i < 20 && Query(selected)?.Focus != selected.Handle; i++) Thread.Sleep(15);
             if (!raised || Query(selected)?.Focus != selected.Handle)
-                problem = "GNOME could not bring the Click target forward. Select its window, then press the start hotkey.";
+                problem = "The desktop could not bring the Click target forward. Select its window, then press the start hotkey.";
         }
         if (problem is null) return true;
         lock (gate) { state = "Not started"; reason = problem; }
@@ -659,7 +659,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         get
         {
             try { return Control.Helper is { } helper ? KeyboardLayouts.FromGnome(helper.GetKeyboardLayout()) : null; }
-            catch (ShellHelperException) { return null; }
+            catch (HelperException) { return null; }
         }
     }
     internal void BeginCapture(Action<string> stopCapture, Action<string> pauseCapture)
@@ -816,7 +816,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 else return false;
                 if (pointer.X < frame.X || pointer.Y < frame.Y
                     || pointer.X >= frame.X + frame.Width || pointer.Y >= frame.Y + frame.Height) return false;
-                if (WindowAt(pointer.X, pointer.Y) is not { } underPointer) return RejectInput("GNOME could not report the window at this click location.");
+                if (WindowAt(pointer.X, pointer.Y) is not { } underPointer) return RejectInput("The desktop could not report the window at this click location.");
                 if (IsDesktopMode)
                 {
                     if (underPointer.Id == 0) return RejectInput("No receiving window is available at this desktop click location.");
@@ -842,13 +842,13 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     private bool IsOwnOverlay(ulong window)
     {
         try { return Control.Helper?.GetWindow(window) is { Exists: true } state && state.ProcessId == Environment.ProcessId && state.Title == OverlayTitle; }
-        catch (ShellHelperException) { return false; }
+        catch (HelperException) { return false; }
     }
 
     private bool ForegroundIsOwn(ulong focus)
     {
         try { return Control.Helper?.GetWindow(focus) is { Exists: true } window && window.ProcessId == Environment.ProcessId; }
-        catch (ShellHelperException) { return false; }
+        catch (HelperException) { return false; }
     }
 
     private static readonly TimeSpan PointerSettle = TimeSpan.FromMilliseconds(35);
@@ -892,7 +892,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 default: return false;
             }
         }
-        catch (ShellHelperException) { return false; }
+        catch (HelperException) { return false; }
     }
 
     public bool IsOwnPoint(int screenX, int screenY, bool includeOverlay = true)

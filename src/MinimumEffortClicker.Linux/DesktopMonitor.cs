@@ -11,7 +11,7 @@ public sealed record DesktopMonitor(int Number, int X, int Y, int Width, int Hei
     public bool Contains(int x, int y) => x >= X && y >= Y && x < X + Width && y < Y + Height;
 
     /// <summary>The helper lists GNOME's primary monitor first.</summary>
-    public static IReadOnlyList<DesktopMonitor> List(ShellHelper helper) => Order(helper.GetMonitors());
+    public static IReadOnlyList<DesktopMonitor> List(IDesktopHelper helper) => Order(helper.GetMonitors());
 
     public static IReadOnlyList<DesktopMonitor> Order(IReadOnlyList<HelperMonitor> found)
     {

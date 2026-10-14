@@ -2,27 +2,14 @@ using Tmds.DBus.Protocol;
 
 namespace MinimumEffortClicker.Linux;
 
-public sealed record HelperMonitor(int X, int Y, int Width, int Height, double Scale);
-public sealed record HelperWindow(ulong Id, string Title, int ProcessId);
-public readonly record struct HelperWindowState(bool Exists, bool Minimized, int ProcessId, string Title, int X, int Y, int Width, int Height, double Scale);
-public readonly record struct HelperTargetState(ulong Focus, bool Exists, bool Minimized, int ProcessId,
-    int X, int Y, int Width, int Height, double Scale, int PointerX, int PointerY, bool ShellReady);
-public sealed record HelperImage(int Width, int Height, int RowStride, int Channels, byte[] Pixels);
-
 /// <summary>Writes call arguments. MessageWriter is a ref struct, so it must be passed by reference.</summary>
 public delegate void WriteArguments(ref MessageWriter writer);
-
-public sealed class ShellHelperException(string message, Exception? inner = null) : Exception(message, inner)
-{
-    public bool AccessDenied { get; init; }
-    public bool NotInstalled { get; init; }
-}
 
 /// <summary>
 /// Blocking client for the ME Clicker GNOME Shell helper extension. Every call has a bounded wait so
 /// a stalled compositor can never hang the scheduler. Signals arrive on a D-Bus reader thread.
 /// </summary>
-public sealed class ShellHelper : IDisposable
+public sealed class GnomeHelper : IDesktopHelper
 {
     public const string BusName = "io.github.MinimumEffortGames.ClickerHelper";
     public const string ObjectPath = "/io/github/MinimumEffortGames/ClickerHelper";
@@ -38,23 +25,24 @@ public sealed class ShellHelper : IDisposable
     private Thread? signalThread;
     private volatile bool disposed;
 
+    public string Name => "GNOME helper";
     public event Action<ulong>? FocusChanged;
     public event Action<ulong>? WindowClosed;
     public event Action<uint, bool>? AcceleratorChanged;
 
-    private ShellHelper(DBusConnection connection) => this.connection = connection;
+    private GnomeHelper(DBusConnection connection) => this.connection = connection;
 
     /// <summary>Connects and checks that the helper is installed, enabled and allows this program.</summary>
-    public static ShellHelper Connect()
+    public static GnomeHelper Connect()
     {
-        var address = DBusAddress.Session ?? throw new ShellHelperException("No desktop session bus is available.") { NotInstalled = true };
+        var address = DBusAddress.Session ?? throw new HelperException("No desktop session bus is available.") { NotInstalled = true };
         var connection = new DBusConnection(address);
         try
         {
-            if (!Task.Run(() => connection.ConnectAsync().AsTask()).Wait(CallTimeout)) throw new ShellHelperException("The desktop session bus did not respond.");
-            var helper = new ShellHelper(connection);
+            if (!Task.Run(() => connection.ConnectAsync().AsTask()).Wait(CallTimeout)) throw new HelperException("The desktop session bus did not respond.");
+            var helper = new GnomeHelper(connection);
             uint version = helper.Call("GetVersion", null, null, (m, _) => m.GetBodyReader().ReadUInt32());
-            if (version < RequiredVersion) throw new ShellHelperException("The ME Clicker GNOME helper is out of date. Install it again from Settings.") { NotInstalled = true };
+            if (version < RequiredVersion) throw new HelperException("The ME Clicker GNOME helper is out of date. Install it again from Settings.") { NotInstalled = true };
             helper.Subscribe();
             return helper;
         }
@@ -84,7 +72,7 @@ public sealed class ShellHelper : IDisposable
         var task = Task.Run(() => connection.WatchSignalAsync(BusName, ObjectPath, InterfaceName, signal, read,
             (Notification<T> notification) => { if (notification.HasValue && !disposed) { var value = notification.Value; signals.TryAdd(() => handle(value)); } },
             ObserverFlags.None, false, null).AsTask());
-        if (!task.Wait(CallTimeout)) throw new ShellHelperException("Could not subscribe to GNOME helper notifications.");
+        if (!task.Wait(CallTimeout)) throw new HelperException("Could not subscribe to GNOME helper notifications.");
         subscriptions.Add(task.Result);
     }
 
@@ -134,7 +122,6 @@ public sealed class ShellHelper : IDisposable
     public void PointerButton(uint button, bool pressed) => Send("PointerButton", "ub", (ref MessageWriter w) => { w.WriteUInt32(button); w.WriteBool(pressed); });
     public void Scroll(uint direction, uint steps) => Send("Scroll", "uu", (ref MessageWriter w) => { w.WriteUInt32(direction); w.WriteUInt32(steps); });
     public void Key(int evdev, bool pressed) => Send("Key", "ub", (ref MessageWriter w) => { w.WriteUInt32((uint)evdev); w.WriteBool(pressed); });
-    public void Keyval(uint keyval, bool pressed) => Send("Keyval", "ub", (ref MessageWriter w) => { w.WriteUInt32(keyval); w.WriteBool(pressed); });
     public void ReleaseAll() => Send("ReleaseAll", null, null);
 
     public HelperImage CaptureRaw(int x, int y, int width, int height) => Call("CaptureRaw", "iiii", (ref MessageWriter w) => { w.WriteInt32(x); w.WriteInt32(y); w.WriteInt32(width); w.WriteInt32(height); },
@@ -144,9 +131,6 @@ public sealed class ShellHelper : IDisposable
     public HelperImage CaptureWindowRaw(ulong id, int x, int y, int width, int height) => Call("CaptureWindowRaw", "tiiii",
         (ref MessageWriter w) => { w.WriteUInt64(id); w.WriteInt32(x); w.WriteInt32(y); w.WriteInt32(width); w.WriteInt32(height); },
         (m, _) => { var r = m.GetBodyReader(); return new HelperImage(r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadArrayOfByte()); }, CaptureTimeout);
-
-    public byte[] CapturePng(int x, int y, int width, int height) => Call("CapturePng", "iiii", (ref MessageWriter w) => { w.WriteInt32(x); w.WriteInt32(y); w.WriteInt32(width); w.WriteInt32(height); },
-        (m, _) => m.GetBodyReader().ReadArrayOfByte(), CaptureTimeout);
 
     public uint GrabAccelerator(string accelerator) => Call("GrabAccelerator", "s", (ref MessageWriter w) => w.WriteString(accelerator), (m, _) => m.GetBodyReader().ReadUInt32());
     public void UngrabAccelerator(uint action) => Send("UngrabAccelerator", "u", (ref MessageWriter w) => w.WriteUInt32(action));
@@ -168,7 +152,7 @@ public sealed class ShellHelper : IDisposable
         var task = connection.CallMethodAsync(message, read, null);
         try
         {
-            if (!task.Wait(timeout ?? CallTimeout)) throw new ShellHelperException("The GNOME helper did not respond in time.");
+            if (!task.Wait(timeout ?? CallTimeout)) throw new HelperException("The GNOME helper did not respond in time.");
             return task.Result;
         }
         catch (AggregateException ex) when (ex.InnerException is not null) { throw Translate(ex.InnerException); }
@@ -176,13 +160,13 @@ public sealed class ShellHelper : IDisposable
 
     private static Exception Translate(Exception error) => error switch
     {
-        ShellHelperException => error,
+        HelperException => error,
         DBusErrorReplyException reply when reply.ErrorName.EndsWith(".AccessDenied", StringComparison.Ordinal)
-            => new ShellHelperException("The ME Clicker GNOME helper does not allow this copy of the app. Install the helper again from Settings.", error) { AccessDenied = true },
+            => new HelperException("The ME Clicker GNOME helper does not allow this copy of the app. Install the helper again from Settings.", error) { AccessDenied = true },
         DBusErrorReplyException reply when reply.ErrorName is "org.freedesktop.DBus.Error.ServiceUnknown" or "org.freedesktop.DBus.Error.NameHasNoOwner"
-            => new ShellHelperException("The ME Clicker GNOME helper is not running. Install it from Settings, then log out and back in.", error) { NotInstalled = true },
-        DBusErrorReplyException reply => new ShellHelperException(reply.ErrorMessage, error),
-        _ => new ShellHelperException("The GNOME helper is unavailable: " + error.Message, error)
+            => new HelperException("The ME Clicker GNOME helper is not running. Install it from Settings, then log out and back in.", error) { NotInstalled = true },
+        DBusErrorReplyException reply => new HelperException(reply.ErrorMessage, error),
+        _ => new HelperException("The GNOME helper is unavailable: " + error.Message, error)
     };
 
     public void Dispose()

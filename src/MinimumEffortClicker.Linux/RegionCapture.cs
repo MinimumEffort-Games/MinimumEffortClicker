@@ -11,14 +11,14 @@ public sealed record CapturedRegion(RasterSample Image, long FrameId);
 /// </summary>
 public sealed class RegionCapture
 {
-    private readonly ShellHelper helper;
+    private readonly IDesktopHelper helper;
     private readonly ulong window;
     private readonly CaptureRegion region;
     private readonly Func<bool> identityAvailable;
     private readonly bool requireForeground;
     private long frame;
 
-    public RegionCapture(ShellHelper helper, ulong window, CaptureRegion region, Func<bool> identityAvailable, bool authoringPreview = false, bool requireForeground = true)
+    public RegionCapture(IDesktopHelper helper, ulong window, CaptureRegion region, Func<bool> identityAvailable, bool authoringPreview = false, bool requireForeground = true)
     {
         if (!authoringPreview) region.Validate();
         else if (!region.Origin.IsValid || region.Origin.X != 0 || region.Origin.Y != 0 || region.Width != region.Origin.Width || region.Height != region.Origin.Height
@@ -54,7 +54,7 @@ public sealed class RegionCapture
         // Prefer the window's own pixels (like Windows Graphics Capture): our status overlay or another
         // window above the target can then never change what a colour wait sees.
         try { image = helper.CaptureWindowRaw(window, region.Origin.X, region.Origin.Y, region.Width, region.Height); }
-        catch (ShellHelperException ex) when (!ex.AccessDenied && !ex.NotInstalled)
+        catch (HelperException ex) when (!ex.AccessDenied && !ex.NotInstalled)
         { image = helper.CaptureRaw(state.X + region.Origin.X, state.Y + region.Origin.Y, region.Width, region.Height); }
         stop.ThrowIfCancellationRequested();
         Validate();
