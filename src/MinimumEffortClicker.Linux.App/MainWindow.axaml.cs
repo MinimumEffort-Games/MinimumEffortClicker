@@ -200,7 +200,7 @@ public partial class MainWindow : Window
         if (!snapshot.Busy && desktopPlaybackFrom is { } previous)
         {
             desktopPlaybackFrom = null;
-            // Roy (2026-10-14): the clicker comes back when the run it minimised for ends, however it ended.
+            // User (2026-10-14): the clicker comes back when the run it minimised for ends, however it ended.
             RestoreDesktopOperationWindow(previous);
         }
         TargetLabel.IsEnabled = ToggleTargetLabel.IsEnabled = !snapshot.Busy && !snapshot.CleanupPending

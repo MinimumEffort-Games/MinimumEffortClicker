@@ -6,7 +6,7 @@ Paste this to the session in the VM:
 > `AGENTS.md`, `docs/Handoff/Where-We-Are.md` and this file. Then bring the Linux app level with the Windows app, one
 > item at a time, building with `scripts/linux/build.sh` and testing with `scripts/linux/test.sh` after each, and
 > commit each item on that branch with a message that says what changed for the player, then push it and open a
-> pull request into `main` (main is protected; Roy merges). Do not touch the
+> pull request into `main` (main is protected; User merges). Do not touch the
 > Windows projects. Report what you could and could not verify under GNOME.
 
 ## Where things stand (2026-10-13)
@@ -46,7 +46,7 @@ can reach is deleted, not kept.
 8. **Remove unreachable Linux code:** profile-library handlers in `ProfileCommands.cs` (`DeleteLibrary_Click` and
    others with no button), the hidden `AnchorOverlayBox`, and anything else no Linux page reaches.
 
-Check each against `docs/Handoff/Where-We-Are.md` for the exact behaviour Roy asked for.
+Check each against `docs/Handoff/Where-We-Are.md` for the exact behaviour User asked for.
 
 ## Round 2 (2026-10-14): Windows changes to bring over
 
@@ -77,4 +77,4 @@ Status 2026-10-14 (branch `linux-catch-up-2`): items 1–4 done. Item 5, the run
 needs a copy that reads its own snapshot plus the ten or so call sites (startup, crash handlers, failed picks, captures,
 recording, failed tests, run state). It is worth more on Linux than on Windows: a run there can also end because the
 GNOME helper is missing or not allowed, input access is off, or Wayland refused a window or capture, and today that
-reason is only in the status line until the next message replaces it. Roy said yes; built on branch `linux-run-log`.
+reason is only in the status line until the next message replaces it. User said yes; built on branch `linux-run-log`.

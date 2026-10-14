@@ -2,7 +2,7 @@ namespace MinimumEffortClicker.Core;
 
 /// <summary>
 /// How a wait looks. A wait has no time limit: it keeps looking until it matches or the user stops the run
-/// (Roy, 2026-10-14: a level can take 5–10 minutes before the button to wait for appears).
+/// (User, 2026-10-14: a level can take 5–10 minutes before the button to wait for appears).
 /// </summary>
 public sealed record ConditionPolicy(TimeSpan SampleInterval, int StableSamples = 1)
 {
