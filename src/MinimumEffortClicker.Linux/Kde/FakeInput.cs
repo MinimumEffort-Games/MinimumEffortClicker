@@ -7,7 +7,16 @@ namespace MinimumEffortClicker.Linux.Kde;
 /// pointer moves, buttons, wheel and keys at desktop level. KWin offers it only to programs whose .desktop file lists it
 /// under X-KDE-Wayland-Interfaces. Talks to libwayland-client directly; one instance per process, one thread.
 /// </summary>
-internal sealed unsafe class FakeInput : IDisposable
+internal interface IInputDevice
+{
+    void MoveTo(double x, double y);
+    void SetButton(uint code, bool pressed);
+    void Scroll(uint axis, double value);
+    void SetKey(int evdev, bool pressed);
+    void Roundtrip();
+}
+
+internal sealed unsafe class FakeInput : IInputDevice, IDisposable
 {
     private const string Library = "libwayland-client.so.0";
     private const string InterfaceName = "org_kde_kwin_fake_input";

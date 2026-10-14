@@ -50,7 +50,7 @@ public static class KdeInputGuard
     }
 
     /// <summary>Lines: "m x y" move, "b code 0|1" button, "k evdev 0|1" key, "s axis value" scroll, "r" release all.</summary>
-    internal static string Handle(FakeInput input, string line, HashSet<uint> buttons, HashSet<int> keys, bool locked)
+    internal static string Handle(IInputDevice input, string line, HashSet<uint> buttons, HashSet<int> keys, bool locked)
     {
         var parts = line.Split(' ');
         bool press = parts.Length == 3 && parts[2] == "1";
@@ -81,7 +81,7 @@ public static class KdeInputGuard
         return Ok;
     }
 
-    private static void ReleaseAll(FakeInput input, HashSet<uint> buttons, HashSet<int> keys)
+    internal static void ReleaseAll(IInputDevice input, HashSet<uint> buttons, HashSet<int> keys)
     {
         foreach (int key in keys) input.SetKey(key, false);
         foreach (uint button in buttons) input.SetButton(button, false);
