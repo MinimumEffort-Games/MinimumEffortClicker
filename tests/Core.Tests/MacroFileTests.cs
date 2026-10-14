@@ -74,6 +74,20 @@ public sealed class MacroFileTests
         Assert.ThrowsExactly<System.Text.Json.JsonException>(() => HelperProfiles.Open(path));
     }
     [TestMethod]
+    public void OnceRoundTripsAndAFileWithoutItRepeats()
+    {
+        var setup = SequenceStep.Input("A", InputControl.Key(0x1E), TimeSpan.FromMilliseconds(20)) with { Once = true };
+        var profile = Profile() with { Macros = [new(Guid.NewGuid(), "Setup", null, Sequence: new([setup, SequenceStep.Wait(TimeSpan.FromSeconds(1))]))] };
+        string path = Path.Combine(directory, "once.mecprofile"); HelperProfiles.Export(path, profile);
+        var steps = HelperProfiles.Open(path).Macros[0].Sequence!.Steps;
+        Assert.IsTrue(steps[0].Once); Assert.IsFalse(steps[1].Once);
+        // Files saved before the option existed have no "once" field: every action repeats.
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+        foreach (var step in root["macros"]![0]!["sequence"]!["steps"]!.AsArray()) step!.AsObject().Remove("once");
+        File.WriteAllText(path, root.ToJsonString());
+        Assert.IsFalse(HelperProfiles.Open(path).Macros[0].Sequence!.Steps.Any(s => s.Once));
+    }
+    [TestMethod]
     public void InvalidSaveDoesNotDamageExistingMacroFile()
     {
         var profile = Profile(); string path = Path.Combine(directory, "safe.mecprofile"); HelperProfiles.Export(path, profile);

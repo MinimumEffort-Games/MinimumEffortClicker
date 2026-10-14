@@ -10,26 +10,43 @@ public partial class MainWindow
 {
     /// <summary>
     /// Last test result per action, kept with the exact step that was tested: editing the action, loading a macro or
-    /// clearing the list makes the result disappear because the step is no longer the same one.
+    /// clearing the list makes the result disappear because the step is no longer the same one. Passed is null when the
+    /// action ran but has no true/false answer (a click, key or screenshot is tested by doing it).
     /// </summary>
-    private readonly Dictionary<Guid, (SequenceStep Step, bool Passed, string Detail)> rowTests = [];
+    private readonly Dictionary<Guid, (SequenceStep Step, bool? Passed, string Detail)> rowTests = [];
     private (bool? Passed, string Detail) RowTestResult(SequenceStep step) =>
-        rowTests.TryGetValue(step.Id, out var tested) && Equals(tested.Step, step) ? (tested.Passed, tested.Detail) : (null, "Test only this action. The clicker minimises while it runs.");
+        rowTests.TryGetValue(step.Id, out var tested) && Equals(tested.Step with { Enabled = step.Enabled, Once = step.Once }, step)
+            ? (tested.Passed, tested.Detail) : (null, "Test the selected action. The clicker minimises while it runs.");
 
     /// <summary>
-    /// The Test button on an action row: minimise, run only that action against the Click target, restore, and colour the
-    /// button green or red. A colour or image wait is checked once (true now or not). Stop All (F9) aborts.
+    /// Test Selected Action: gray until the selected action has been tested, then green (a wait that is true now) or red
+    /// (a wait that is false now, or an action that could not run). A click or key is tested by doing it, so it stays gray.
     /// </summary>
-    private async void RowTest_Click(object sender, RoutedEventArgs e)
+    private void ShowTestSelectedButton()
     {
-        if (sender is not FrameworkElement { DataContext: QuickRow row } || runtime is null) return;
-        e.Handled = true;
+        var row = QuickActionList.SelectedItem as QuickRow;
+        bool idle = runtime is { } current && !current.Snapshot.Busy && !current.Snapshot.CleanupPending && operations.Idle;
+        TestSelectedButton.IsEnabled = idle && row is { Step.Kind: not StepKind.Wait };
+        var (passed, detail) = row is null ? (null, "Select an action in the list, then test it.")
+            : row.Step.Kind == StepKind.Wait ? (null, "A pause has nothing to test.") : RowTestResult(row.Step);
+        TestSelectedButton.Style = passed is true ? (Style)FindResource("GreenButton") : passed is false ? (Style)FindResource("RedButton") : TryFindResource(typeof(System.Windows.Controls.Button)) as Style;
+        TestSelectedButton.ToolTip = detail;
+    }
+
+    /// <summary>
+    /// Minimise, run only the selected action against the Click target, restore, and show the result on the button.
+    /// A colour or image wait is checked once (true now or not). Stop All (F9) aborts.
+    /// </summary>
+    private async void TestSelected_Click(object sender, RoutedEventArgs e)
+    {
+        if (runtime is null) return;
+        if (QuickActionList.SelectedItem is not QuickRow row) { ReasonLabel.Text = "Select an action in the list, then test it."; return; }
         if (!operations.Idle || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending)
         { ReasonLabel.Text = "Finish or stop the current run before testing an action."; return; }
         var step = row.Step with { Enabled = true };
         operations.Begin(Operation.Quick);
         WindowState? minimizedFrom = null;
-        bool passed = false; string detail;
+        bool? passed = null; string detail;
         using var cancellation = new CancellationTokenSource(); quickCancellation = cancellation;
         void Cancel(string reason) { _ = cancellation.CancelAsync(); }
         runtime.Control.StopRequested += Cancel; RefreshStatus();
@@ -58,21 +75,23 @@ public partial class MainWindow
                     // A test is one action: if its window left the front, stop rather than wait.
                     if (runtime.CanResume) { runtime.Stop("Test stopped: the Click target left the front."); break; }
                 }
-                passed = runtime.Snapshot.Completed;
-                detail = passed ? "Passed: the action ran." : "Failed: " + runtime.Snapshot.Reason;
-                if (passed && IsClick(step)) ShowClickPing(step);
+                // The action itself is the result: a click shows a ring where it landed. Only a failure colours the button.
+                bool ran = runtime.Snapshot.Completed;
+                passed = ran ? null : false;
+                detail = ran ? "Ran: the action was sent." : "Failed: " + runtime.Snapshot.Reason;
+                if (ran && IsClick(step)) ShowClickPing(step);
             }
         }
         catch (OperationCanceledException) { runtime.Stop("Action test aborted."); detail = "Aborted with Stop All."; }
-        catch (Exception ex) { detail = "Failed: " + ex.Message; }
+        catch (Exception ex) { passed = false; detail = "Failed: " + ex.Message; }
         finally
         {
             runtime.Control.StopRequested -= Cancel; quickCancellation = null; operations.End(Operation.Quick);
             RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus();
         }
         rowTests[step.Id] = (row.Step, passed, detail);
-        if (!passed) AppLog.Note($"Test of action {row.Index + 1} ({row.Step.Name})", detail);
-        RefreshQuickList(QuickActionList.SelectedIndex, preserveEditor: true);
+        if (passed == false) AppLog.Note($"Test of action {row.Index + 1} ({row.Step.Name})", detail);
+        ShowTestSelectedButton();
         ReasonLabel.Text = $"Test of action {row.Index + 1}: {detail}";
     }
 

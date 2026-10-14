@@ -143,4 +143,24 @@ public sealed class ClickMotionTests
         Assert.AreEqual(travel[^1].Position, input.Accepted[secondLoopDown].Position);
         Assert.IsFalse(engine.HasOwnedInput);
     }
+    [TestMethod]
+    public void LoopTravelGoesToTheFirstClickOfTheNextLoopWhenTheFirstClickRunsOnce()
+    {
+        var clock = new FakeClock(); var input = new FakeInputSink(); var target = Guid.NewGuid();
+        var engine = new ClickExecutor(input, clock, new Wait(clock), new FakeForegroundProvider { Current = new(target, true) })
+        { NextRandom = () => 0, CursorPosition = p => input.Accepted.Where(i => i.Position is not null).Select(i => i.Position).LastOrDefault() ?? p with { X = 0, Y = 0 } };
+        var setup = QuickActions.Click(PointerButton.Left, QuickClickKind.Single, Ms(20), Ms(0), Ms(20), new(100, 100, 800, 600, 96)) with { Once = true };
+        var first = QuickActions.Click(PointerButton.Left, QuickClickKind.Single, Ms(20), Ms(0), Ms(60), new(300, 100, 800, 600, 96));
+        var second = QuickActions.Click(PointerButton.Left, QuickClickKind.Single, Ms(20), Ms(0), Ms(20), new(500, 100, 800, 600, 96));
+        var source = new SequenceDefinition([setup, first, second, QuickActions.Pause(Ms(200))], Repetition: new(2));
+        var result = engine.Execute(SequenceCompiler.Compile(QuickActions.WithClickMovement(source, true)), target, default);
+        Assert.AreEqual(ClickRunOutcome.Completed, result.Outcome, result.Error);
+        var downs = input.Accepted.Select((i, index) => (i, index)).Where(x => x.i.Control.Kind == InputKind.MouseButton && x.i.Edge == InputEdge.Down).ToArray();
+        // Loop 1 clicks 100, 300, 500; loop 2 skips the Once click and starts at 300.
+        CollectionAssert.AreEqual(new[] { 100, 300, 500, 300, 500 }, downs.Select(d => d.i.Position!.X).ToArray());
+        // The closing pause of loop 1 travels to 300, not to the Once click at 100.
+        var travel = input.Accepted.Take(downs[3].index).Where(i => i.Control.Kind == InputKind.PointerMove).Last();
+        Assert.AreEqual(300, travel.Position!.X);
+        Assert.IsFalse(engine.HasOwnedInput);
+    }
 }

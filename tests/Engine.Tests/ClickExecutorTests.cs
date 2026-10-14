@@ -272,6 +272,31 @@ public sealed class ClickExecutorTests
     }
 
     [TestMethod]
+    public void OnceActionsRunInTheFirstLoopOnly()
+    {
+        var f = new Fixture();
+        var setup = SequenceStep.Input("A", InputControl.Key(0x1E), TimeSpan.FromMilliseconds(20)) with { Once = true };
+        var repeat = SequenceStep.Input("W", InputControl.Key(0x11), TimeSpan.FromMilliseconds(20));
+        var result = f.Executor.Execute(SequenceCompiler.Compile(new([setup, repeat], Repetition: new(3))), f.TargetId, default);
+        Assert.AreEqual(ClickRunOutcome.Completed, result.Outcome); Assert.AreEqual(3, result.CompletedCycles);
+        CollectionAssert.AreEqual(new[] { 0x1E, 0x11, 0x11, 0x11 },
+            f.Input.Sent.Where(s => s.Input.Edge == InputEdge.Down).Select(s => s.Input.Control.Code).ToArray());
+        // Without Loop every action runs once, Once or not.
+        f = new Fixture();
+        Assert.AreEqual(ClickRunOutcome.Completed, f.Executor.Execute(SequenceCompiler.Compile(new([setup, repeat])), f.TargetId, default).Outcome);
+        Assert.AreEqual(2, f.Input.Sent.Count(s => s.Input.Edge == InputEdge.Down));
+    }
+    [TestMethod]
+    public void ListOfOnlyOnceActionsFinishesAfterTheFirstLoopEvenWhenLoopingUntilStopped()
+    {
+        var f = new Fixture();
+        var setup = SequenceStep.Input("A", InputControl.Key(0x1E), TimeSpan.FromMilliseconds(20)) with { Once = true };
+        var result = f.Executor.Execute(SequenceCompiler.Compile(new([setup], Repetition: new(0))), f.TargetId, default);
+        Assert.AreEqual(ClickRunOutcome.Completed, result.Outcome); Assert.AreEqual(1, result.CompletedCycles);
+        Assert.AreEqual(1, f.Input.Sent.Count(s => s.Input.Edge == InputEdge.Down));
+    }
+
+    [TestMethod]
     public void SequenceRepeatsWholeLoopsWithSeparateDelay()
     {
         var f = new Fixture();
