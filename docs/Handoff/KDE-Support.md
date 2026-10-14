@@ -109,3 +109,64 @@ lock files are not touched.
 
 **For Roy to decide:** the Settings → Linux setup page today names the GNOME helper. On KDE it would show "KDE
 (built in)" status text instead. That is the only visible page change; is that fine?
+
+## Phase 2 (2026-10-14, after Roy's "go"): built
+
+Roy said go and that the KDE status text on the Settings page is fine. Commits on `kde-support`, one per piece:
+
+1. **One boundary** (`IDesktopHelper`, `src/MinimumEffortClicker.Linux/IDesktopHelper.cs`). `ShellHelper` became
+   `GnomeHelper`, unchanged on the wire; `DesktopHelper.Connect()` picks GNOME or KDE from `XDG_CURRENT_DESKTOP`.
+   Unused `Keyval` and `CapturePng` left the app side (the GNOME extension still has them, so GNOME users need no
+   reinstall). No page or runtime code branches on the desktop.
+2. **KDE helper** (`src/MinimumEffortClicker.Linux/Kde/`): `KWinScript` + `kwin-helper.js` (embedded; one long-poll
+   channel addressed to the app's unique bus name; only KWin's own connection may call it), `KWinCapture`
+   (ScreenShot2 over a pipe), `FakeInput` (fake-input protocol through `libwayland-client`, hand-built interface
+   table, `wl_proxy_marshal_array_flags`), `KdeInputGuard` (the app's own executable with `--kde-input-guard`, the
+   only sender; releases on pipe close, refuses while locked, removes the shortcuts), `KdeShortcuts` (KGlobalAccel
+   with the owner check), `KdeHelper` (puts them together, layout, lock state).
+3. **Install**: `install.sh` writes the two `X-KDE-…` lines into the launcher (always; harmless on GNOME) and on
+   KDE skips the extension and the log-out. Settings → Linux setup on KDE shows "KDE helper"; **Allow this copy of
+   the app** writes a hidden `.desktop` entry for a copy started elsewhere and reconnects 3 s later. `uninstall.sh`
+   removes those entries.
+4. **Runtime fix** (Linux runtime only, see "Focus race" below).
+5. **Tests**: `tests/Linux.Tests/KdeTests.cs` (12 fake-based tests). Linux 25 + shared 261 pass, 0 warnings.
+6. **Headless KWin probe**: `scripts/linux/run-headless-kwin-probe.sh`.
+
+### What was checked, and how
+
+- `run-headless-kwin-probe.sh` (private KWin, two outputs, GTK test windows): every helper call; playback of left
+  click, right double click, Shift+W, F2 with the target receiving them; Stop All ending a 30 s hold in about 20 ms
+  with nothing left held; a looped window-target run pausing when another window is activated and continuing by
+  itself 0.6–0.7 s after the target is back; a user pause staying paused; window colour capture (#3366CC); desktop
+  screenshot; Desktop-mode colour waits on both monitors; a clicker killed with `kill -9` while holding the left
+  button and Shift (both released by the guard); a locked screen (nothing sent, helper says why).
+- The real app, packaged and installed with `install.sh` into a private home, in a private KWin with Xwayland:
+  window shown and drawn normally; guard process running; F8, F9 and F10 registered with KDE; after quitting,
+  guard gone and shortcuts removed. A copy started from another folder showed "KDE does not allow this copy…",
+  and pressing **Allow this copy of the app** made it ready about 3 s later (screenshots looked at).
+- Scrolling: Xwayland counts 10 axis units as a notch and drops the first scroll on an axis unless a zero step
+  comes before it (measured with a GTK window under X11 and Wayland); the guard now sends a zero step, then 10 per
+  notch. Result: exactly one notch per step in X11 apps; Wayland apps get 10 px smooth. The clicker's own window
+  (Avalonia under Xwayland) did not scroll from fake-input wheel events at all; not investigated further.
+
+### Focus race (for Roy)
+
+The probe showed a looped run sometimes **ending** instead of pausing when the target lost focus. The KWin answer
+is immediate and the scheduler checks the target between actions; that check ends the run even when a pause for
+exactly that has just been requested. Two fixes in Linux code close most of it: the KDE helper reports focus only
+after the app has handled the focus event (so the runtime's pause request comes first), and the Linux runtime
+keeps the target "present" for the scheduler between asking for that pause and the scheduler taking it. Before:
+about 1 run in 2 of the probe ended; after: 1 in 6.
+
+What is left is in the shared engine, which this job must not change: when focus moves while a click is being
+sent (a few milliseconds per click), `TrySend` refuses the click and `ClickExecutor` ends the run with
+InputRejected instead of pausing (`ClickExecutor.cs`, the `sink.TrySend` calls, and `CanContinue`, which ignores a
+requested pause). The same gap exists on GNOME and Windows in principle; KDE just answers fast enough to hit it.
+Suggested engine change, if Roy agrees: when `PauseOnTargetLoss` is set and the target no longer matches,
+`CanContinue` and a refused Down request the automatic pause and repeat that action after the resume, instead of
+ending the run. Until then, `run-headless-kwin-probe.sh` fails its focus-loss stage about one run in six.
+
+### Not checked
+
+Roy's real Plasma desktop; physical input with the udev rule on KDE; a real game; fractional scaling with the app;
+KDE's RemoteDesktop and GlobalShortcuts portals; Sway, Hyprland and other compositors.
