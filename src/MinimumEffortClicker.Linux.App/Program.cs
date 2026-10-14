@@ -12,6 +12,8 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // On KDE the app starts a second copy of itself as the input guard; it never opens a window.
+        if (MinimumEffortClicker.Linux.Kde.KdeInputGuard.RunIfRequested(args) is { } guardExit) return guardExit;
         bool preview = args.Length == 2 && args[0] == "--render-preview";
         if (!preview && !AcquireInstance()) return 0;
         try { return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, Avalonia.Controls.ShutdownMode.OnMainWindowClose); }

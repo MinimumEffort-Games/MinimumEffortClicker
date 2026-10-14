@@ -1,3 +1,5 @@
+using MinimumEffortClicker.Linux.Kde;
+
 namespace MinimumEffortClicker.Linux;
 
 public sealed record HelperMonitor(int X, int Y, int Width, int Height, double Scale);
@@ -66,5 +68,5 @@ public interface IDesktopHelper : IDisposable
 /// <summary>Connects the helper for the desktop this session runs.</summary>
 public static class DesktopHelper
 {
-    public static IDesktopHelper Connect() => GnomeHelper.Connect();
+    public static IDesktopHelper Connect() => LinuxSetup.IsKde ? KdeHelper.Connect() : GnomeHelper.Connect();
 }

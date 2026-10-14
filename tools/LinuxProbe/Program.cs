@@ -3,13 +3,42 @@ using MinimumEffortClicker.Core;
 using MinimumEffortClicker.Engine;
 using MinimumEffortClicker.Linux;
 
-// Opt-in native probe for the Linux runtime. It sends real input, so it refuses to run anywhere but
-// the private headless GNOME Shell started by scripts/linux/run-headless-probe.sh.
+if (MinimumEffortClicker.Linux.Kde.KdeInputGuard.RunIfRequested(args) is { } guardExit) return guardExit;
+
+// Opt-in native probe for the Linux runtime. It sends real input, so it refuses to run anywhere but the private
+// headless GNOME Shell or KWin started by scripts/linux/run-headless-probe.sh or run-headless-kwin-probe.sh.
 string display = Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") ?? "";
-if (args is not ["--isolated-headless-shell"] || Environment.GetEnvironmentVariable("MEC_PROBE_SHELL") != "headless" || !display.StartsWith("mec-probe-", StringComparison.Ordinal))
+string shell = Environment.GetEnvironmentVariable("MEC_PROBE_SHELL") ?? "";
+if (args is not [("--isolated-headless-shell" or "--hold-until-killed" or "--locked-screen")] || shell is not ("headless" or "headless-kwin")
+    || !display.StartsWith("mec-probe-", StringComparison.Ordinal))
 {
-    Console.Error.WriteLine("Refusing to run: this probe only runs inside scripts/linux/run-headless-probe.sh.");
+    Console.Error.WriteLine("Refusing to run: this probe only runs inside scripts/linux/run-headless-probe.sh or run-headless-kwin-probe.sh.");
     return 2;
+}
+
+// KDE safety, run by run-headless-kwin-probe.sh: the script kills this process while it holds a button and Shift,
+// then checks the probe window was told both were released.
+if (args is ["--hold-until-killed"])
+{
+    var holder = DesktopHelper.Connect();
+    var focus = holder.ListWindows().First(w => w.Title == "MEC Probe Target");
+    holder.ActivateWindow(focus.Id); Thread.Sleep(300);
+    var area = holder.GetWindow(focus.Id);
+    holder.PointerMove(area.X + 300.5, area.Y + 300.5);
+    holder.PointerButton(1, true);
+    holder.Key(42, true);
+    Console.WriteLine("HOLDING");
+    Thread.Sleep(Timeout.Infinite);
+}
+// KDE safety: with the screen locked, the helper sends nothing.
+if (args is ["--locked-screen"])
+{
+    using var locked = DesktopHelper.Connect();
+    bool refused;
+    try { locked.Key(17, true); locked.Key(17, false); refused = false; }
+    catch (HelperException ex) { refused = true; Console.WriteLine("Refused: " + ex.Message); }
+    Console.WriteLine(refused && !locked.GetShellState().InputReady ? "PROBE PASSED" : "PROBE FAILED: input was sent while the screen was locked");
+    return refused ? 0 : 1;
 }
 
 var failures = new List<string>();
@@ -43,7 +72,7 @@ using (var helper = DesktopHelper.Connect())
 
 using var runtime = new DesktopRuntime();
 Console.WriteLine("Platform: " + runtime.Control.PlatformSummary);
-Check(runtime.Control.Helper is not null, "GNOME helper connected and allowed this probe");
+Check(runtime.Control.Helper is not null, (runtime.Control.Helper?.Name ?? "Desktop helper") + " connected and allowed this probe");
 Check(runtime.Control.Available, "global controls available (" + runtime.Control.Error + ")");
 var frame = runtime.DesktopFrame();
 Check(frame.Width > 0 && frame.Height > 0, $"desktop frame {frame.X},{frame.Y} {frame.Width}x{frame.Height}");
