@@ -22,17 +22,25 @@ public partial class MainWindow
         if (runtime is null || runtime.Snapshot.Busy || quickOperation) return;
         try
         {
-            var step = ReadQuickAction();
-            var frame = runtime.GetTargetFrame();
-            var plan = SequenceCompiler.Compile(new([step])).AdaptClickPoints(frame.Width, frame.Height, frame.Dpi, ResizeClicksBox.SelectedIndex == 0);
-            var point = plan.Inputs.FirstOrDefault(i => i.Down && i.Control.Kind == InputKind.MouseButton)?.Position
-                ?? throw new ArgumentException("Set a saved click location first.");
+            var screen = ClickScreenPoint(ReadQuickAction()) ?? throw new ArgumentException("Set a saved click location first.");
             if (!runtime.IsDesktopMode && !runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
-            var screen = point.Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi);
             // The same ring as a tested click, in red and three times, exactly on the saved location.
             ClickPingWindow.At(screen.X, screen.Y, ClickPingWindow.Location, times: 3);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { ReasonLabel.Text = ex.Message; }
+    }
+
+    /// <summary>
+    /// Where a click action clicks on the desktop, worked out the way playback does (the saved location adapted to the
+    /// Click target's current size). Null for a click at the cursor. Ping click location and the tested-click ring use it.
+    /// </summary>
+    private (int X, int Y)? ClickScreenPoint(SequenceStep step)
+    {
+        var frame = runtime!.GetTargetFrame();
+        var plan = SequenceCompiler.Compile(new([step with { Enabled = true }]), quickPoints).AdaptClickPoints(frame.Width, frame.Height, frame.Dpi, ResizeClicksBox.SelectedIndex == 0);
+        if (plan.Inputs.FirstOrDefault(i => i.Down && i.Control.Kind == InputKind.MouseButton)?.Position is not { } point) return null;
+        var screen = point.Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi);
+        return (screen.X, screen.Y);
     }
 
     private async void PickQuickPoint_Click(object sender, RoutedEventArgs e)
@@ -79,8 +87,15 @@ public partial class MainWindow
     private async Task WaitUntilMinimized(CancellationToken stop)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
-        while (DateTime.UtcNow < deadline && runtime?.OwnWindowMinimized(Title ?? "") == false) await Task.Delay(50, stop);
-        await Task.Delay(350, stop);
+        bool asked = false;
+        while (DateTime.UtcNow < deadline && runtime?.OwnWindowMinimized(Title ?? "") == false)
+        {
+            // GNOME may not have taken the first request (the app can believe it is minimised while it is on screen): ask again once.
+            if (!asked && DateTime.UtcNow > deadline - TimeSpan.FromSeconds(1.5)) { asked = true; WindowState = WindowState.Normal; WindowState = WindowState.Minimized; }
+            await Task.Delay(50, stop);
+        }
+        // GNOME's minimise animation takes about 0.4 s; the window is drawn until it ends.
+        await Task.Delay(500, stop);
     }
 
 
