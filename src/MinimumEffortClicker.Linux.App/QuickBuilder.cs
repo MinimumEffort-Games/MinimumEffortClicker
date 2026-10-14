@@ -28,7 +28,11 @@ public partial class MainWindow
     private readonly ObservableCollection<QuickChildRow> quickChildren = [];
     private readonly ObservableCollection<string> quickInputNames = [];
     private readonly Dictionary<string, InputControl> quickInputs = SequenceKeys.Supported.ToDictionary(k => k.Key, k => InputControl.Key(k.Value));
-    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground);
+    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground)
+    {
+        /// <summary>The row's Repeating (0) / Once (1) dropdown.</summary>
+        public int RepeatIndex => Step.Once ? 1 : 0;
+    }
     private static SolidColorBrush ColourBrush(int rgb) => new(Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
     private static IBrush ColourText(int rgb)
     {
@@ -395,6 +399,26 @@ public partial class MainWindow
         if (editingQuick?.Id == step.Id) editingQuick = editingQuick with { Enabled = step.Enabled };
         RefreshQuickList(QuickActionList.SelectedIndex, preserveEditor: true);
         ReasonLabel.Text = step.Enabled ? "Action active." : "Action skipped. Check Active to include it again.";
+    }
+    /// <summary>The row's Repeating / Once dropdown. Undo restores the previous choice.</summary>
+    private void QuickRepeat_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        // Also fires when a row is first shown; only a real change is committed.
+        if (loadingQuick || sender is not ComboBox { DataContext: QuickRow row, SelectedIndex: >= 0 } box || box.SelectedIndex == row.RepeatIndex) return;
+        if (runtime?.Snapshot.Busy == true || quickOperation) { box.SelectedIndex = row.RepeatIndex; return; }
+        bool once = box.SelectedIndex == 1;
+        // The list is rebuilt after the dropdown has finished closing, not while its own row is still handling the click.
+        Dispatcher.BeginInvoke(() =>
+        {
+            var steps = quickHistory.Current.Steps.ToArray();
+            if (row.Index >= steps.Length || steps[row.Index].Id != row.Step.Id) return;
+            var step = steps[row.Index] with { Once = once };
+            steps[row.Index] = step;
+            quickHistory.Commit(quickHistory.Current with { Steps = steps });
+            if (editingQuick?.Id == step.Id) editingQuick = editingQuick with { Once = once };
+            RefreshQuickList(QuickActionList.SelectedIndex, preserveEditor: true);
+            ReasonLabel.Text = once ? $"Action {row.Index + 1} runs once: with Loop on, only in the first loop." : $"Action {row.Index + 1} repeats in every loop.";
+        });
     }
     private void QuickUp_Click(object sender, RoutedEventArgs e) => MoveQuick(-1);
     private void QuickDown_Click(object sender, RoutedEventArgs e) => MoveQuick(1);

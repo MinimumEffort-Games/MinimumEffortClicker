@@ -196,6 +196,10 @@
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                                                             <CheckBox Content="Active" Foreground="{Binding Foreground}" IsChecked="{Binding Step.Enabled, Mode=OneWay}" Click="QuickActive_Click" ToolTip.Tip="Unchecked actions stay in the list and are skipped." />
+                                                            <ComboBox SelectedIndex="{Binding RepeatIndex, Mode=OneWay}" SelectionChanged="QuickRepeat_Changed" AutomationProperties.Name="Repeat this action" Margin="0,4,0,0" MinWidth="104" MinHeight="0" Padding="6,2" FontSize="12" HorizontalAlignment="Stretch"
+                                                                      ToolTip.Tip="With Loop on: Repeating actions run in every loop. Once actions run only in the first loop and are skipped in every loop after it. Without Loop, every action runs once.">
+                                                                <ComboBoxItem Content="Repeating" /><ComboBoxItem Content="Once" />
+                                                            </ComboBox>
                                                         </StackPanel>
                                                     </Grid>
                                                 </Border>
