@@ -58,6 +58,44 @@ internal static class X11Windows
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return false; }
     }
 
+    /// <summary>
+    /// Asks GNOME to keep the window above normal windows (_NET_WM_STATE_ABOVE). Avalonia's Topmost does not reach the
+    /// window manager for these click-through windows, so the request is sent here once the window is mapped.
+    /// </summary>
+    public static bool SetAbove(Window window)
+    {
+        if (window.TryGetPlatformHandle() is not { HandleDescriptor: "XID" } handle) return false;
+        try
+        {
+            lock (gate)
+            {
+                if (display == 0) display = XOpenDisplay(null);
+                if (display == 0) return false;
+                var message = new ClientMessage
+                {
+                    Type = 33, SendEvent = 1, Display = display, Window = handle.Handle, Format = 32,
+                    MessageType = XInternAtom(display, "_NET_WM_STATE", false),
+                    Data0 = 1, // add
+                    Data1 = XInternAtom(display, "_NET_WM_STATE_ABOVE", false),
+                    Data2 = XInternAtom(display, "_NET_WM_STATE_SKIP_TASKBAR", false),
+                    Data3 = 1, // a normal application asked
+                };
+                XSendEvent(display, XDefaultRootWindow(display), false, (1 << 19) | (1 << 20), ref message);
+                XFlush(display);
+                return true;
+            }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return false; }
+    }
+
+    /// <summary>XClientMessageEvent, padded to the size of an XEvent.</summary>
+    [StructLayout(LayoutKind.Sequential, Size = 192)]
+    private struct ClientMessage
+    {
+        public int Type; public nint Serial; public int SendEvent; public nint Display; public nint Window; public nint MessageType; public int Format;
+        public nint Data0, Data1, Data2, Data3, Data4;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct WmHints
     {
@@ -70,6 +108,9 @@ internal static class X11Windows
     [DllImport("libX11.so.6")] private static extern int XSetWMHints(nint display, nint window, ref WmHints hints);
     [DllImport("libX11.so.6")] private static extern int XFree(nint data);
     [DllImport("libX11.so.6")] private static extern int XFlush(nint display);
+    [DllImport("libX11.so.6")] private static extern nint XInternAtom(nint display, string name, bool onlyIfExists);
+    [DllImport("libX11.so.6")] private static extern nint XDefaultRootWindow(nint display);
+    [DllImport("libX11.so.6")] private static extern int XSendEvent(nint display, nint window, bool propagate, nint mask, ref ClientMessage message);
     [DllImport("libXext.so.6")] private static extern void XShapeCombineRectangles(nint display, nint window, int kind, int x, int y, nint rectangles, int count, int operation, int ordering);
     [DllImport("libXext.so.6")] private static extern void XShapeCombineMask(nint display, nint window, int kind, int x, int y, nint mask, int operation);
 }

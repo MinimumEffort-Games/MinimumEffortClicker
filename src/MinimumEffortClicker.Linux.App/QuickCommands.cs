@@ -17,7 +17,7 @@ public partial class MainWindow
     private static readonly PointerButton[] MouseChoices = [PointerButton.Left, PointerButton.Middle, PointerButton.Right, PointerButton.XButton1, PointerButton.XButton2];
     private PointerButton MouseChoice { get => MouseChoices[Math.Max(0, ButtonBox.SelectedIndex)]; set => ButtonBox.SelectedIndex = Array.IndexOf(MouseChoices, value); }
     private ClientPoint? quickPoint;
-    private async void PingLocation_Click(object sender, RoutedEventArgs e)
+    private void PingLocation_Click(object sender, RoutedEventArgs e)
     {
         if (runtime is null || runtime.Snapshot.Busy || quickOperation) return;
         try
@@ -28,8 +28,9 @@ public partial class MainWindow
             var point = plan.Inputs.FirstOrDefault(i => i.Down && i.Control.Kind == InputKind.MouseButton)?.Position
                 ?? throw new ArgumentException("Set a saved click location first.");
             if (!runtime.IsDesktopMode && !runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
-            var marker = new TargetPreviewWindow(runtime, [new(Guid.NewGuid(), "Click location", point)], false, TimeSpan.FromSeconds(5), true);
-            marker.Start(); await marker.Finished;
+            var screen = point.Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi);
+            // The same ring as a tested click, in red and three times, exactly on the saved location.
+            ClickPingWindow.At(screen.X, screen.Y, ClickPingWindow.Location, times: 3);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { ReasonLabel.Text = ex.Message; }
     }
@@ -67,6 +68,19 @@ public partial class MainWindow
         if (previous is null || !IsVisible || allowClose || closing || WindowState != WindowState.Minimized) return;
         WindowState = previous.Value;
         Activate();
+        // GNOME refuses to raise an X11 window that is not focused and only says it "is ready"; the shell helper can.
+        runtime?.ActivateOwnWindow(Title ?? "");
+    }
+
+    /// <summary>
+    /// After asking to minimise, waits until GNOME shows the clicker minimised and its animation has finished, so a
+    /// picture taken next shows what is behind it. Gives up after two seconds when the helper cannot tell.
+    /// </summary>
+    private async Task WaitUntilMinimized(CancellationToken stop)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (DateTime.UtcNow < deadline && runtime?.OwnWindowMinimized(Title ?? "") == false) await Task.Delay(50, stop);
+        await Task.Delay(350, stop);
     }
 
 

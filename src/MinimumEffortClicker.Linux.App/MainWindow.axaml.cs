@@ -200,8 +200,8 @@ public partial class MainWindow : Window
         if (!snapshot.Busy && desktopPlaybackFrom is { } previous)
         {
             desktopPlaybackFrom = null;
-            if (snapshot.State is "Could not continue" or "Not started" or "Cleanup pending")
-                RestoreDesktopOperationWindow(previous);
+            // Roy (2026-10-14): the clicker comes back when the run it minimised for ends, however it ended.
+            RestoreDesktopOperationWindow(previous);
         }
         TargetLabel.IsEnabled = ToggleTargetLabel.IsEnabled = !snapshot.Busy && !snapshot.CleanupPending
             && !quickOperation && !screenshotBusy && !macroFileBusy && !ioBusy && !bindingBusy && !closing;
@@ -235,7 +235,7 @@ public partial class MainWindow : Window
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
             overlay.Update(snapshot, stopKey, MacroBindings.KeyLabel(appliedToggleKey), ToggleOverlayLines(snapshot), ShortcutKeys.Label(appliedRecordKey), !quickHistory.Current.Steps.Any());
             bool newlyShown = !overlay.IsVisible;
-            if (newlyShown) overlay.Show();
+            if (newlyShown) { overlay.Show(); overlay.KeepAbove(); }
             PositionOverlay(newlyShown);
             if (runtime.HasSelectedTarget) overlayFollowTimer.Start();
             else overlayFollowTimer.Stop();
