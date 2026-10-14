@@ -88,6 +88,29 @@ internal static class X11Windows
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return false; }
     }
 
+    /// <summary>
+    /// Makes the window see-through (GNOME draws it with no opacity) or normal again, without hiding or minimising it.
+    /// Used while a modal dialog is open: GNOME will not minimise its owner, and hiding a dialog would end it.
+    /// </summary>
+    public static bool SetInvisible(Window window, bool invisible)
+    {
+        if (window.TryGetPlatformHandle() is not { HandleDescriptor: "XID" } handle) return false;
+        try
+        {
+            lock (gate)
+            {
+                if (display == 0) display = XOpenDisplay(null);
+                if (display == 0) return false;
+                nint atom = XInternAtom(display, "_NET_WM_WINDOW_OPACITY", false);
+                if (invisible) { uint zero = 0; XChangeProperty(display, handle.Handle, atom, 6 /* CARDINAL */, 32, 0 /* replace */, ref zero, 1); }
+                else XDeleteProperty(display, handle.Handle, atom);
+                XFlush(display);
+                return true;
+            }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return false; }
+    }
+
     /// <summary>XClientMessageEvent, padded to the size of an XEvent.</summary>
     [StructLayout(LayoutKind.Sequential, Size = 192)]
     private struct ClientMessage
@@ -110,6 +133,8 @@ internal static class X11Windows
     [DllImport("libX11.so.6")] private static extern int XFlush(nint display);
     [DllImport("libX11.so.6")] private static extern nint XInternAtom(nint display, string name, bool onlyIfExists);
     [DllImport("libX11.so.6")] private static extern nint XDefaultRootWindow(nint display);
+    [DllImport("libX11.so.6")] private static extern int XChangeProperty(nint display, nint window, nint property, nint type, int format, int mode, ref uint data, int count);
+    [DllImport("libX11.so.6")] private static extern int XDeleteProperty(nint display, nint window, nint property);
     [DllImport("libX11.so.6")] private static extern int XSendEvent(nint display, nint window, bool propagate, nint mask, ref ClientMessage message);
     [DllImport("libXext.so.6")] private static extern void XShapeCombineRectangles(nint display, nint window, int kind, int x, int y, nint rectangles, int count, int operation, int ordering);
     [DllImport("libXext.so.6")] private static extern void XShapeCombineMask(nint display, nint window, int kind, int x, int y, nint mask, int operation);
