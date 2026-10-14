@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace MinimumEffortClicker.Linux;
 
-/// <summary>Detects the desktop session and installs the GNOME helper for the current user.</summary>
+/// <summary>Detects the desktop session and sets up its helper for the current user: the GNOME extension, or KDE access.</summary>
 public static class LinuxSetup
 {
     public const string HelperUuid = "me-clicker-helper@minimumeffort-games.github.io";
@@ -55,11 +55,9 @@ public static class LinuxSetup
     /// </summary>
     public static string InstallHelper()
     {
+        string executable = Executable();
+        if (IsKde) return AllowOnKde(executable);
         var source = BundledHelperDirectory ?? throw new InvalidOperationException("The GNOME helper files are missing from this copy of the app.");
-        string executable = Environment.ProcessPath is { } process ? Path.GetFullPath(new FileInfo(process).ResolveLinkTarget(true)?.FullName ?? process)
-            : throw new InvalidOperationException("Cannot find this program's path.");
-        if (Path.GetFileNameWithoutExtension(executable) == "dotnet")
-            throw new InvalidOperationException("Start the clicker from its own executable (not 'dotnet …dll') so the helper can recognise it.");
         var destination = Path.Combine(ExtensionsDirectory, HelperUuid);
         Directory.CreateDirectory(destination);
         foreach (var file in Directory.GetFiles(source))
@@ -82,6 +80,45 @@ public static class LinuxSetup
         }
         return enabledNow ? "The GNOME helper is installed and enabled." : "The GNOME helper is installed. Log out and back in once so GNOME loads it.";
     }
+
+    private static string Executable()
+    {
+        string executable = Environment.ProcessPath is { } process ? Path.GetFullPath(new FileInfo(process).ResolveLinkTarget(true)?.FullName ?? process)
+            : throw new InvalidOperationException("Cannot find this program's path.");
+        if (Path.GetFileNameWithoutExtension(executable) == "dotnet")
+            throw new InvalidOperationException("Start the clicker from its own executable (not 'dotnet …dll') so the helper can recognise it.");
+        return executable;
+    }
+
+    public static string ApplicationsDirectory => Path.Combine(Environment.GetEnvironmentVariable("XDG_DATA_HOME") is { Length: > 0 } data ? data
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share"), "applications");
+
+    /// <summary>
+    /// KWin lets a program capture the screen (ScreenShot2) and send input (fake input) when a .desktop file starts
+    /// exactly that executable and names those interfaces. install.sh adds them to the launcher; this hidden entry covers
+    /// a copy started from anywhere else. KWin notices it within a few seconds; no log-out is needed.
+    /// </summary>
+    private static string AllowOnKde(string executable)
+    {
+        Directory.CreateDirectory(ApplicationsDirectory);
+        File.WriteAllText(KdeAccessFile(executable), KdeAccessEntry(executable));
+        return "KDE now lets this copy of the app capture the screen and send input. The KDE helper is ready in a few seconds.";
+    }
+
+    /// <summary>One hidden entry per copy of the app, named after its path.</summary>
+    public static string KdeAccessFile(string executable) => Path.Combine(ApplicationsDirectory,
+        "io.github.MinimumEffortGames.Clicker-" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(executable)))[..12] + ".desktop");
+
+    public static string KdeAccessEntry(string executable) => $"""
+        [Desktop Entry]
+        Type=Application
+        Name=Minimum Effort Clicker (KDE access for {executable})
+        Exec="{executable}"
+        NoDisplay=true
+        X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2
+        X-KDE-Wayland-Interfaces=org_kde_kwin_fake_input
+
+        """;
 
     public static string InputAccessCommand => InputRuleScriptPath is { } script ? $"sudo bash '{script}'" : "The input access script is missing from this copy of the app.";
 

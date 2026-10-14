@@ -63,7 +63,7 @@ internal sealed unsafe class FakeInput : IDisposable
     public void MoveTo(double x, double y) => Send(PointerMotionAbsolute, Fixed(x), Fixed(y));
     /// <summary>Linux button code (BTN_LEFT 0x110 ...).</summary>
     public void SetButton(uint code, bool pressed) => Send(Button, code, pressed ? 1 : 0);
-    /// <summary>Axis 0 vertical, 1 horizontal; 15 is one wheel notch, positive scrolls down or right.</summary>
+    /// <summary>Axis 0 vertical, 1 horizontal, in Wayland axis units; positive scrolls down or right.</summary>
     public void Scroll(uint axis, double value) => Send(Axis, axis, Fixed(value));
     public void SetKey(int evdev, bool pressed) => Send(KeyboardKey, evdev, pressed ? 1 : 0);
 

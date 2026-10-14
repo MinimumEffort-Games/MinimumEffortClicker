@@ -180,8 +180,9 @@ public sealed class KdeHelper : IDesktopHelper
     public void Scroll(uint direction, uint steps)
     {
         if (direction > 3 || steps is < 1 or > 100) throw new HelperException("Unsupported scroll.");
-        // One wheel notch is 15 in Wayland axis units; up and left are negative.
-        int value = (int)steps * 15 * (direction is 0 or 2 ? -1 : 1);
+        // Fake input has no notch count, so Xwayland counts 10 axis units as one notch: X11 apps and most games get
+        // exactly one notch per step (measured); Wayland apps get 10 pixels of smooth scrolling. Up and left are negative.
+        int value = (int)steps * 10 * (direction is 0 or 2 ? -1 : 1);
         Input.Send($"s {(direction < 2 ? 0 : 1)} {value}");
     }
     public void Key(int evdev, bool pressed)

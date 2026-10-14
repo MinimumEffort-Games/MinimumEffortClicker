@@ -68,7 +68,12 @@ public static class KdeInputGuard
                 input.SetKey(key, press);
                 if (press) keys.Add(key); else keys.Remove(key);
                 break;
-            case "s": input.Scroll(uint.Parse(parts[1]), double.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture)); break;
+            case "s":
+                uint axis = uint.Parse(parts[1]);
+                // Xwayland drops the first scroll on an axis unless a zero step comes before it (measured).
+                input.Scroll(axis, 0);
+                input.Scroll(axis, double.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture));
+                break;
             case "r": ReleaseAll(input, buttons, keys); break;
             default: throw new FormatException();
         }

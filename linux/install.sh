@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Installs Minimum Effort Clicker for the current user (no sudo): the app, a launcher in the
-# applications menu, and the ME Clicker GNOME helper. Run it from the extracted package folder.
+# applications menu, and the helper for the running desktop: the ME Clicker GNOME helper on GNOME, or
+# on KDE Plasma the launcher lines that let KWin give this app screen capture and input (nothing to log
+# out for). Run it from the extracted package folder.
 set -euo pipefail
 SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET="${XDG_DATA_HOME:-$HOME/.local/share}/minimum-effort-clicker/app"
@@ -30,7 +32,18 @@ Icon=$TARGET/minimum-effort-clicker.png
 Terminal=false
 Categories=Utility;
 StartupWMClass=MinimumEffortClicker
+X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2
+X-KDE-Wayland-Interfaces=org_kde_kwin_fake_input
 DESKTOP
+
+if [[ ":${XDG_CURRENT_DESKTOP:-}:" == *:KDE:* ]]; then
+  # KWin reads the two X-KDE lines above within a few seconds; the KDE helper is KWin itself.
+  echo "KDE Plasma: KWin now lets Minimum Effort Clicker capture the screen and send input. No log-out needed."
+  echo "Minimum Effort Clicker installed in $TARGET and added to your applications."
+  echo "Optional, for recording, mouse-button shortcuts and hotkeys in every app:"
+  echo "  sudo bash '$TARGET/setup-input-access.sh'"
+  exit 0
+fi
 
 mkdir -p "$EXTENSIONS" "$(dirname "$ALLOW")"
 rm -rf "$EXTENSIONS/$UUID"; cp -r "$TARGET/gnome-extension/$UUID" "$EXTENSIONS/"
