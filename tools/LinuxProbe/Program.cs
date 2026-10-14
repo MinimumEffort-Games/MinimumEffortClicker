@@ -147,7 +147,7 @@ var monitors = runtime.ListMonitors();
 Check(monitors.Count >= 1 && monitors[0].Primary, "monitors listed, main first: " + string.Join("; ", monitors));
 var desktop = runtime.GetTargetFrame();
 var onScreen = new CaptureRegion(new ClientPoint(client.X + 100, client.Y + 200, desktop.Width, desktop.Height, desktop.Dpi, CoordinateSpace.Desktop), 4, 4);
-var fill = new ConditionDefinition(ConditionKind.RegionColor, new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(3)), onScreen, 0x3366CC, 8);
+var fill = new ConditionDefinition(ConditionKind.RegionColor, new(TimeSpan.FromMilliseconds(100)), onScreen, 0x3366CC, 8);
 var seen = runtime.TestCondition(fill, CancellationToken.None);
 Check(seen.Outcome == ConditionOutcome.Matched, "Desktop-mode colour wait saw the target fill on the monitor (" + seen.Outcome + ")");
 var picture = runtime.CaptureMonitorPreview(monitors[0], CancellationToken.None);

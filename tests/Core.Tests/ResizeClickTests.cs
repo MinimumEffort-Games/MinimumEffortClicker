@@ -56,7 +56,7 @@ public sealed class ResizeClickTests
         var drag = SequenceStep.Input("Drag", InputControl.Mouse(PointerButton.Right), Ms(100)) with { Position = Saved, EndPosition = Saved with { X = 500 } };
         var desktop = Click(Saved with { Space = CoordinateSpace.Desktop });
         var scroll = SequenceStep.Input("Wheel", new(InputKind.Scroll, 120), TimeSpan.Zero) with { Position = Saved };
-        var colour = SequenceStep.WaitUntil("Colour", new(ConditionKind.RegionColor, new(Ms(500), Ms(2000)), new(Saved, 10, 10)));
+        var colour = SequenceStep.WaitUntil("Colour", new(ConditionKind.RegionColor, new(Ms(500)), new(Saved, 10, 10)));
         var plan = SequenceCompiler.Compile(new([drag, desktop, scroll, colour])).AdaptClickPoints(1600, 1200, 96, true);
         Assert.IsFalse(plan.Inputs.Any(i => i.Position?.ScaleWithWindow == true));
         Assert.IsFalse(plan.Conditions[0].Definition.Region!.Origin.Matches(1600, 1200, 96));

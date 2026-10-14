@@ -13,13 +13,13 @@ public sealed class ConditionWaiterTests
     }
     private sealed class Probe(Func<ConditionObservation> sample) : IConditionProbe
     { public ConditionObservation Observe(CancellationToken stop) => sample(); }
-    private static ConditionPolicy Policy(int stable = 1) => new(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), stable);
+    private static ConditionPolicy Policy(int stable = 1) => new(TimeSpan.FromMilliseconds(100), stable);
 
     [TestMethod]
     public void ColourAbsenceScansAtChosenIntervalAndWaitsAfterSlowCapture()
     {
         var clock = new FakeClock(); int index = 0; var at = new List<TimeSpan>();
-        var policy = new ConditionPolicy(TimeSpan.FromMilliseconds(750), TimeSpan.FromSeconds(10));
+        var policy = new ConditionPolicy(TimeSpan.FromMilliseconds(750));
         var result = new ConditionWaiter(clock, new Wait(clock)).Wait(policy, new Probe(() =>
         {
             at.Add(clock.Elapsed); clock.Advance(TimeSpan.FromMilliseconds(200));
@@ -32,12 +32,12 @@ public sealed class ConditionWaiterTests
     }
 
     [TestMethod]
-    public void AuthoringTestKeepsScanningPastPlaybackTimeoutAndReportsFalseThenTrue()
+    public void KeepsScanningAndReportsFalseThenTrue()
     {
         var clock = new FakeClock(); int index = 0; var observed = new List<ConditionObservationState>();
         var result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(2),
             new Probe(() => new(index++ < 8 ? ConditionObservationState.NotMet : ConditionObservationState.Met, 1, index)),
-            default, untilCancelled: true, observed: o => observed.Add(o.State));
+            default, observed: o => observed.Add(o.State));
         Assert.AreEqual(ConditionOutcome.Matched, result.Outcome); Assert.AreEqual(10, result.Samples);
         Assert.AreEqual(TimeSpan.FromMilliseconds(900), clock.Elapsed);
         Assert.AreEqual(8, observed.Count(s => s == ConditionObservationState.NotMet));
@@ -47,9 +47,9 @@ public sealed class ConditionWaiterTests
     {
         var clock = new FakeClock(); int index = 0; using var stop = new CancellationTokenSource();
         Assert.ThrowsExactly<OperationCanceledException>(() => new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(),
-            new Probe(() => { if (++index == 12) stop.Cancel(); return new(ConditionObservationState.NotMet, 1, index); }), stop.Token, untilCancelled: true));
+            new Probe(() => { if (++index == 12) stop.Cancel(); return new(ConditionObservationState.NotMet, 1, index); }), stop.Token));
         Assert.AreEqual(12, index);
-        var result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(), new Probe(() => new(ConditionObservationState.Ambiguous, 1, 1)), default, untilCancelled: true);
+        var result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(), new Probe(() => new(ConditionObservationState.Ambiguous, 1, 1)), default);
         Assert.AreEqual(ConditionOutcome.Ambiguous, result.Outcome);
     }
 
@@ -64,32 +64,30 @@ public sealed class ConditionWaiterTests
         Assert.AreEqual(TimeSpan.FromMilliseconds(300), clock.Elapsed);
     }
     [TestMethod]
-    public void RetryIsFiniteAndPauseNeverReturnsMatched()
+    public void WaitHasNoTimeLimit()
     {
+        // Roy's case: the button to wait for appears when a level ends, 5–10 minutes later. Twenty minutes still matches.
         var clock = new FakeClock(); long sample = 0;
-        var probe = new Probe(() => new(ConditionObservationState.NotMet, 1, sample++));
-        var result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy() with { TimeoutAction = ConditionTimeoutAction.Retry, Retries = 2 }, probe, default);
-        Assert.AreEqual(ConditionOutcome.Stopped, result.Outcome); Assert.AreEqual(3, result.Attempts);
-        Assert.AreEqual(15, result.Samples); Assert.AreEqual(TimeSpan.FromMilliseconds(1500), clock.Elapsed);
-        result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy() with { TimeoutAction = ConditionTimeoutAction.Pause }, probe, default);
-        Assert.AreEqual(ConditionOutcome.Paused, result.Outcome);
+        var result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(), new Probe(() =>
+            new(clock.Elapsed < TimeSpan.FromMinutes(20) ? ConditionObservationState.NotMet : ConditionObservationState.Met, 1, sample++)), default);
+        Assert.AreEqual(ConditionOutcome.Matched, result.Outcome);
+        Assert.AreEqual(TimeSpan.FromMinutes(20), clock.Elapsed);
+        Assert.AreEqual(12001, result.Samples);
     }
     [TestMethod]
-    public void AmbiguousAndUnavailableObservationsFailWithoutRetryOrGuessing()
+    public void AmbiguousAndUnavailableObservationsFailWithoutGuessing()
     {
         foreach (var state in new[] { ConditionObservationState.Ambiguous, ConditionObservationState.Unavailable })
         {
             var clock = new FakeClock();
-            var result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy() with { TimeoutAction = ConditionTimeoutAction.Retry, Retries = 3 }, new Probe(() => new(state, 1, 1)), default);
-            Assert.AreEqual(1, result.Samples); Assert.AreEqual(1, result.Attempts); Assert.AreNotEqual(ConditionOutcome.Matched, result.Outcome);
+            var result = new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(), new Probe(() => new(state, 1, 1)), default);
+            Assert.AreEqual(1, result.Samples); Assert.AreNotEqual(ConditionOutcome.Matched, result.Outcome);
         }
     }
     [TestMethod]
-    public void SlowCaptureCannotSucceedAfterDeadlineAndCancellationPrecedesMatch()
+    public void CancellationPrecedesMatch()
     {
         var clock = new FakeClock();
-        var probe = new Probe(() => { clock.Advance(TimeSpan.FromSeconds(1)); return new(ConditionObservationState.Met, 1, 1); });
-        Assert.AreEqual(ConditionOutcome.Stopped, new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(), probe, default).Outcome);
         using var stop = new CancellationTokenSource();
         var cancelling = new Probe(() => { stop.Cancel(); return new(ConditionObservationState.Met, 1, 1); });
         Assert.ThrowsExactly<OperationCanceledException>(() => new ConditionWaiter(clock, new Wait(clock)).Wait(Policy(), cancelling, stop.Token));

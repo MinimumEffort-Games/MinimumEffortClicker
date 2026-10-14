@@ -201,13 +201,8 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
             using var observation = playback is { } control ? CancellationTokenSource.CreateLinkedTokenSource(stop, control.Changed) : null;
             try
             {
-                var result = EvaluateCondition?.Invoke(definition, observation?.Token ?? stop) ?? new(ConditionOutcome.Unavailable, 0, 0);
+                var result = EvaluateCondition?.Invoke(definition, observation?.Token ?? stop) ?? new(ConditionOutcome.Unavailable, 0);
                 if (playback?.IsPaused == true) continue; // discard pre-pause observations
-                if (result.Outcome == ConditionOutcome.Paused && playback is { } pending)
-                {
-                    pending.RequestPause(); // A timed-out wait set to pause: the user resumes; it re-observes this condition, never earlier actions.
-                    continue;
-                }
                 // Capture fails while the target is behind another window: wait for it to return, then look again.
                 if (result.Outcome == ConditionOutcome.Unavailable && PauseOnTargetLoss && playback is { } lost && !TargetMatches(activeTarget)
                     && lost.RequestPause(automatic: true))
@@ -393,8 +388,13 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                     origin += clock.Elapsed - beforeCondition;
                     if (result.Outcome != ConditionOutcome.Matched)
                     {
-                        run.Outcome = result.Outcome == ConditionOutcome.Paused ? ClickRunOutcome.Paused : ClickRunOutcome.Cancelled;
-                        run.Error = $"Condition '{condition.Name}': {result.Outcome}. Review before explicitly starting again from the beginning.";
+                        run.Outcome = ClickRunOutcome.Cancelled;
+                        run.Error = "Stopped: " + result.Outcome switch
+                        {
+                            ConditionOutcome.Ambiguous => $"'{condition.Name}' found the image more than once. Make its area smaller.",
+                            ConditionOutcome.Unavailable => $"'{condition.Name}' could not see its area. Bring the Click target back, or pick the area again.",
+                            _ => $"the run's time limit ran out while '{condition.Name}' was waiting.",
+                        };
                         return;
                     }
                     continue;

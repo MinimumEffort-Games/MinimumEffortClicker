@@ -32,7 +32,7 @@ internal sealed class ConditionEditor : Window
             var row = new StackPanel(); row.Children.Add(new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 4) });
             var box = new TextBox { Text = value }; AutomationProperties.SetName(box, label); row.Children.Add(box); panel.Children.Add(row); fieldRows[box] = row; return box;
         }
-        Label("Choose what to wait for, select an area in your app, then set how long to wait. The next macro step runs after a match.");
+        Label("Choose what to wait for and select an area in your app. The wait keeps looking until it matches, then the next action runs. F9 stops it.");
         Label("Wait until");
         var kind = new ComboBox { ItemsSource = new[] { "A region changes from its first sample", "A pixel matches an RGB colour", "The selected window is in the foreground", "An image appears in a region", "An image disappears from a region", "A colour appears anywhere in a region", "A colour disappears from the selected area" }, SelectedIndex = (int)(original?.Kind ?? ConditionKind.ImageAppears) };
         if (coloursOnly)
@@ -75,23 +75,18 @@ internal sealed class ConditionEditor : Window
             templateLabel.Text = $"Template: {sample.Width} × {sample.Height} pixels. Stored only when you save the profile. Multiple matches stop playback for review.";
         }
         ShowTemplate();
-        var policy = original?.Policy ?? new(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(30));
+        var policy = original?.Policy ?? new(TimeSpan.FromMilliseconds(500));
         var interval = Field("Scan interval · milliseconds (100–5000)", policy.SampleInterval.TotalMilliseconds.ToString(CultureInfo.CurrentCulture));
-        var timeout = Field("Timeout per attempt · seconds (up to 600)", policy.Timeout.TotalSeconds.ToString(CultureInfo.CurrentCulture));
         var stable = Field("Consecutive fresh matching samples · 1–10", policy.StableSamples.ToString());
-        Label("On timeout");
-        var action = new ComboBox { ItemsSource = new[] { "Stop", "Pause for review", "Retry, then stop" }, SelectedIndex = (int)policy.TimeoutAction };
-        AutomationProperties.SetName(action, "Condition timeout action"); panel.Children.Add(action);
-        var retries = Field("Additional attempts · 1–3 when Retry is selected", Math.Max(1, policy.Retries).ToString());
         var advancedPanel = new StackPanel();
-        foreach (var field in new[] { x, y, width, height, tolerance, fraction, interval, stable, retries })
+        foreach (var field in new[] { x, y, width, height, tolerance, fraction, interval, stable })
         {
             panel.Children.Remove(fieldRows[field]); advancedPanel.Children.Add(fieldRows[field]);
         }
         panel.Children.Remove(recalibrate); advancedPanel.Children.Add(recalibrate);
         var advanced = new Expander { Header = "Advanced: coordinates, scan speed and matching", Content = advancedPanel, Margin = new Thickness(0, 8, 0, 8) };
         advanced.SetResourceReference(ForegroundProperty, "TextPrimary"); panel.Children.Add(advanced);
-        Label("Pause releases held inputs and waits at this condition. Resume to retry with fresh observations. (If the target window only went behind another window, it continues by itself when the window is back.)");
+        Label("If the Click target window goes behind another window, the wait pauses and continues by itself when the window is back in front.");
         void RefreshFields()
         {
             bool visual = KindIndex() != 2;
@@ -102,15 +97,13 @@ internal sealed class ConditionEditor : Window
             templatePanel.Visibility = KindIndex() is 3 or 4 ? Visibility.Visible : Visibility.Collapsed;
             fieldRows[rgb].Visibility = KindIndex() is 1 or 5 or 6 ? Visibility.Visible : Visibility.Collapsed;
             pickColour.Visibility = colourPreview.Visibility = fieldRows[rgb].Visibility;
-            fieldRows[retries].Visibility = action.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
             recalibrate.Visibility = visual ? Visibility.Visible : Visibility.Collapsed;
             x.IsEnabled = y.IsEnabled = tolerance.IsEnabled = recalibrate.IsEnabled = visual;
             width.IsEnabled = height.IsEnabled = KindIndex() == 0 || KindIndex() >= 3;
             fraction.IsEnabled = KindIndex() == 0;
             rgb.IsEnabled = KindIndex() is 1 or 5 or 6;
-            retries.IsEnabled = action.SelectedIndex == 2;
         }
-        kind.SelectionChanged += (_, _) => RefreshFields(); action.SelectionChanged += (_, _) => RefreshFields(); RefreshFields();
+        kind.SelectionChanged += (_, _) => RefreshFields(); RefreshFields();
         var footer = new StackPanel(); Grid.SetRow(footer, 1); grid.Children.Add(footer);
         var error = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 12) }; footer.Children.Add(error);
         var buttons = new WrapPanel(); footer.Children.Add(buttons);
@@ -225,8 +218,7 @@ internal sealed class ConditionEditor : Window
                     calibrated = ReadRegion();
                 }
                 var definition = new ConditionDefinition((ConditionKind)KindIndex(),
-                    new(TimeSpan.FromMilliseconds(double.Parse(interval.Text, CultureInfo.CurrentCulture)), TimeSpan.FromSeconds(double.Parse(timeout.Text, CultureInfo.CurrentCulture)),
-                        int.Parse(stable.Text), (ConditionTimeoutAction)action.SelectedIndex, action.SelectedIndex == 2 ? int.Parse(retries.Text) : 0),
+                    new(TimeSpan.FromMilliseconds(double.Parse(interval.Text, CultureInfo.CurrentCulture)), int.Parse(stable.Text)),
                     calibrated, KindIndex() is 1 or 5 or 6 ? int.Parse(rgb.Text.Trim().TrimStart('#'), NumberStyles.HexNumber, CultureInfo.InvariantCulture) : 0,
                     KindIndex() == 2 ? (byte)0 : byte.Parse(tolerance.Text), KindIndex() == 0 ? double.Parse(fraction.Text, CultureInfo.CurrentCulture) : 1,
                     KindIndex() is 3 or 4 ? template : null);

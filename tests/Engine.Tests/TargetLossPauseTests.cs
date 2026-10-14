@@ -68,11 +68,11 @@ public sealed class TargetLossPauseTests
         f.Executor.EvaluateCondition = (_, _) =>
         {
             // The first look fails because the target went behind another window.
-            if (++observations == 1) { f.SetAvailable(false); return new(ConditionOutcome.Unavailable, 1, 1); }
-            return new(ConditionOutcome.Matched, 1, 1);
+            if (++observations == 1) { f.SetAvailable(false); return new(ConditionOutcome.Unavailable, 1); }
+            return new(ConditionOutcome.Matched, 1);
         };
         f.Executor.PlaybackPaused = paused => { if (paused) { f.SetAvailable(true); f.Playback.RequestResume(); } };
-        var colour = new ConditionDefinition(ConditionKind.PixelColor, new(Ms(100), TimeSpan.FromSeconds(1)),
+        var colour = new ConditionDefinition(ConditionKind.PixelColor, new(Ms(100)),
             new CaptureRegion(new(10, 10, 800, 600, 96), 1, 1), 0xFF0000, 8);
         var plan = SequenceCompiler.Compile(new([SequenceStep.WaitUntil("Red", colour), SequenceStep.Input("W", W, Ms(20))]));
         var result = f.Executor.Execute(plan, f.TargetId, default);

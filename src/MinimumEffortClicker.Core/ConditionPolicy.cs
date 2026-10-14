@@ -1,17 +1,15 @@
 namespace MinimumEffortClicker.Core;
 
-public enum ConditionTimeoutAction { Stop, Pause, Retry }
-public sealed record ConditionPolicy(TimeSpan SampleInterval, TimeSpan Timeout, int StableSamples = 1,
-    ConditionTimeoutAction TimeoutAction = ConditionTimeoutAction.Stop, int Retries = 0)
+/// <summary>
+/// How a wait looks. A wait has no time limit: it keeps looking until it matches or the user stops the run
+/// (Roy, 2026-10-14: a level can take 5–10 minutes before the button to wait for appears).
+/// </summary>
+public sealed record ConditionPolicy(TimeSpan SampleInterval, int StableSamples = 1)
 {
     public void Validate()
     {
-        if (SampleInterval < TimeSpan.FromMilliseconds(100) || SampleInterval > TimeSpan.FromSeconds(5)
-            || Timeout < SampleInterval || Timeout > TimeSpan.FromMinutes(10) || StableSamples is < 1 or > 10
-            || !Enum.IsDefined(TimeoutAction) || Retries is < 0 or > 3
-            || TimeoutAction != ConditionTimeoutAction.Retry && Retries != 0
-            || TimeoutAction == ConditionTimeoutAction.Retry && Retries == 0)
-            throw new ArgumentException("Choose a 100 ms–5 s sample interval, bounded timeout, 1–10 stable samples and at most three explicit retries.");
+        if (SampleInterval < TimeSpan.FromMilliseconds(100) || SampleInterval > TimeSpan.FromSeconds(5) || StableSamples is < 1 or > 10)
+            throw new ArgumentException("Choose a 100 ms–5 s scan interval and 1–10 matching samples in a row.");
     }
 }
 

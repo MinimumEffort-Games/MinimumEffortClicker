@@ -22,8 +22,8 @@ public sealed class RegionComparisonTests
         Assert.IsFalse(RegionComparison.ContainsColor(Row(10, 20, 30), 0x151515, 0));
         Assert.IsTrue(RegionComparison.ContainsColor(Row(10, 20, 30), 0x151515, 1));
         var region = new CaptureRegion(new(0, 0, 100, 100, 96), 10, 10);
-        new ConditionDefinition(ConditionKind.RegionColor, new(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(30)), region, 0x141414).Validate();
-        Assert.ThrowsExactly<ArgumentException>(() => new ConditionDefinition(ConditionKind.PixelColor, new(TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(30)), region).Validate());
+        new ConditionDefinition(ConditionKind.RegionColor, new(TimeSpan.FromMilliseconds(500)), region, 0x141414).Validate();
+        Assert.ThrowsExactly<ArgumentException>(() => new ConditionDefinition(ConditionKind.PixelColor, new(TimeSpan.FromMilliseconds(500)), region).Validate());
     }
     private static RasterSample Row(params byte[] values) => new(values.Length, 1, values.SelectMany(v => new byte[] { v, v, v, 255 }).ToArray());
     [TestMethod]

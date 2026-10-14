@@ -7,6 +7,9 @@
   if/repeat branches, "run helpers together", logical keys).
 - Macro files move to schema 16. Files from schema 2 to 15 still open; retired actions are dropped on load and
   the app says how many. Saving keeps the upgraded file. Nothing is reset.
+- A Wait until colour step keeps looking until the colour appears, however long it takes; it used to stop the run
+  after 30 seconds without saying why. F9 still stops it. Macro files move to schema 17: older files open with
+  their old wait limit dropped. The log now records why every run ended.
 - A Help button in the header explains each page.
 - Safety: an unexpected error now stops playback and releases every held key before it is reported, the Stop All
   hooks can no longer be lost while input is being sent, and the app no longer mistakes its own held key for the

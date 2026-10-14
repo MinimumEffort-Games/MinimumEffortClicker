@@ -6,7 +6,7 @@ namespace Core.Tests;
 [TestClass]
 public sealed class ConditionDefinitionTests
 {
-    private static readonly ConditionPolicy Policy = new(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(1));
+    private static readonly ConditionPolicy Policy = new(TimeSpan.FromMilliseconds(100));
     [TestMethod]
     public void ImageTemplatesRejectMalformedOversizedAndExcessiveSearchWork()
     {
@@ -43,13 +43,15 @@ public sealed class ConditionDefinitionTests
         finally { Directory.Delete(folder, true); }
     }
     [TestMethod]
-    public void ConditionsValidateDisabledStepsAndBoundTheirCombinedWorstCase()
+    public void ConditionsValidateDisabledStepsAndDoNotCountTowardTheLengthLimit()
     {
         var condition = new ConditionDefinition(ConditionKind.PixelColor, Policy, new(new(2, 3, 100, 100, 96), 1, 1));
         var step = SequenceStep.WaitUntil("Colour", condition);
         Assert.HasCount(1, SequenceCompiler.Compile(new([step])).Conditions);
         Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([step with { Enabled = false, Condition = condition with { Region = condition.Region! with { Width = 2 } } }])));
-        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([SequenceStep.Wait(TimeSpan.FromDays(1)), step])));
+        // A wait has no time limit, so only the actions count toward the one-day maximum.
+        Assert.AreEqual(TimeSpan.FromDays(1), SequenceCompiler.Compile(new([SequenceStep.Wait(TimeSpan.FromDays(1)), step])).WorstCaseDuration);
+        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([SequenceStep.Wait(TimeSpan.FromDays(1)), step, SequenceStep.Wait(TimeSpan.FromSeconds(1))])));
         Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([step with { Duration = TimeSpan.FromSeconds(1) }])));
     }
     [TestMethod]
@@ -60,7 +62,7 @@ public sealed class ConditionDefinitionTests
         try
         {
             string path = Path.Combine(folder, "test.mecprofile");
-            var condition = new ConditionDefinition(ConditionKind.WindowActive, Policy with { TimeoutAction = ConditionTimeoutAction.Retry, Retries = 2 });
+            var condition = new ConditionDefinition(ConditionKind.WindowActive, Policy with { StableSamples = 2 });
             var profile = new ProfileDefinition(ProfileDefinition.CurrentVersion, Guid.NewGuid(), "Wait", [new(Guid.NewGuid(), "Wait", null, Sequence: new([SequenceStep.WaitUntil("Target active", condition)]))]);
             HelperProfiles.Export(path, profile);
             Assert.AreEqual(condition, HelperProfiles.Import(path).Macros[0].Sequence!.Steps[0].Condition);

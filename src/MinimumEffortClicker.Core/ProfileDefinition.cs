@@ -8,8 +8,8 @@ public sealed record MacroDefinition(Guid Id, string Name, HelperPlan? Plan, str
 /// <summary>Portable configuration only. Availability, bindings and native target instances live locally.</summary>
 public sealed record ProfileDefinition(int SchemaVersion, Guid Id, string Name, IReadOnlyList<MacroDefinition> Macros, IReadOnlyList<NamedPoint>? Points = null)
 {
-    /// <summary>Schema 16 dropped text, subsequence and branch steps; older files are migrated on load.</summary>
-    public const int CurrentVersion = 16;
+    /// <summary>Schema 16 dropped text, subsequence and branch steps; schema 17 dropped wait time limits. Older files are migrated on load.</summary>
+    public const int CurrentVersion = 17;
     public override string ToString() => Name;
     public IReadOnlyList<string> Validate()
     {

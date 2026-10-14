@@ -31,7 +31,7 @@ public partial class MainWindow
             "",
             "- Click target: choose where the clicks go. Desktop uses screen positions on any monitor. A window uses positions inside that window and follows it when it moves.",
             "- The window must be in front while the list runs. If it goes behind another window, the run pauses and continues by itself once the window has been back in front for half a second.",
-            "- Wait until a colour or image: with Desktop as the target, Pick colour shows a Monitor list, so the wait can watch any monitor.",
+            "- Wait until a colour or image: the run waits there until the colour shows up, however long that takes. F9 stops it. With Desktop as the target, Pick colour shows a Monitor list, so the wait can watch any monitor.",
             "- Add Action: pick a click, key press, pause, wait for a colour, or screenshot. Fill in its settings and press Add Action.",
             "- Start (F8): runs the list once. Tick Loop to repeat it until you stop it.",
             "- Test (on each row): the clicker minimises and runs only that action. The button turns green when it worked and red when it did not. A click shows a ring where it landed. A colour or image wait is checked once: green means it is there right now.",
