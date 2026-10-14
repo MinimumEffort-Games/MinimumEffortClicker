@@ -28,13 +28,7 @@ public partial class MainWindow
     private readonly ObservableCollection<QuickChildRow> quickChildren = [];
     private readonly ObservableCollection<string> quickInputNames = [];
     private readonly Dictionary<string, InputControl> quickInputs = SequenceKeys.Supported.ToDictionary(k => k.Key, k => InputControl.Key(k.Value));
-    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground, bool? Tested = null, string TestTip = "")
-    {
-        // Testing a pause would only wait, so pause rows have no Test button.
-        public bool TestVisible => Step.Kind != StepKind.Wait;
-        public bool TestPassed => Tested == true;
-        public bool TestFailed => Tested == false;
-    }
+    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground);
     private static SolidColorBrush ColourBrush(int rgb) => new(Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
     private static IBrush ColourText(int rgb)
     {
@@ -124,6 +118,7 @@ public partial class MainWindow
         RecordDelaysBox.IsEnabled = RecordMovementBox.IsEnabled = idle;
         QuickRecordKeyBox.IsEnabled = idle && !recordKeyChanging;
         ClearActionListButton.IsEnabled = idle && quickHistory.Current.Steps.Count > 0;
+        ShowTestSelectedButton();
         if (quickRecorder?.Paused == true) QuickRecordStatus.Text = "Recording paused after focus changed. Finish to keep the captured actions.";
     }
     private void Loop_Changed(object sender, RoutedEventArgs e)
@@ -307,13 +302,9 @@ public partial class MainWindow
         loadingQuick = false; Location_Changed(sender, e); ShowQuickFields(); ShowConditionColour();
     }
     private QuickRow[] QuickRows(IEnumerable<SequenceStep> steps) => steps.Select((s, i) =>
-    {
-        var (passed, testTip) = RowTestResult(s);
-        return new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
+        new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
             s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } colour ? ColourBrush(colour.Color) : Brushes.Transparent,
-            s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (IBrush)this.FindResource("TextPrimary")!,
-            passed, testTip);
-    }).ToArray();
+            s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (IBrush)this.FindResource("TextPrimary")!)).ToArray();
     /// <summary>Shows actions captured so far below the existing list while recording runs.</summary>
     private void ShowRecordingPreview(IReadOnlyList<SequenceStep> recorded)
     {
@@ -340,6 +331,7 @@ public partial class MainWindow
     }
     private void QuickSelection_Changed(object sender, SelectionChangedEventArgs e)
     {
+        ShowTestSelectedButton();
         if (loadingQuick || QuickActionList.SelectedItem is not QuickRow row) return;
         TestResultLabel.Text = "";
         var s = row.Step; editingQuick = s; loadingQuick = true;

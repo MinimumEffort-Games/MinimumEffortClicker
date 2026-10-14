@@ -179,7 +179,9 @@
                     <ScrollViewer x:Name="ActionListScroll" Grid.Column="2" Grid.Row="2" Padding="0,0,16,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <!-- At least as tall as the visible area, so the Action List (the star row) takes the room a tall window leaves. -->
                         <Grid MinHeight="{Binding #ActionListScroll.Viewport.Height}" RowDefinitions="Auto,*,Auto,Auto,Auto">
-                            <Border Height="{Binding #PickTargetHeading.Bounds.Height}" Margin="0,0,0,8" />
+                            <Grid MinHeight="{Binding #PickTargetHeading.Bounds.Height}" Margin="0,0,0,8">
+                                <Button x:Name="TestSelectedButton" Content="Test Selected Action" Click="TestSelected_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="12,5" ToolTip.ShowOnDisabled="True" AutomationProperties.Name="Test selected action" />
+                            </Grid>
                             <Border Grid.Row="1" Classes="card" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2" Margin="0,0,0,12">
                                 <Grid RowDefinitions="*,Auto">
                                     <local:FillHeightPanel MinHeight="240">
@@ -194,7 +196,6 @@
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                                                             <CheckBox Content="Active" Foreground="{Binding Foreground}" IsChecked="{Binding Step.Enabled, Mode=OneWay}" Click="QuickActive_Click" ToolTip.Tip="Unchecked actions stay in the list and are skipped." />
-                                                            <Button Content="Test" Click="RowTest_Click" Classes.green="{Binding TestPassed}" Classes.red="{Binding TestFailed}" IsVisible="{Binding TestVisible}" ToolTip.Tip="{Binding TestTip}" AutomationProperties.Name="Test this action" Padding="10,2" Margin="0,4,0,0" MinHeight="0" FontSize="12" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
                                                         </StackPanel>
                                                     </Grid>
                                                 </Border>
