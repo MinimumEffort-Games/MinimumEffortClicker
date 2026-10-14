@@ -63,7 +63,11 @@ public partial class MainWindow
                 var frame = runtime.GetTargetFrame();
                 SequenceCompiler.Compile(new([step]), quickPoints).ValidateDesktopMode(frame.Width, frame.Height, frame.Dpi);
             }
-            if (WindowState != WindowState.Minimized) { minimizedFrom = WindowState; WindowState = WindowState.Minimized; await WaitUntilMinimized(cancellation.Token); }
+            // Always minimise for a test, even when the app believes it already is: the picture must not show the clicker.
+            minimizedFrom = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            WindowState = WindowState.Minimized;
+            await WaitUntilMinimized(cancellation.Token);
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             if (step.Condition is { } condition && step.Kind == StepKind.Condition)
             {
@@ -112,12 +116,7 @@ public partial class MainWindow
     {
         try
         {
-            if ((step.Position ?? step.Children?.FirstOrDefault(c => c.Position is not null)?.Position) is { } point)
-            {
-                var frame = runtime!.GetTargetFrame();
-                var screen = point.Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi);
-                ClickPingWindow.At(screen.X, screen.Y, ClickPingWindow.Landed);
-            }
+            if (ClickScreenPoint(step) is { } screen) ClickPingWindow.At(screen.X, screen.Y, ClickPingWindow.Landed);
             else if (runtime?.PointerPosition is { } pointer) ClickPingWindow.At(pointer.X, pointer.Y, ClickPingWindow.Landed);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
