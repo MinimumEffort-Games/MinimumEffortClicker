@@ -23,7 +23,10 @@ body {
   margin: 0; color: var(--cream); font: 16px/1.5 var(--body);
   background: linear-gradient(180deg, rgba(16,15,13,.82), rgba(16,15,13,.96) 40%, var(--bg)), url("playground/texture.jpg") center top / 1600px auto repeat-y, var(--bg);
 }
-.page { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 0 48px; }
+/* --page-pos slides the page across the free space: 0 = left edge, .5 = centred, 1 = right edge, so the clicker fits beside it. */
+.page { max-width: 1240px; margin: 0; margin-left: calc((100% - min(1240px, 100%)) * var(--page-pos, .5)); padding-inline: 20px; padding-block: 0 48px; }
+.chip.pos { display: inline-flex; align-items: center; gap: 8px; cursor: default; }
+.chip.pos input { width: 110px; accent-color: var(--gold); cursor: pointer; }
 header.banner { margin: 0 -20px; height: 340px; display: grid; place-items: center; padding-top: 14px; overflow: hidden; }
 /* The whole banner, its edges fading into the page so the art's own black meets the background without a seam. */
 header.banner img { height: 320px; width: auto; max-width: 100%; object-fit: contain; display: block;
@@ -138,6 +141,7 @@ footer { margin-top: 26px; color: var(--muted); font-size: 13.5px; display: flex
       <span class="chip">Keys<b id="t-keys">0</b></span>
       <span class="chip">Drops<b id="t-drops">0</b></span>
       <span class="chip">Levels<b id="t-levels">0</b></span>
+      <label class="chip pos" title="Slides the whole page left or right so the clicker fits beside it. Set it before recording: the stations move with the page.">Page<input type="range" id="page-pos" min="0" max="100" value="50" aria-label="Page position"></label>
       <button class="danger" id="reset-all" type="button">Reset everything</button>
     </div>
   </div>
@@ -529,6 +533,13 @@ footer { margin-top: 26px; color: var(--muted); font-size: 13.5px; display: flex
   };
   document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => resets[b.dataset.reset]()));
   $('reset-all').addEventListener('click', () => { Object.values(resets).forEach(r => r()); for (const k in total) total[k] = 0; showTotals(); });
+
+  /* Page position: remembered in this browser, so a recorded macro finds the stations where it left them. */
+  const pagePos = $('page-pos');
+  const applyPagePos = () => document.documentElement.style.setProperty('--page-pos', pagePos.value / 100);
+  try { const saved = localStorage.getItem('playground-page-pos'); if (saved !== null) pagePos.value = saved; } catch { /* storage blocked: start centred */ }
+  pagePos.addEventListener('input', () => { applyPagePos(); try { localStorage.setItem('playground-page-pos', pagePos.value); } catch { /* not remembered */ } });
+  applyPagePos();
 
   showClicks(); showChain(); showLevel(); renderKeys(); setKnob(4);
 })();
