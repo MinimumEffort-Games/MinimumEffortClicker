@@ -148,10 +148,11 @@ public partial class MainWindow
         }
         finally { bindingBusy = false; TogglePage.IsEnabled = true; RefreshToggleList(); }
     }
-    private string[] ToggleOverlayLines(RuntimeSnapshot snapshot)
+    private OverlayToggle[] ToggleOverlayLines(RuntimeSnapshot snapshot)
     {
         var ids = snapshot.ActiveHelperIds ?? [];
         return SavedToggles.Where(m => enabledToggles.Contains(m.Id)).Select(m =>
-            $"{m.Name} · {(macroBindings.TryGetValue(m.Id, out var binding) ? MacroBindings.KeyLabel(binding.Key) : "Unassigned")} · {(snapshot.CleanupPending ? "Release pending" : ids.Contains(m.Id) ? snapshot.PlaybackActive ? "On" : snapshot.State : "Ready")}").ToArray();
+            new OverlayToggle(m.Name, macroBindings.TryGetValue(m.Id, out var binding) ? MacroBindings.KeyLabel(binding.Key) : "Unassigned",
+                OverlayToggle.StateFor(snapshot.CleanupPending, ids.Contains(m.Id), snapshot.PlaybackActive, snapshot.State), ids.Contains(m.Id))).ToArray();
     }
 }

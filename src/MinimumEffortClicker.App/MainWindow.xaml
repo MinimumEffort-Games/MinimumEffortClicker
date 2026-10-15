@@ -235,7 +235,7 @@
   <TextBlock Text="Pick a target" Style="{StaticResource Heading}"/>
   <Border x:Name="ToggleTargetCard" Style="{StaticResource Card}" BorderBrush="{DynamicResource StopBorder}" BorderThickness="2"><StackPanel>
    <TextBlock Text="Click target" FontWeight="SemiBold"/><ComboBox x:Name="ToggleTargetLabel" Text="Desktop" DisplayMemberPath="Title" IsEditable="False" IsTextSearchEnabled="False" DropDownOpened="ClickTargets_Opened" SelectionChanged="ClickTarget_Changed" AutomationProperties.Name="Toggle click target"/>
-   <TextBlock Text="If no app is selected, physical desktop coordinates are used." Style="{StaticResource Secondary}"/>
+   <TextBlock Text="Toggles only work when a click target is selected." Style="{StaticResource Secondary}"/>
   </StackPanel></Border>
   <TextBlock Text="Create Toggle" Style="{StaticResource Heading}" Margin="0,10,0,8"/>
   <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2"><StackPanel>

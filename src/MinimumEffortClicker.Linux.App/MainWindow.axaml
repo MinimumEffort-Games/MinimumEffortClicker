@@ -343,7 +343,7 @@
                                 <StackPanel>
                                     <TextBlock Text="Click target" FontWeight="SemiBold" />
                                     <ComboBox x:Name="ToggleTargetLabel" DropDownOpened="ClickTargets_Opened" SelectionChanged="ClickTarget_Changed" AutomationProperties.Name="Toggle click target" DisplayMemberBinding="{Binding Title, x:DataType=linux:TargetWindow}" />
-                                    <TextBlock Text="If no app is selected, physical desktop coordinates are used." Classes="secondary" />
+                                    <TextBlock Text="Toggles only work when a click target is selected." Classes="secondary" />
                                 </StackPanel>
                             </Border>
                             <TextBlock Text="Create Toggle" Classes="heading" Margin="0,10,0,8" />

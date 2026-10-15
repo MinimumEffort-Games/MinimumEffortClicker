@@ -235,7 +235,7 @@ public partial class MainWindow : Window
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
-            overlay.Update(snapshot, stopKey, MacroBindings.KeyLabel(appliedToggleKey), ToggleOverlayLines(snapshot), ShortcutKeys.Label(appliedRecordKey), !quickHistory.Current.Steps.Any());
+            overlay.Update(snapshot, stopKey, MacroBindings.KeyLabel(appliedToggleKey), ToggleOverlayLines(snapshot), ShortcutKeys.Label(appliedRecordKey), !quickHistory.Current.Steps.Any(), ChosenEmergencyStop);
             bool newlyShown = !overlay.IsVisible;
             if (newlyShown) { overlay.Show(); overlay.KeepAbove(); }
             PositionOverlay(newlyShown);
