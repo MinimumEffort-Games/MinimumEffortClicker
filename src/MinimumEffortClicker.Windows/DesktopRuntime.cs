@@ -793,6 +793,21 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         }
     }
 
+    /// <summary>
+    /// The user holds this key or button, or a modifier the clicker does not own. With Only Stop All the press waits until
+    /// they let go (Stop All still ends the wait, and the target is checked again after it); with Stop on my input it is
+    /// refused and the run ends.
+    /// </summary>
+    private bool WaitForUsersRelease(InputControl control)
+    {
+        while (Control.IsPhysicalDown(control) || Control.UnownedModifiersDown(ownsInput))
+        {
+            if (PhysicalOverlap.For(EmergencyStop, InputEdge.Down, userHolds: true) != OverlapAction.Wait) return false;
+            if (cancellation?.IsCancellationRequested != false || !Control.Available) return false;
+            Thread.Sleep(5);
+        }
+        return true;
+    }
     public bool TrySend(InputTransition transition)
     {
         if (CursorFreeActive)
@@ -804,9 +819,9 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         ProbeNative.Point? destination = null;
         if (transition.Edge == InputEdge.Down || transition.Position is not null)
         {
+            if (!WaitForUsersRelease(transition.Control)) return RejectInput("Release physical keys/buttons before starting. Physical input takes priority.");
             if (!TargetAvailable) return RejectInput("The Click target is unavailable or no longer in front. Bring it forward and start again.");
             if (cancellation?.IsCancellationRequested != false || !Control.Available) return RejectInput("Playback was stopped or its input controls became unavailable.");
-            if (Control.IsPhysicalDown(transition.Control) || Control.UnownedModifiersDown(ownsInput)) return RejectInput("Release physical keys/buttons before starting. Physical input takes priority.");
             if (activeLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)) return RejectInput("The foreground keyboard layout differs from this recording.");
             if (transition.Control.Kind != InputKind.ScanCode)
             {
@@ -832,7 +847,9 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             }
             else if (IsDesktopMode && (ProbeNative.GetWindowThreadProcessId(ProbeNative.GetForegroundWindow(), out uint pid) == 0 || pid == Environment.ProcessId)) return RejectInput("Desktop key presses need another app in front. ME Clicker cannot play keys into itself.");
         }
-        else if (Control.IsPhysicalDown(transition.Control)) return false; // Never release a user's physical hold.
+        // Never release a user's press. With Only Stop All they took the button over: the clicker's release is skipped and
+        // their own release lets go, so the run carries on. With Stop on my input the run ends, as before.
+        else if (Control.IsPhysicalDown(transition.Control)) return PhysicalOverlap.For(EmergencyStop, InputEdge.Up, userHolds: true) == OverlapAction.HandOver;
         long dispatchStarted = Stopwatch.GetTimestamp();
         bool sent = DesktopNative.Send(transition, destination);
         long dispatchTicks = Stopwatch.GetTimestamp() - dispatchStarted;
