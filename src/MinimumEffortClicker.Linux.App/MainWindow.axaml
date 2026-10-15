@@ -66,7 +66,7 @@
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Text="Create an action" Classes="heading" />
-                                <Border Classes="card" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2">
+                                <Border x:Name="CreateActionCard" Classes="card" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2">
                                     <StackPanel>
                                         <TextBlock Text="Action" FontWeight="SemiBold" />
                                         <ComboBox x:Name="ModeBox" SelectedIndex="-1" SelectionChanged="ActionType_Changed" AutomationProperties.Name="Action">
@@ -185,7 +185,7 @@
                                 </Border>
                             </StackPanel>
                             <WrapPanel x:Name="QuickEditorTools" Margin="0,4,0,12">
-                                <Button x:Name="AddActionButton" Content="Add Action" Click="AddAction_Click" IsEnabled="False" Classes="green" />
+                                <Button x:Name="AddActionButton" Content="Add Action" Click="AddAction_Click" IsEnabled="False" Classes="blue" />
                                 <Button Content="Clear editor" Click="NewAction_Click" ToolTip.Tip="Clear the settings to create another action. The Action List is kept." />
                             </WrapPanel>
                             <TextBlock x:Name="TestResultLabel" Classes="secondary optional" Margin="0,0,0,5" />
@@ -197,7 +197,7 @@
                             <Grid MinHeight="{Binding #PickTargetHeading.Bounds.Height}" Margin="0,0,0,8">
                                 <Button x:Name="TestSelectedButton" Content="Test Selected Action" Click="TestSelected_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="12,5" ToolTip.ShowOnDisabled="True" AutomationProperties.Name="Test selected action" />
                             </Grid>
-                            <Border Grid.Row="1" Classes="card" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2" Margin="0,0,0,12">
+                            <Border x:Name="ActionListCard" Grid.Row="1" Classes="card" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2" Margin="0,0,0,12">
                                 <Grid RowDefinitions="*,Auto">
                                     <local:FillHeightPanel MinHeight="240">
                                     <ListBox x:Name="QuickActionList" SelectionChanged="QuickSelection_Changed" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Action List" x:CompileBindings="False">

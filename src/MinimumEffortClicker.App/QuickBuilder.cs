@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using MinimumEffortClicker.Core;
 using MinimumEffortClicker.Engine;
@@ -150,7 +152,9 @@ public partial class MainWindow
         ScanIntervalFields.Visibility = ConditionFields.Visibility = ModeBox.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         ComplexFields.Visibility = complex ? Visibility.Visible : Visibility.Collapsed;
         AddActionButton.IsEnabled = ModeBox.SelectedIndex >= 0 || complex;
-        AddActionButton.Content = editingQuick is null ? "Add Action" : "Save changes";
+        // Blue Add Action adds a new action; green Save Changes changes the selected one, so it is always clear which.
+        AddActionButton.Content = editingQuick is null ? "Add Action" : "Save Changes";
+        AddActionButton.SetResourceReference(StyleProperty, editingQuick is null ? "BlueButton" : "GreenButton");
         PressLabel.Text = ClickKindBox.SelectedIndex == 2 && ModeBox.SelectedIndex == 0 || HoldKeyBox.IsChecked == true && ModeBox.SelectedIndex == 1 ? "Hold duration (ms)" : "Press duration (ms)";
         ShowTimingOptions();
         Location_Changed(this, new RoutedEventArgs());
@@ -286,7 +290,9 @@ public partial class MainWindow
             int index = editingQuick is null ? -1 : list.FindIndex(s => s.Id == editingQuick.Id);
             if (index < 0) list.Add(step); else list[index] = step;
             quickHistory.Commit(ApplyListOptions(quickHistory.Current with { Steps = list }));
-            RefreshQuickList(index); ReasonLabel.Text = index < 0 ? "Action added. Select a row to edit it." : "Action updated.";
+            // Saving ends the edit: nothing stays selected, and the editor keeps its values for adding a similar action.
+            RefreshQuickList(); ShowQuickFields();
+            ReasonLabel.Text = index < 0 ? "Action added. Select a row to edit it." : "Changes saved. Select a row to edit it again.";
         }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
     }
@@ -449,6 +455,50 @@ public partial class MainWindow
         RefreshQuickList(); NewAction_Click(sender, e);
         ReasonLabel.Text = "Action List cleared. Undo restores it; saved macros are kept.";
     }
-    private void QuickUndo_Click(object sender, RoutedEventArgs e) { quickHistory.Undo(); RefreshQuickList(); NewAction_Click(sender, e); }
-    private void QuickRedo_Click(object sender, RoutedEventArgs e) { quickHistory.Redo(); RefreshQuickList(); NewAction_Click(sender, e); }
+    private void QuickUndo_Click(object sender, RoutedEventArgs e) { var kept = (QuickActionList.SelectedItem as QuickRow)?.Step.Id; quickHistory.Undo(); KeepSelection(kept, sender, e); }
+    private void QuickRedo_Click(object sender, RoutedEventArgs e) { var kept = (QuickActionList.SelectedItem as QuickRow)?.Step.Id; quickHistory.Redo(); KeepSelection(kept, sender, e); }
+    /// <summary>After undo or redo the same action stays selected while it still exists; otherwise the editor is cleared.</summary>
+    private void KeepSelection(Guid? id, object sender, RoutedEventArgs e)
+    {
+        int index = id is { } kept ? quickHistory.Current.Steps.ToList().FindIndex(s => s.Id == kept) : -1;
+        RefreshQuickList(index);
+        if (index < 0) NewAction_Click(sender, e);
+    }
+
+    /// <summary>
+    /// Ends editing the selected action: nothing stays selected, the button turns back into a blue Add Action, and the
+    /// editor keeps its values, so Add Action now adds a new action instead of changing the old one.
+    /// </summary>
+    private void StopEditing()
+    {
+        if (editingQuick is null && QuickActionList.SelectedIndex < 0) return;
+        loadingQuick = true; QuickActionList.SelectedIndex = -1; loadingQuick = false;
+        editingQuick = null; ActionNameBox.Text = "";
+        ShowQuickFields(); ShowTestSelectedButton();
+    }
+
+    /// <summary>
+    /// A click anywhere in the clicker outside the Create an action panel and the Action List's rows and buttons ends
+    /// editing. The panel edits the selected action, and the list's buttons act on it, so those keep it selected.
+    /// </summary>
+    private void EditingWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (editingQuick is null && QuickActionList.SelectedIndex < 0 || e.OriginalSource is not DependencyObject source) return;
+        if (IsInside(source, CreateActionCard) || IsInside(source, QuickEditorTools) || IsInside(source, TestSelectedButton)) return;
+        if (IsInside(source, ActionListCard) && (Ancestor<ListBoxItem>(source) is not null || Ancestor<ButtonBase>(source) is not null
+            || Ancestor<System.Windows.Controls.Primitives.ScrollBar>(source) is not null)) return;
+        StopEditing();
+    }
+    private static bool IsInside(DependencyObject node, DependencyObject root)
+    {
+        for (DependencyObject? at = node; at is not null; at = TreeParent(at)) if (at == root) return true;
+        return false;
+    }
+    private static T? Ancestor<T>(DependencyObject node) where T : DependencyObject
+    {
+        for (DependencyObject? at = node; at is not null; at = TreeParent(at)) if (at is T found) return found;
+        return null;
+    }
+    // Text runs are not visuals, so walk their logical parent.
+    private static DependencyObject? TreeParent(DependencyObject node) => node is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node);
 }

@@ -43,6 +43,7 @@ public partial class MainWindow : Window
         bindingsStore = new(store.DirectoryPath);
         if (!previewOnly) AppLog.Initialize(store.DirectoryPath);
         InitializeComponent();
+        PreviewMouseDown += EditingWindow_PreviewMouseDown;
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();
         ToggleHeldKeyBox.Content = "W"; ToggleShortcutBox.Content = "Choose a key…";
