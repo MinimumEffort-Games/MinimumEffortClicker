@@ -58,9 +58,10 @@ build". No installer, bundled font, paid library or online service is included.
 
 ## Brand assets
 
-The Minimum Effort logo and icon under `assets/brand` are the owner's brand assets. The MIT licence covers the
-source code and does not grant rights to the Minimum Effort name or logo. Historical pixel artwork with unclear
-redistribution rights is excluded from this repository and from every build.
+The Minimum Effort logo and icon under `assets/brand`, and the Steam art in `tools/Playground/playground`, are the
+owner's brand assets. The MIT licence covers the source code and does not grant rights to the Minimum Effort name,
+logo or art. Historical pixel artwork with unclear redistribution rights is excluded from this repository and from
+every build.
 
 ## After a dependency change
 
