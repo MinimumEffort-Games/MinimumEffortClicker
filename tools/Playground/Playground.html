@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ME Clicker Playground</title>
+<link rel="icon" href="playground/cursor-mark.png">
+<style>
+/* Layout: banner, a stats bar, then a fixed two-column grid of test stations that never reflows when numbers change,
+   so recorded click positions keep landing on the same spots. Colours come from the Steam art: grunge black, cream
+   lettering, the gold of the app icon, and the clicker's own green (tested click) and red (ping) rings. */
+:root {
+  --bg: #100f0d; --panel: #1a1815; --panel-raised: #23201c; --line: #34302a; --cream: #efe7d6; --muted: #a59c8a;
+  --gold: #d9a441; --gold-deep: #a97a1f; --gold-ink: #1d1407; --green: #3ddc84; --red: #e53935; --off: #2b2824;
+  --display: "Anton", Impact, "Arial Narrow Bold", sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --label: "Barlow Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0; color: var(--cream); font: 16px/1.5 var(--body);
+  background: linear-gradient(180deg, rgba(16,15,13,.82), rgba(16,15,13,.96) 40%, var(--bg)), url("playground/texture.jpg") center top / 1600px auto repeat-y, var(--bg);
+}
+.page { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 0 48px; }
+header.banner { margin: 0 -20px; height: 340px; display: grid; place-items: center; padding-top: 14px; overflow: hidden; }
+/* The whole banner, its edges fading into the page so the art's own black meets the background without a seam. */
+header.banner img { height: 320px; width: auto; max-width: 100%; object-fit: contain; display: block;
+  -webkit-mask-image: radial-gradient(ellipse 72% 78% at 50% 50%, #000 62%, transparent 100%); mask-image: radial-gradient(ellipse 72% 78% at 50% 50%, #000 62%, transparent 100%); }
+.title-row { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin: 6px 0 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+h1 { font: 400 46px/1 var(--display); letter-spacing: .5px; margin: 0; text-transform: uppercase; }
+h1 small { display: block; font: 600 15px/1.4 var(--label); letter-spacing: 2px; color: var(--muted); margin-top: 6px; }
+.stats { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.chip { background: var(--panel-raised); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font: 600 14px var(--label); letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.chip b { color: var(--cream); font: 400 18px var(--display); letter-spacing: .5px; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.hint { color: var(--muted); font-size: 14px; margin: 0 0 18px; max-width: 80ch; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.card { background: rgba(26,24,21,.94); border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px 20px; display: grid; gap: 14px; align-content: start; min-height: 300px; box-shadow: 0 12px 30px rgba(0,0,0,.35); min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.card h2 { margin: 0; font: 400 25px/1 var(--display); text-transform: uppercase; letter-spacing: .5px; display: flex; align-items: center; gap: 10px; }
+.card h2 .n { font: 600 13px var(--label); color: var(--gold-ink); background: var(--gold); border-radius: 999px; padding: 2px 9px; letter-spacing: 1px; }
+.card p.what { margin: 0; color: var(--muted); font-size: 14.5px; }
+.numbers { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.num { display: grid; }
+.num span { font: 600 12.5px var(--label); text-transform: uppercase; letter-spacing: 1.4px; color: var(--muted); }
+.num b { font: 400 30px/1.1 var(--display); font-variant-numeric: tabular-nums; min-width: 3ch; }
+.num b.small { font-size: 22px; }
+
+/* Buttons: rounded, tactile, with a pressed state so a click is visible even when a macro sends it. */
+button { font: 600 16px var(--label); letter-spacing: .8px; text-transform: uppercase; border-radius: 14px; border: 1px solid #4a443b; background: var(--panel-raised); color: var(--cream); padding: 10px 18px; cursor: pointer; transition: transform .06s, background .15s, box-shadow .15s, opacity .15s; user-select: none; }
+button:hover { background: #2d2924; }
+button:active, button.pressed { transform: translateY(2px) scale(.98); }
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button.gold { background: linear-gradient(180deg, #e8b956, var(--gold) 55%, var(--gold-deep)); color: var(--gold-ink); border-color: #f0c66a; box-shadow: 0 4px 0 #6d4e12, 0 10px 22px rgba(217,164,65,.18); }
+button.gold:hover { background: linear-gradient(180deg, #f0c466, #e0ab47 55%, #b5852a); }
+button.gold:active, button.gold.pressed { box-shadow: 0 1px 0 #6d4e12; }
+button.ghost { background: transparent; border-color: var(--line); color: var(--muted); padding: 6px 12px; font-size: 13px; border-radius: 999px; }
+button.ghost:hover { color: var(--cream); border-color: #5a5348; }
+button:disabled { opacity: .32; cursor: not-allowed; transform: none; box-shadow: none; }
+button.danger { border-color: #7a2a27; color: #ffb4ad; }
+button.danger:hover { background: #3a1716; }
+
+/* 1. Click pad */
+.clickzone { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+.bigbtn { width: 170px; height: 170px; border-radius: 50%; font: 400 30px/1 var(--display); letter-spacing: 1px; flex: none; }
+.ripple-host { position: relative; }
+.ripple { position: absolute; left: 50%; top: 50%; width: 170px; height: 170px; margin: -85px 0 0 -85px; border-radius: 50%; border: 3px solid var(--gold); pointer-events: none; animation: ripple .45s ease-out forwards; }
+@keyframes ripple { from { transform: scale(.9); opacity: .8; } to { transform: scale(1.35); opacity: 0; } }
+.mouse-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.mouse-chips .chip b { font-size: 16px; }
+
+/* 2. Precision targets */
+.range { position: relative; height: 170px; border-radius: 16px; background: repeating-linear-gradient(0deg, transparent 0 23px, rgba(239,231,214,.04) 23px 24px), repeating-linear-gradient(90deg, transparent 0 23px, rgba(239,231,214,.04) 23px 24px), #15130f; border: 1px dashed #3d382f; cursor: crosshair; user-select: none; overflow: hidden; }
+.target { position: absolute; border-radius: 50%; background: radial-gradient(circle, var(--red) 0 22%, var(--cream) 23% 44%, var(--red) 45% 66%, var(--cream) 67% 100%); box-shadow: 0 0 0 2px rgba(0,0,0,.5); transform: translate(-50%, -50%); }
+.target.hit { box-shadow: 0 0 0 4px var(--green); }
+.coord { position: absolute; right: 10px; bottom: 8px; font: 500 13px var(--label); color: var(--muted); letter-spacing: 1px; }
+
+/* 3. Hold pad and 4. keys */
+.holdpad { height: 120px; border-radius: 18px; border: 2px dashed #4a443b; display: grid; place-items: center; font: 400 22px var(--display); letter-spacing: 1px; color: var(--muted); user-select: none; cursor: pointer; text-transform: uppercase; background: #15130f; transition: background .1s, border-color .1s, color .1s; }
+.holdpad.down { background: rgba(217,164,65,.14); border-color: var(--gold); color: var(--gold); }
+.bar { height: 10px; border-radius: 999px; background: var(--off); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); border-radius: inherit; }
+.keys { display: flex; flex-wrap: wrap; gap: 8px; min-height: 92px; align-content: start; }
+.key { min-width: 46px; height: 42px; padding: 0 10px; border-radius: 10px; background: var(--panel-raised); border: 1px solid #4a443b; border-bottom-width: 4px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: 600 15px var(--label); letter-spacing: .5px; }
+.key small { color: var(--gold); font-variant-numeric: tabular-nums; }
+.key.held { border-color: var(--gold); background: rgba(217,164,65,.16); transform: translateY(2px); border-bottom-width: 2px; }
+
+/* 5. Chain */
+.chain { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chain button { width: 92px; height: 64px; font-size: 22px; font-family: var(--display); letter-spacing: 1px; }
+.chain .arrow { color: #5d564b; font: 400 22px var(--display); }
+.chain button.done { background: rgba(61,220,132,.16); border-color: var(--green); color: var(--green); opacity: 1; }
+
+/* 6. Level simulator */
+.level { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 22px; align-items: start; }
+.level-controls { display: grid; gap: 14px; align-content: start; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+select { font: 600 15px var(--label); letter-spacing: .5px; background: var(--panel-raised); color: var(--cream); border: 1px solid #4a443b; border-radius: 12px; padding: 9px 12px; }
+.status { font: 400 26px/1.1 var(--display); letter-spacing: .5px; text-transform: uppercase; min-height: 30px; }
+.status.running { color: var(--gold); } .status.ready { color: var(--green); } .status.idle { color: var(--muted); }
+.lamps { display: grid; gap: 12px; justify-items: center; }
+.lamp { width: 150px; height: 150px; border-radius: 22px; background: var(--off); border: 3px solid #3b362e; display: grid; place-items: center; font: 400 22px var(--display); color: #4d473e; letter-spacing: 1px; transition: background .12s, color .12s; }
+.lamp.green { background: var(--green); border-color: #9af0c0; color: #06321a; box-shadow: 0 0 40px rgba(61,220,132,.35); }
+.busy { width: 150px; height: 34px; border-radius: 999px; background: var(--off); border: 2px solid #3b362e; display: grid; place-items: center; font: 600 13px var(--label); letter-spacing: 1.5px; color: #4d473e; text-transform: uppercase; }
+.busy.red { background: var(--red); border-color: #ff8a80; color: #fff; }
+.lamp-label { font: 600 12.5px var(--label); color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; text-align: center; }
+.nextbtn { width: 150px; height: 52px; }
+
+/* 7. Drag & drop, 8. scroll */
+.dragfield { position: relative; height: 190px; border-radius: 16px; background: #15130f; border: 1px solid var(--line); overflow: hidden; user-select: none; touch-action: none; }
+.token { position: absolute; width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(180deg, #e8b956, var(--gold) 55%, var(--gold-deep)); box-shadow: 0 6px 0 #6d4e12, 0 10px 24px rgba(0,0,0,.45); cursor: grab; display: grid; place-items: center; touch-action: none; }
+.token img { width: 46px; height: 46px; pointer-events: none; filter: invert(1) brightness(.12); }
+.token.dragging { cursor: grabbing; box-shadow: 0 2px 0 #6d4e12, 0 18px 34px rgba(0,0,0,.5); }
+.dropzone { position: absolute; right: 20px; top: 22px; width: 150px; height: 146px; border-radius: 18px; border: 3px dashed #4a443b; display: grid; place-items: center; text-align: center; font: 400 20px/1.1 var(--display); color: #5d564b; text-transform: uppercase; letter-spacing: 1px; }
+.dropzone.over { border-color: var(--green); color: var(--green); background: rgba(61,220,132,.08); }
+.slider { position: relative; height: 54px; border-radius: 999px; background: var(--off); border: 1px solid var(--line); user-select: none; touch-action: none; }
+.slider .fill { position: absolute; inset: 0 auto 0 0; width: 54px; border-radius: 999px; background: rgba(217,164,65,.18); }
+.slider .knob { position: absolute; top: 4px; left: 4px; width: 46px; height: 46px; border-radius: 50%; background: var(--cream); box-shadow: 0 3px 10px rgba(0,0,0,.5); cursor: grab; touch-action: none; }
+.slider span { position: absolute; inset: 0; display: grid; place-items: center; font: 600 14px var(--label); letter-spacing: 2px; color: var(--muted); text-transform: uppercase; pointer-events: none; }
+.scrollpad { height: 150px; border-radius: 16px; background: #15130f; border: 2px dashed #4a443b; display: grid; place-items: center; text-align: center; user-select: none; }
+.scrollpad .wheel { font: 400 44px/1 var(--display); color: var(--gold); transition: transform .12s; }
+
+footer { margin-top: 26px; color: var(--muted); font-size: 13.5px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } .level { grid-template-columns: minmax(0, 1fr); } header.banner { height: 230px; } header.banner img { height: 210px; } h1 { font-size: 36px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="banner"><img src="playground/banner.jpg" alt="Minimum Effort Clicker"></header>
+
+  <div class="title-row">
+    <h1>The Playground<small>A test range for every Minimum Effort Clicker feature</small></h1>
+    <div class="stats" aria-label="Totals">
+      <span class="chip">Clicks<b id="t-clicks">0</b></span>
+      <span class="chip">Keys<b id="t-keys">0</b></span>
+      <span class="chip">Drops<b id="t-drops">0</b></span>
+      <span class="chip">Levels<b id="t-levels">0</b></span>
+      <button class="danger" id="reset-all" type="button">Reset everything</button>
+    </div>
+  </div>
+  <p class="hint">Every station stays in the same place, so recorded clicks keep hitting it. Click once anywhere on the page before sending keys, so the browser has focus. Nothing here leaves your PC.</p>
+
+  <div class="grid">
+    <!-- 1. Click counter -->
+    <section class="card" id="station-clicks">
+      <div class="card-head"><h2><span class="n">1</span>Click counter</h2><button class="ghost" data-reset="clicks" type="button">Reset</button></div>
+      <p class="what">For Actions and spam toggles. Counts every button, double-clicks and clicks per second.</p>
+      <div class="clickzone">
+        <div class="ripple-host" id="ripples"><button class="gold bigbtn" id="click-pad" type="button">Click</button></div>
+        <div class="numbers">
+          <div class="num"><span>Clicks</span><b id="c-total">0</b></div>
+          <div class="num"><span>Per second</span><b id="c-cps">0</b></div>
+          <div class="num"><span>Best / s</span><b id="c-best">0</b></div>
+        </div>
+      </div>
+      <div class="mouse-chips">
+        <span class="chip">Left<b id="c-left">0</b></span><span class="chip">Middle<b id="c-middle">0</b></span>
+        <span class="chip">Right<b id="c-right">0</b></span><span class="chip">Double<b id="c-double">0</b></span>
+      </div>
+    </section>
+
+    <!-- 2. Precision targets -->
+    <section class="card" id="station-targets">
+      <div class="card-head"><h2><span class="n">2</span>Precision targets</h2><button class="ghost" data-reset="targets" type="button">Reset</button></div>
+      <p class="what">For Set Location and Ping click location. Three bullseyes, big to tiny; anything else counts as a miss.</p>
+      <div class="range" id="range">
+        <div class="target" data-size="Big" style="left:22%;top:50%;width:56px;height:56px"></div>
+        <div class="target" data-size="Small" style="left:52%;top:42%;width:28px;height:28px"></div>
+        <div class="target" data-size="Tiny" style="left:78%;top:60%;width:14px;height:14px"></div>
+        <div class="coord" id="t-coord">Last click: –</div>
+      </div>
+      <div class="numbers">
+        <div class="num"><span>Big</span><b class="small" id="h-Big">0</b></div>
+        <div class="num"><span>Small</span><b class="small" id="h-Small">0</b></div>
+        <div class="num"><span>Tiny</span><b class="small" id="h-Tiny">0</b></div>
+        <div class="num"><span>Misses</span><b class="small" id="h-miss">0</b></div>
+      </div>
+    </section>
+
+    <!-- 3. Hold -->
+    <section class="card" id="station-hold">
+      <div class="card-head"><h2><span class="n">3</span>Hold timer</h2><button class="ghost" data-reset="hold" type="button">Reset</button></div>
+      <p class="what">For Hold toggles and long presses. Hold any mouse button on the pad and watch the time; the bar fills over 5 seconds.</p>
+      <div class="holdpad" id="hold-pad">Press and hold</div>
+      <div class="bar"><i id="hold-bar"></i></div>
+      <div class="numbers">
+        <div class="num"><span>Now</span><b id="hold-now">0.00 s</b></div>
+        <div class="num"><span>Last</span><b id="hold-last">0.00 s</b></div>
+        <div class="num"><span>Longest</span><b id="hold-best">0.00 s</b></div>
+        <div class="num"><span>Holds</span><b id="hold-count">0</b></div>
+      </div>
+    </section>
+
+    <!-- 4. Keys -->
+    <section class="card" id="station-keys">
+      <div class="card-head"><h2><span class="n">4</span>Key counter</h2><button class="ghost" data-reset="keys" type="button">Reset</button></div>
+      <p class="what">For key actions, key toggles and recording. Every key you or the clicker press shows up with its count; held keys light up.</p>
+      <div class="keys" id="key-list"><span class="lamp-label" id="key-empty">Press a key…</span></div>
+      <div class="numbers">
+        <div class="num"><span>Presses</span><b id="k-total">0</b></div>
+        <div class="num"><span>Per second</span><b id="k-kps">0</b></div>
+        <div class="num"><span>Held now</span><b id="k-held">0</b></div>
+        <div class="num"><span>Longest hold</span><b class="small" id="k-hold">0.00 s</b></div>
+      </div>
+    </section>
+
+    <!-- 5. Chain -->
+    <section class="card" id="station-chain">
+      <div class="card-head"><h2><span class="n">5</span>Chain reaction</h2><button class="ghost" data-reset="chain" type="button">Reset</button></div>
+      <p class="what">For recorded macros. Each button unlocks the next; finishing D starts again at A. Record one round with F10, then loop it.</p>
+      <div class="chain" id="chain">
+        <button class="gold" data-step="0" type="button">A</button><span class="arrow">›</span>
+        <button class="gold" data-step="1" type="button" disabled>B</button><span class="arrow">›</span>
+        <button class="gold" data-step="2" type="button" disabled>C</button><span class="arrow">›</span>
+        <button class="gold" data-step="3" type="button" disabled>D</button>
+      </div>
+      <div class="numbers">
+        <div class="num"><span>Rounds</span><b id="ch-rounds">0</b></div>
+        <div class="num"><span>Last round</span><b class="small" id="ch-last">–</b></div>
+        <div class="num"><span>Fastest</span><b class="small" id="ch-best">–</b></div>
+        <div class="num"><span>Out of order</span><b class="small" id="ch-wrong">0</b></div>
+      </div>
+    </section>
+
+    <!-- 6. Drag & drop -->
+    <section class="card" id="station-drag">
+      <div class="card-head"><h2><span class="n">6</span>Drag &amp; drop</h2><button class="ghost" data-reset="drag" type="button">Reset</button></div>
+      <p class="what">For recorded drags. Drag the gold block into the box, and slide the knob all the way right.</p>
+      <div class="dragfield" id="dragfield">
+        <div class="token" id="token" style="left:26px;top:62px"><img src="playground/cursor-mark.png" alt=""></div>
+        <div class="dropzone" id="dropzone">Drop<br>here</div>
+      </div>
+      <div class="slider" id="slider"><div class="fill" id="slider-fill"></div><span>Slide to the end</span><div class="knob" id="knob"></div></div>
+      <div class="numbers">
+        <div class="num"><span>Drops</span><b id="d-drops">0</b></div>
+        <div class="num"><span>Slides</span><b id="d-slides">0</b></div>
+        <div class="num"><span>Missed drops</span><b class="small" id="d-miss">0</b></div>
+      </div>
+    </section>
+
+    <!-- 7. Level simulator -->
+    <section class="card wide" id="station-level">
+      <div class="card-head"><h2><span class="n">7</span>Level simulator</h2><button class="ghost" data-reset="level" type="button">Reset</button></div>
+      <p class="what">For Wait until, Once and Loop. Press Start game once, then each level runs for the chosen time; when it ends the square turns green and Next lights up. Make Start game a <b>Once</b> action, then a <b>Wait until colour appears</b> on the square and a click on Next, with Loop on.</p>
+      <div class="level">
+        <div class="level-controls">
+          <div class="row">
+            <button class="gold" id="start-game" type="button">Start game</button>
+            <label class="lamp-label" for="level-length">Level length</label>
+            <select id="level-length">
+              <option value="5000">5 seconds</option>
+              <option value="10000" selected>10 seconds</option>
+              <option value="30000">30 seconds</option>
+              <option value="120000">2 minutes</option>
+              <option value="r5-20">Random 5–20 s</option>
+              <option value="r60-300">Random 1–5 min</option>
+            </select>
+            <button id="quit-game" type="button">Quit game</button>
+          </div>
+          <div class="status idle" id="level-status">Not started</div>
+          <div class="bar"><i id="level-bar"></i></div>
+          <div class="numbers">
+            <div class="num"><span>Level</span><b id="l-current">–</b></div>
+            <div class="num"><span>Completed</span><b id="l-done">0</b></div>
+            <div class="num"><span>Reaction</span><b class="small" id="l-react">–</b></div>
+            <div class="num"><span>Best reaction</span><b class="small" id="l-best">–</b></div>
+            <div class="num"><span>Too early</span><b class="small" id="l-early">0</b></div>
+          </div>
+        </div>
+        <div class="lamps">
+          <div class="busy" id="busy-lamp">Level running</div>
+          <div class="lamp" id="next-lamp">Wait</div>
+          <div class="lamp-label">Wait until this square turns green</div>
+          <button class="gold nextbtn" id="next-btn" type="button">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Scroll -->
+    <section class="card" id="station-scroll">
+      <div class="card-head"><h2><span class="n">8</span>Scroll counter</h2><button class="ghost" data-reset="scroll" type="button">Reset</button></div>
+      <p class="what">For scroll actions. Each wheel notch over the pad counts; the page itself does not move.</p>
+      <div class="scrollpad" id="scrollpad"><div><div class="wheel" id="wheel">⇵</div><div class="lamp-label">Scroll here</div></div></div>
+      <div class="numbers">
+        <div class="num"><span>Up</span><b id="s-up">0</b></div>
+        <div class="num"><span>Down</span><b id="s-down">0</b></div>
+        <div class="num"><span>Sideways</span><b id="s-side">0</b></div>
+      </div>
+    </section>
+
+    <!-- 9. Screenshot spot -->
+    <section class="card" id="station-shot">
+      <div class="card-head"><h2><span class="n">9</span>Colour wait range</h2><button class="ghost" data-reset="shot" type="button">Reset</button></div>
+      <p class="what">For Wait until colour disappears and Pick colour. Click a swatch to switch it off for 3 seconds; the clicker can wait for that colour to go.</p>
+      <div class="row" id="swatches">
+        <button class="swatch" data-colour="#e53935" type="button" style="background:#e53935;width:84px;height:84px;border-radius:18px;border-color:#ff8a80" aria-label="Red swatch"></button>
+        <button class="swatch" data-colour="#3ddc84" type="button" style="background:#3ddc84;width:84px;height:84px;border-radius:18px;border-color:#9af0c0" aria-label="Green swatch"></button>
+        <button class="swatch" data-colour="#2f7df6" type="button" style="background:#2f7df6;width:84px;height:84px;border-radius:18px;border-color:#8db8ff" aria-label="Blue swatch"></button>
+        <button class="swatch" data-colour="#d9a441" type="button" style="background:#d9a441;width:84px;height:84px;border-radius:18px;border-color:#f0c66a" aria-label="Gold swatch"></button>
+      </div>
+      <div class="numbers">
+        <div class="num"><span>Switched off</span><b id="sw-count">0</b></div>
+        <div class="num"><span>Colours</span><b class="small">#E53935 · #3DDC84 · #2F7DF6 · #D9A441</b></div>
+      </div>
+    </section>
+  </div>
+
+  <footer><span>Minimum Effort Clicker · Playground</span><span>F8 start/stop · F9 stop everything · F10 record</span></footer>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const total = { clicks: 0, keys: 0, drops: 0, levels: 0 };
+  const showTotals = () => { for (const k in total) $('t-' + k).textContent = total[k]; };
+  const fmt = ms => (ms / 1000).toFixed(2) + ' s';
+  // Every click anywhere counts toward the total, so a macro's clicks show up even off the stations.
+  document.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' || e.pointerType === 'pen' || e.pointerType === 'touch') { total.clicks++; showTotals(); } }, true);
+
+  /* 1. Click counter */
+  const pad = $('click-pad'), times = [];
+  const click = { total: 0, best: 0, buttons: [0, 0, 0], double: 0 };
+  const showClicks = () => {
+    const now = performance.now(); while (times.length && now - times[0] > 1000) times.shift();
+    click.best = Math.max(click.best, times.length);
+    $('c-total').textContent = click.total; $('c-cps').textContent = times.length; $('c-best').textContent = click.best;
+    $('c-left').textContent = click.buttons[0]; $('c-middle').textContent = click.buttons[1]; $('c-right').textContent = click.buttons[2]; $('c-double').textContent = click.double;
+  };
+  pad.addEventListener('pointerdown', e => {
+    e.preventDefault(); click.total++; if (e.button <= 2) click.buttons[e.button]++; times.push(performance.now());
+    const r = document.createElement('div'); r.className = 'ripple'; $('ripples').appendChild(r); setTimeout(() => r.remove(), 460);
+    showClicks();
+  });
+  pad.addEventListener('dblclick', () => { click.double++; showClicks(); });
+  pad.addEventListener('contextmenu', e => e.preventDefault());
+  pad.addEventListener('auxclick', e => e.preventDefault());
+  setInterval(showClicks, 200);
+
+  /* 2. Precision targets */
+  const hits = { Big: 0, Small: 0, Tiny: 0, miss: 0 };
+  $('range').addEventListener('pointerdown', e => {
+    const box = $('range').getBoundingClientRect();
+    $('t-coord').textContent = `Last click: ${Math.round(e.clientX - box.left)}, ${Math.round(e.clientY - box.top)} in the range`;
+    const t = e.target.closest('.target');
+    if (t) { hits[t.dataset.size]++; t.classList.add('hit'); setTimeout(() => t.classList.remove('hit'), 250); } else hits.miss++;
+    for (const k in hits) $('h-' + k).textContent = hits[k];
+  });
+  $('range').addEventListener('contextmenu', e => e.preventDefault());
+
+  /* 3. Hold timer */
+  const hold = { start: 0, last: 0, best: 0, count: 0, raf: 0 };
+  const holdPad = $('hold-pad');
+  const holdTick = () => {
+    const ms = performance.now() - hold.start;
+    $('hold-now').textContent = fmt(ms); $('hold-bar').style.width = Math.min(100, ms / 50) + '%';
+    hold.raf = requestAnimationFrame(holdTick);
+  };
+  const holdEnd = () => {
+    if (!hold.start) return;
+    const ms = performance.now() - hold.start; hold.start = 0; cancelAnimationFrame(hold.raf);
+    hold.last = ms; hold.best = Math.max(hold.best, ms); hold.count++; holdPad.classList.remove('down'); holdPad.textContent = 'Press and hold';
+    $('hold-last').textContent = fmt(ms); $('hold-best').textContent = fmt(hold.best); $('hold-count').textContent = hold.count;
+  };
+  holdPad.addEventListener('pointerdown', e => {
+    e.preventDefault(); holdPad.setPointerCapture(e.pointerId);
+    hold.start = performance.now(); holdPad.classList.add('down'); holdPad.textContent = 'Holding…'; holdTick();
+  });
+  holdPad.addEventListener('pointerup', holdEnd); holdPad.addEventListener('pointercancel', holdEnd);
+  holdPad.addEventListener('contextmenu', e => e.preventDefault());
+
+  /* 4. Key counter */
+  const keyCounts = new Map(), held = new Map(), keyTimes = []; let keyTotal = 0, keyBest = 0;
+  const arrows = { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' };
+  const keyName = e => arrows[e.code] ?? (e.code.replace(/^(Key|Digit)/, '') || e.key);
+  const renderKeys = () => {
+    const list = $('key-list'); list.textContent = '';
+    if (!keyCounts.size) { const s = document.createElement('span'); s.className = 'lamp-label'; s.textContent = 'Press a key…'; list.appendChild(s); }
+    [...keyCounts.entries()].slice(-14).forEach(([name, n]) => {
+      const k = document.createElement('span'); k.className = 'key' + (held.has(name) ? ' held' : '');
+      k.textContent = name; const c = document.createElement('small'); c.textContent = '×' + n; k.appendChild(c); list.appendChild(k);
+    });
+    const now = performance.now(); while (keyTimes.length && now - keyTimes[0] > 1000) keyTimes.shift();
+    $('k-total').textContent = keyTotal; $('k-kps').textContent = keyTimes.length; $('k-held').textContent = held.size; $('k-hold').textContent = fmt(keyBest);
+  };
+  window.addEventListener('keydown', e => {
+    if (['F5', 'F11', 'F12'].includes(e.key) || e.ctrlKey && ['r', 'w', 't', 'l'].includes(e.key.toLowerCase())) return;
+    if (e.key === ' ' || e.key.startsWith('Arrow') || e.key === 'Tab') e.preventDefault();
+    if (e.repeat) return; // Count presses, not the browser's auto-repeat.
+    const name = keyName(e); keyCounts.delete(name); keyCounts.set(name, (keyCounts.get(name) || 0) + 1);
+    held.set(name, performance.now()); keyTotal++; total.keys++; keyTimes.push(performance.now()); showTotals(); renderKeys();
+  });
+  window.addEventListener('keyup', e => {
+    const name = keyName(e); const at = held.get(name);
+    if (at) keyBest = Math.max(keyBest, performance.now() - at); held.delete(name); renderKeys();
+  });
+  window.addEventListener('blur', () => { held.clear(); renderKeys(); });
+  setInterval(renderKeys, 250);
+
+  /* 5. Chain reaction */
+  const chainButtons = [...document.querySelectorAll('#chain button')];
+  const chain = { step: 0, started: 0, rounds: 0, best: 0, wrong: 0 };
+  const showChain = () => {
+    chainButtons.forEach((b, i) => { b.disabled = i !== chain.step; b.classList.toggle('done', i < chain.step); });
+    $('ch-rounds').textContent = chain.rounds; $('ch-wrong').textContent = chain.wrong;
+    $('ch-best').textContent = chain.best ? fmt(chain.best) : '–';
+  };
+  chainButtons.forEach((b, i) => b.addEventListener('click', () => {
+    if (i !== chain.step) return;
+    if (i === 0) chain.started = performance.now();
+    chain.step++;
+    if (chain.step === chainButtons.length) {
+      const ms = performance.now() - chain.started; chain.rounds++; chain.best = chain.best ? Math.min(chain.best, ms) : ms;
+      $('ch-last').textContent = fmt(ms); chain.step = 0;
+    }
+    showChain();
+  }));
+  // A click on a locked button still lands on its wrapper, so out-of-order clicks can be counted.
+  $('chain').addEventListener('pointerdown', e => {
+    const b = e.target.closest('button'); if (b && b.disabled) { chain.wrong++; showChain(); }
+    else if (!b) { const hit = chainButtons.find(x => { const r = x.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom; }); if (hit && hit.disabled) { chain.wrong++; showChain(); } }
+  });
+
+  /* 7. Level simulator */
+  const level = { state: 'idle', number: 0, done: 0, early: 0, best: 0, endsAt: 0, length: 0, readyAt: 0, timer: 0, raf: 0 };
+  const lengthMs = () => {
+    const v = $('level-length').value;
+    if (v.startsWith('r')) { const [a, b] = v.slice(1).split('-').map(Number); return (a + Math.random() * (b - a)) * 1000; }
+    return Number(v);
+  };
+  const showLevel = () => {
+    const s = $('level-status'); s.className = 'status ' + (level.state === 'running' ? 'running' : level.state === 'ready' ? 'ready' : 'idle');
+    s.textContent = level.state === 'idle' ? 'Not started' : level.state === 'running' ? `Level ${level.number} running` : `Level ${level.number} complete — press Next`;
+    $('next-lamp').className = 'lamp' + (level.state === 'ready' ? ' green' : ''); $('next-lamp').textContent = level.state === 'ready' ? 'Go' : 'Wait';
+    $('busy-lamp').className = 'busy' + (level.state === 'running' ? ' red' : '');
+    $('start-game').disabled = level.state !== 'idle';
+    $('l-current').textContent = level.number || '–'; $('l-done').textContent = level.done; $('l-early').textContent = level.early;
+    $('l-best').textContent = level.best ? fmt(level.best) : '–';
+  };
+  const progress = () => {
+    if (level.state !== 'running') { $('level-bar').style.width = level.state === 'ready' ? '100%' : '0'; return; }
+    const left = level.endsAt - performance.now();
+    $('level-bar').style.width = Math.max(0, Math.min(100, 100 - left / level.length * 100)) + '%';
+    level.raf = requestAnimationFrame(progress);
+  };
+  const runLevel = () => {
+    level.number++; level.state = 'running'; level.length = lengthMs(); level.endsAt = performance.now() + level.length;
+    clearTimeout(level.timer); level.timer = setTimeout(() => { level.state = 'ready'; level.readyAt = performance.now(); showLevel(); progress(); }, level.length);
+    showLevel(); cancelAnimationFrame(level.raf); progress();
+  };
+  $('start-game').addEventListener('click', () => { if (level.state === 'idle') runLevel(); });
+  $('next-btn').addEventListener('click', () => {
+    if (level.state === 'ready') {
+      const ms = performance.now() - level.readyAt; level.done++; total.levels++; level.best = level.best ? Math.min(level.best, ms) : ms;
+      $('l-react').textContent = fmt(ms); showTotals(); runLevel();
+    } else if (level.state === 'running') { level.early++; showLevel(); }
+  });
+  const stopGame = () => { clearTimeout(level.timer); cancelAnimationFrame(level.raf); level.state = 'idle'; level.number = 0; showLevel(); progress(); };
+  $('quit-game').addEventListener('click', stopGame);
+
+  /* 6. Drag & drop */
+  const token = $('token'), field = $('dragfield'), zone = $('dropzone');
+  const drag = { drops: 0, slides: 0, miss: 0 };
+  const home = () => { token.style.left = '26px'; token.style.top = '62px'; };
+  const inZone = () => { const a = token.getBoundingClientRect(), b = zone.getBoundingClientRect(); const x = a.left + a.width / 2, y = a.top + a.height / 2; return x > b.left && x < b.right && y > b.top && y < b.bottom; };
+  let grab = null;
+  token.addEventListener('pointerdown', e => {
+    e.preventDefault(); token.setPointerCapture(e.pointerId); token.classList.add('dragging');
+    const r = token.getBoundingClientRect(); grab = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+  });
+  token.addEventListener('pointermove', e => {
+    if (!grab) return; const f = field.getBoundingClientRect();
+    token.style.left = Math.max(0, Math.min(f.width - 64, e.clientX - f.left - grab.dx)) + 'px';
+    token.style.top = Math.max(0, Math.min(f.height - 64, e.clientY - f.top - grab.dy)) + 'px';
+    zone.classList.toggle('over', inZone());
+  });
+  const drop = () => {
+    if (!grab) return; grab = null; token.classList.remove('dragging');
+    if (inZone()) { drag.drops++; total.drops++; showTotals(); setTimeout(() => { home(); zone.classList.remove('over'); }, 350); }
+    else { drag.miss++; home(); }
+    $('d-drops').textContent = drag.drops; $('d-miss').textContent = drag.miss;
+  };
+  token.addEventListener('pointerup', drop); token.addEventListener('pointercancel', drop);
+  const slider = $('slider'), knob = $('knob'); let sliding = null;
+  const setKnob = x => { knob.style.left = x + 'px'; $('slider-fill').style.width = x + 50 + 'px'; };
+  knob.addEventListener('pointerdown', e => { e.preventDefault(); knob.setPointerCapture(e.pointerId); sliding = e.clientX - knob.getBoundingClientRect().left; });
+  knob.addEventListener('pointermove', e => {
+    if (sliding === null) return; const s = slider.getBoundingClientRect(); const max = s.width - 50;
+    setKnob(Math.max(4, Math.min(max, e.clientX - s.left - sliding)));
+  });
+  const release = () => {
+    if (sliding === null) return; sliding = null;
+    const max = slider.getBoundingClientRect().width - 50;
+    if (parseFloat(knob.style.left) >= max - 2) { drag.slides++; $('d-slides').textContent = drag.slides; }
+    setTimeout(() => setKnob(4), 250);
+  };
+  knob.addEventListener('pointerup', release); knob.addEventListener('pointercancel', release);
+
+  /* 8. Scroll counter */
+  const scroll = { up: 0, down: 0, side: 0 }; let spin = 0;
+  $('scrollpad').addEventListener('wheel', e => {
+    e.preventDefault();
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) scroll.side++; else if (e.deltaY < 0) scroll.up++; else scroll.down++;
+    spin += e.deltaY < 0 ? -30 : 30; $('wheel').style.transform = `rotate(${spin}deg)`;
+    $('s-up').textContent = scroll.up; $('s-down').textContent = scroll.down; $('s-side').textContent = scroll.side;
+  }, { passive: false });
+
+  /* 9. Colour wait range */
+  let switched = 0;
+  document.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', () => {
+    if (s.dataset.off) return; s.dataset.off = '1'; switched++; $('sw-count').textContent = switched;
+    s.style.background = '#2b2824'; s.style.borderColor = '#3b362e';
+    setTimeout(() => { delete s.dataset.off; s.style.background = s.dataset.colour; s.style.borderColor = ''; }, 3000);
+  }));
+
+  /* Resets */
+  const resets = {
+    clicks: () => { Object.assign(click, { total: 0, best: 0, buttons: [0, 0, 0], double: 0 }); times.length = 0; showClicks(); },
+    targets: () => { for (const k in hits) { hits[k] = 0; $('h-' + k).textContent = 0; } $('t-coord').textContent = 'Last click: –'; },
+    hold: () => { Object.assign(hold, { start: 0, last: 0, best: 0, count: 0 }); ['hold-now', 'hold-last', 'hold-best'].forEach(id => $(id).textContent = '0.00 s'); $('hold-count').textContent = 0; $('hold-bar').style.width = '0'; },
+    keys: () => { keyCounts.clear(); held.clear(); keyTimes.length = 0; keyTotal = 0; keyBest = 0; renderKeys(); },
+    chain: () => { Object.assign(chain, { step: 0, started: 0, rounds: 0, best: 0, wrong: 0 }); $('ch-last').textContent = '–'; showChain(); },
+    level: () => { stopGame(); Object.assign(level, { done: 0, early: 0, best: 0 }); $('l-react').textContent = '–'; showLevel(); },
+    drag: () => { Object.assign(drag, { drops: 0, slides: 0, miss: 0 }); home(); setKnob(4); ['d-drops', 'd-slides', 'd-miss'].forEach(id => $(id).textContent = 0); },
+    scroll: () => { Object.assign(scroll, { up: 0, down: 0, side: 0 }); ['s-up', 's-down', 's-side'].forEach(id => $(id).textContent = 0); },
+    shot: () => { switched = 0; $('sw-count').textContent = 0; },
+  };
+  document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => resets[b.dataset.reset]()));
+  $('reset-all').addEventListener('click', () => { Object.values(resets).forEach(r => r()); for (const k in total) total[k] = 0; showTotals(); });
+
+  showClicks(); showChain(); showLevel(); renderKeys(); setKnob(4);
+})();
+</script>
+</body>
+</html>
