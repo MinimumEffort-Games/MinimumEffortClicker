@@ -9,12 +9,7 @@ public static class MacroFiles
     public static string SavePath(string directory, MacroDefinition macro)
     {
         Directory.CreateDirectory(directory);
-        var invalid = Path.GetInvalidFileNameChars();
-        string name = new(macro.Name.Select(c => invalid.Contains(c) || char.IsControl(c) ? '_' : c).ToArray());
-        name = name.Trim().TrimEnd('.');
-        if (name.Length == 0) name = "Macro";
-        string stem = name.Split('.')[0].TrimEnd();
-        if (new[] { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9" }.Contains(stem, StringComparer.OrdinalIgnoreCase)) name = "Macro " + name;
+        string name = SafeName(macro.Name);
         string path = Path.Combine(directory, name + ".mecprofile");
         if (Available(path, macro.Id)) return path;
         path = Path.Combine(directory, name + " - " + macro.Id.ToString("N") + ".mecprofile");
@@ -22,6 +17,17 @@ public static class MacroFiles
         // Preserve unrelated or unreadable owner files even if both conventional names are taken.
         do { path = Path.Combine(directory, name + " - " + Guid.NewGuid().ToString("N") + ".mecprofile"); } while (File.Exists(path));
         return path;
+    }
+    /// <summary>A macro name made safe as a Windows file name (no reserved device names or invalid characters).</summary>
+    public static string SafeName(string macroName)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        string name = new(macroName.Select(c => invalid.Contains(c) || char.IsControl(c) ? '_' : c).ToArray());
+        name = name.Trim().TrimEnd('.');
+        if (name.Length == 0) name = "Macro";
+        string stem = name.Split('.')[0].TrimEnd();
+        if (new[] { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9" }.Contains(stem, StringComparer.OrdinalIgnoreCase)) name = "Macro " + name;
+        return name;
     }
     private static bool Available(string path, Guid macroId)
     {

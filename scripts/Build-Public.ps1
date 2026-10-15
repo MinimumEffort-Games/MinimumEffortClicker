@@ -1,8 +1,13 @@
 # Builds the portable ZIP. Default destination: artifacts/package/MinimumEffortClicker-<version>-win-x64 (git-ignored).
-param([string]$Destination, [switch]$Zip)
+# -Steam builds the Steam package instead (scripts/Build-Steam.ps1): no portable.mode, so data lives in %LocalAppData%
+# where Steam Auto-Cloud syncs it; steam.mode switches the Workshop on; steam_api64.dll comes from the Steamworks SDK
+# folder given in -SteamworksSdk, because Valve's terms do not allow it in this public repository.
+param([string]$Destination, [switch]$Zip, [switch]$Steam, [string]$SteamworksSdk)
 . "$PSScriptRoot/Common.ps1"
 $appVersion = [string]$buildProperties.Project.PropertyGroup.Version
-if (!$Destination) { $Destination = Join-Path $ProjectRoot "artifacts/package/MinimumEffortClicker-$appVersion-win-x64" }
+if (!$Destination) { $Destination = Join-Path $ProjectRoot "artifacts/package/MinimumEffortClicker-$appVersion-$(if ($Steam) { 'steam' } else { 'win-x64' })" }
+$steamApi = if ($Steam -and $SteamworksSdk) { Join-Path $SteamworksSdk 'redistributable_bin/win64/steam_api64.dll' }
+if ($Steam -and !($steamApi -and (Test-Path -LiteralPath $steamApi))) { throw '-Steam needs -SteamworksSdk pointing at the unpacked Steamworks SDK 1.60 (the folder that holds redistributable_bin).' }
 $packagePath = [IO.Path]::GetFullPath($Destination)
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $packagePath) | Out-Null
 $schemaMatch = Select-String -LiteralPath (Join-Path $ProjectRoot 'src/MinimumEffortClicker.Core/ProfileDefinition.cs') -Pattern 'CurrentVersion = (\d+)'
@@ -17,11 +22,16 @@ if (@(& git -C $ProjectRoot status --porcelain).Count) { throw 'Commit source ch
 New-Item -ItemType Directory -Path $packagePath | Out-Null
 Push-Location $ProjectRoot
 try {
-    foreach ($project in @('MinimumEffortClicker.App','MinimumEffortClicker.TestTarget')) {
+    foreach ($project in @('MinimumEffortClicker.App') + @(if (!$Steam) { 'MinimumEffortClicker.TestTarget' })) {
         Invoke-Dotnet -Arguments @('publish',"src/$project/$project.csproj",'-c','Release','--self-contained','true',
             '-p:PublishTrimmed=false','-p:RestoreLockedMode=true','-m:1','-nr:false','-p:UseSharedCompilation=false','-o',$packagePath)
     }
-    Set-Content -LiteralPath (Join-Path $packagePath 'portable.mode') -Value 'Store local user data in Data beside these executables.' -Encoding utf8
+    if ($Steam) {
+        Set-Content -LiteralPath (Join-Path $packagePath 'steam.mode') -Value 'Steam build: Steam Workshop on; data in %LocalAppData%\MinimumEffortClicker for Steam Cloud.' -Encoding utf8
+        Copy-Item -LiteralPath $steamApi -Destination $packagePath
+    } else {
+        Set-Content -LiteralPath (Join-Path $packagePath 'portable.mode') -Value 'Store local user data in Data beside these executables.' -Encoding utf8
+    }
     $licenseDirectory = Join-Path $packagePath 'licenses'
     New-Item -ItemType Directory -Path $licenseDirectory | Out-Null
     foreach ($item in @('dotnet','nuget','nuget-inventory.json')) {
@@ -35,16 +45,16 @@ try {
     New-Item -ItemType Directory -Path $helpDirectory | Out-Null
     Copy-Item -LiteralPath (Join-Path $ProjectRoot 'docs/RELEASE_STATUS.md') -Destination $helpDirectory
     $forbidden = @(Get-ChildItem -LiteralPath $packagePath -Recurse | Where-Object {
-        $_.Name -in @('Data','.git') -or $_.Extension -in @('.pfx','.p12','.pem','.key','.ttf') -or $_.FullName -match '[\\/]Pixel[\\/]'
+        $_.Name -in @('Data','.git') -or $_.Name -eq 'steam_appid.txt' -or (!$Steam -and $_.Name -in @('steam.mode','steam_api64.dll')) -or $_.Extension -in @('.pfx','.p12','.pem','.key','.ttf') -or $_.FullName -match '[\\/]Pixel[\\/]'
     })
     if ($forbidden.Count) { throw 'Unexpected private data, key or historical font/artwork in package.' }
     $version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $packagePath 'MinimumEffortClicker.App.dll')).ProductVersion
     $runtimeConfig = Get-Content -LiteralPath (Join-Path $packagePath 'MinimumEffortClicker.App.runtimeconfig.json') -Raw | ConvertFrom-Json
     $manifest = [ordered]@{
         buildUtc = [DateTimeOffset]::UtcNow; version = $version; schema = $profileSchema
-        kind = 'Unsigned public preview'; sourceCommit = $sourceCommit
+        kind = $(if ($Steam) { 'Steam build' } else { 'Unsigned public preview' }); sourceCommit = $sourceCommit
         runtime = @($runtimeConfig.runtimeOptions.includedFrameworks | Select-Object name,version)
-        portable = $true; signing = 'Unsigned; no publisher Authenticode certificate'
+        portable = !$Steam; steam = [bool]$Steam; signing = 'Unsigned; no publisher Authenticode certificate'
         files = @(Get-ChildItem -LiteralPath $packagePath -File -Recurse | ForEach-Object {
             [ordered]@{path = [IO.Path]::GetRelativePath($packagePath,$_.FullName); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}
         })

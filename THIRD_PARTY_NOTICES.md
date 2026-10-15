@@ -12,10 +12,19 @@ exact runtime version in `build-manifest.json`.
 | .NET SDK | 10.0.401 | MIT plus bundled third-party notices | Build tooling only, not shipped |
 | Microsoft.Windows.SDK.NET.Ref | 10.0.22000.87 | Microsoft Windows SDK licence | Windows API projections at build time |
 | Microsoft.NET.Test.Sdk, MSTest | 18.10.1, 4.5.1 | MIT | Tests only, not shipped |
+| Steamworks.NET | 2024.8.0 | MIT | Steam Workshop in the Steam build; unused in the portable ZIP (see "Steam build") |
 
 The Windows app has no other NuGet dependencies. It uses only built-in Windows and .NET facilities for its
 features: Windows Forms `NotifyIcon` for the tray icon, GDI and WPF imaging for screenshots and Desktop-mode
 colour waits, Windows Graphics Capture for window colour waits, and `SendInput` for playback.
+
+## Steam build
+
+The Steam package (`scripts/Build-Steam.ps1`) adds Valve's `steam_api64.dll` from the Steamworks SDK 1.60 and a
+`steam.mode` marker. The DLL is distributed under the Steamworks SDK Access Agreement with the Steam build only; it is
+not in this repository or in the portable ZIP. Without `steam.mode` and that DLL the portable ZIP never loads Steam code,
+although the managed `Steamworks.NET.dll` and `MinimumEffortClicker.Steam.dll` are present in it. The Steam build goes
+online only through the Steam client: when the user shares a macro, and when Steam downloads macros the user subscribed to.
 
 ## Linux app (preview)
 
@@ -34,12 +43,13 @@ project and `scripts/linux/common.sh` (`AVALONIA_TELEMETRY_OPTOUT=1`).
 
 ## Inventory and telemetry
 
-`licenses/nuget-inventory.json` lists all 39 resolved NuGet packages of both apps and their tests, with licence
+`licenses/nuget-inventory.json` lists all 40 resolved NuGet packages of both apps and their tests, with licence
 expression, repository commit and package hash; copied notice files sit under `licenses/nuget/`. All declare MIT
 except the ANGLE package above. The Application Insights and Testing Extensions Telemetry packages are transitive
 test-tooling dependencies only; they are not in either app's runtime graph, and the build scripts set
-`DOTNET_CLI_TELEMETRY_OPTOUT=1` and `TESTINGPLATFORM_TELEMETRY_OPTOUT=1`. The applications contain no telemetry or
-network client. No installer, bundled font, paid library or online service is included.
+`DOTNET_CLI_TELEMETRY_OPTOUT=1` and `TESTINGPLATFORM_TELEMETRY_OPTOUT=1`. The applications contain no telemetry. The portable ZIP and the
+Linux package contain no network client; the Steam build talks to the Steam client only, as described under "Steam
+build". No installer, bundled font, paid library or online service is included.
 
 ## Brand assets
 

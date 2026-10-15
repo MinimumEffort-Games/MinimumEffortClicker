@@ -39,6 +39,12 @@ public partial class MainWindow
             LoadActionMacro(profile, macro);
             loadedMacroFile = dialog.FileName; loadedFileProfile = profile;
             MacroSaveStatus.Text = $"Loaded ‘{macro.Name}’." + (HelperProfiles.DroppedWarning(dropped) is { } warning ? " " + warning : "");
+            if (WorkshopMacros.IsWorkshopCopy(MacroDirectory, dialog.FileName))
+            {
+                // Steam replaces this copy when its author updates it, so Save Macro makes the user's own file instead.
+                loadedMacroFile = null; loadedFileProfile = null; loadedQuickMacro = null;
+                AppDialog.Show(this, $"‘{macro.Name}’ comes from the Steam Workshop and was made by someone else.\n\nRead every action in the list before you press Start. Save Macro keeps your own copy in the Macros folder.", "Workshop macro");
+            }
         }
         catch (Exception ex) { MacroSaveStatus.Text = "Could not load: " + ex.Message; }
         finally { operations.End(Operation.MacroFile); loadingQuick = false; RefreshStatus(); }
