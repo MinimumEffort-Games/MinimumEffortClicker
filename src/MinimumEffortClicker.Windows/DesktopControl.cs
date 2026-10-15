@@ -30,6 +30,17 @@ public sealed class DesktopControl : IDisposable
     private volatile bool disposed;
     public bool Available { get; private set; }
     public string? Error { get; private set; }
+    // A Stop All key outside F1–F11 is read by the input hook, which Windows does not call while an administrator
+    // window is in front or after it removed the hook. This registered hotkey still reaches the clicker then.
+    private const int BackupStopId = 3, BackupStopVirtualKey = 0x78;
+    private const uint BackupStopModifiers = 0x4000 | 0x0002 | 0x0001; // MOD_NOREPEAT | MOD_CONTROL | MOD_ALT
+    public const string BackupStopLabel = "Ctrl+Alt+F9";
+    /// <summary>True while Ctrl+Alt+F9 is registered as the backup Stop All (only when the Stop All key needs the hook).</summary>
+    public bool BackupStopActive { get; private set; }
+    private const nuint HookWatchTimer = 1;
+    private uint lastKeyboardHook, lastMouseHook, lastHookReinstall;
+    /// <summary>How often the input hooks were found lost and installed again in this session.</summary>
+    public int HookReinstalls { get; private set; }
     public bool HoldTrigger { get; set; }
     private int? recordingKey;
     private readonly TriggerLatch recordingTrigger = new();
@@ -54,7 +65,8 @@ public sealed class DesktopControl : IDisposable
     public Task<bool> SuspendBindingsAsync(bool suspended) => QueueCommand(() =>
     {
         bindingsSuspended = suspended;
-        foreach (int id in macroTriggers.Keys.Append(1).Append(2).Append(40).Append(41)) ProbeNative.UnregisterHotKey(0, id);
+        foreach (int id in macroTriggers.Keys.Append(1).Append(2).Append(BackupStopId).Append(40).Append(41)) ProbeNative.UnregisterHotKey(0, id);
+        BackupStopActive = false;
         trigger.Reset((ProbeNative.GetAsyncKeyState(toggleKey) & 0x8000) != 0); recordingTrigger.Reset();
         screenshotTrigger.Reset(screenshotKey is { } key && (ProbeNative.GetAsyncKeyState(key) & 0x8000) != 0);
         foreach (var item in macroTriggers.Values) item.Latch.Reset((ProbeNative.GetAsyncKeyState(item.Binding.Key) & 0x8000) != 0);
@@ -63,6 +75,7 @@ public sealed class DesktopControl : IDisposable
         foreach (var pair in macroTriggers) success &= RegisterShortcut(pair.Key, pair.Value.Binding.Key);
         if (recordingKey is { } record) success &= RegisterShortcut(40, record);
         if (screenshotKey is { } screenshot) success &= RegisterShortcut(41, screenshot);
+        RegisterBackupStop();
         Available = success && keyboardHook != 0 && mouseHook != 0;
         if (!Available) { Error = "A shortcut could not be restored. Apply your hotkeys again in Settings."; StopRequested?.Invoke(Error); }
         return Available;
@@ -159,11 +172,51 @@ public sealed class DesktopControl : IDisposable
         trigger.Reset((ProbeNative.GetAsyncKeyState(toggleKey) & 0x8000) != 0);
         bool stopOk = RegisterShortcut(1, stop);
         bool toggleOk = stopOk && RegisterShortcut(2, toggle);
+        RegisterBackupStop();
         Available = stopOk && toggleOk && keyboardHook != 0 && mouseHook != 0;
         Error = Available ? null : "A global hotkey or input safety hook is unavailable. Choose different keys and apply.";
         if (!Available) { ProbeNative.UnregisterHotKey(0, 1); ProbeNative.UnregisterHotKey(0, 2); }
         RefreshRegisteredKeys();
         return Available;
+    }
+
+    /// <summary>Another app holding Ctrl+Alt+F9 only costs the backup, never the shortcuts the user chose.</summary>
+    private void RegisterBackupStop()
+    {
+        ProbeNative.UnregisterHotKey(0, BackupStopId);
+        BackupStopActive = ShortcutKeys.UsesHook(stopKey) && ProbeNative.RegisterHotKey(0, BackupStopId, BackupStopModifiers, BackupStopVirtualKey);
+    }
+
+    /// <summary>Runs every second on the control thread: input the hooks never saw means Windows removed them.</summary>
+    private void WatchHooks()
+    {
+        var info = new DesktopNative.LastInputInfo { Size = (uint)Marshal.SizeOf<DesktopNative.LastInputInfo>() };
+        if (keyboardHook == 0 || mouseHook == 0 || !DesktopNative.GetLastInputInfo(ref info)) return;
+        uint now = unchecked((uint)Environment.TickCount);
+        if (!HookWatch.Missed(now, info.Time, lastKeyboardHook, lastMouseHook, lastHookReinstall)) return;
+        lastHookReinstall = now;
+        var module = DesktopNative.GetModuleHandle(null);
+        nint keyboard = DesktopNative.SetWindowsHookExW(13, keyboardCallback, module, 0), mouse = DesktopNative.SetWindowsHookExW(14, mouseCallback, module, 0);
+        if (keyboard == 0 || mouse == 0)
+        {
+            if (keyboard != 0) DesktopNative.UnhookWindowsHookEx(keyboard);
+            if (mouse != 0) DesktopNative.UnhookWindowsHookEx(mouse);
+            FailControl(new Win32Exception(Marshal.GetLastWin32Error(), "The input hooks could not be installed again."));
+            return;
+        }
+        DesktopNative.UnhookWindowsHookEx(keyboardHook); DesktopNative.UnhookWindowsHookEx(mouseHook);
+        keyboardHook = keyboard; mouseHook = mouse;
+        lastKeyboardHook = lastMouseHook = now;
+        HookReinstalls++;
+        // Releases that happened while no hook listened were never seen; trust the key state Windows reports now.
+        bool swapped = DesktopNative.GetSystemMetrics(23) != 0; // SM_SWAPBUTTON: the hook reports the buttons as used, the key state as pressed
+        InputControl[] held; lock (physicalGate) held = [.. physicalDown];
+        foreach (var input in held)
+        {
+            int vk = DesktopNative.VirtualKey(input);
+            if (swapped && vk is 1 or 2) vk = 3 - vk;
+            if (vk != 0 && (ProbeNative.GetAsyncKeyState(vk) & 0x8000) == 0) Observe(input, false);
+        }
     }
 
     public Task<bool> ConfigureBindingsAsync(IReadOnlyList<MacroBinding> bindings)
@@ -251,19 +304,22 @@ public sealed class DesktopControl : IDisposable
                 hooks.Add(hook);
             }
             Register(toggleKey, stopKey);
+            lastKeyboardHook = lastMouseHook = unchecked((uint)Environment.TickCount);
+            DesktopNative.SetTimer(0, HookWatchTimer, 1000, 0);
             ready.Set();
             if (disposed) return;
             int status;
             while ((status = ProbeNative.GetMessage(out var message, 0, 0, 0)) > 0)
             {
                 if (message.Id == 0x8001) while (commands.TryDequeue(out var command)) command();
+                if (message.Id == 0x113) WatchHooks(); // WM_TIMER; a thread timer has no window, so it arrives here
                 if (message.Id != 0x312 || bindingsSuspended) continue;
-                if (message.WParam == 1)
+                if (message.WParam is 1 or BackupStopId)
                 {
                     trigger.CancelPending();
                     screenshotTrigger.CancelPending();
                     foreach (var macro in macroTriggers.Values) macro.Latch.CancelPending();
-                    StopRequested?.Invoke("Stopped with global hotkey.");
+                    StopRequested?.Invoke(message.WParam == 1 ? "Stopped with global hotkey." : $"Stopped with {BackupStopLabel}.");
                 }
                 if (message.WParam == 40 && Available && recordingKey is not null) RecordingRequested?.Invoke();
                 if (message.WParam == 41 && Available && screenshotKey is not null) ScreenshotRequested?.Invoke();
@@ -284,7 +340,8 @@ public sealed class DesktopControl : IDisposable
             ClearMacroBindings();
             ProbeNative.UnregisterHotKey(0, 40);
             ProbeNative.UnregisterHotKey(0, 41);
-            ProbeNative.UnregisterHotKey(0, 1); ProbeNative.UnregisterHotKey(0, 2);
+            ProbeNative.UnregisterHotKey(0, 1); ProbeNative.UnregisterHotKey(0, 2); ProbeNative.UnregisterHotKey(0, BackupStopId);
+            DesktopNative.KillTimer(0, HookWatchTimer);
             foreach (var hook in hooks) DesktopNative.UnhookWinEvent(hook);
             if (destroyHook != 0) DesktopNative.UnhookWinEvent(destroyHook);
             if (keyboardHook != 0) DesktopNative.UnhookWindowsHookEx(keyboardHook);
@@ -305,6 +362,7 @@ public sealed class DesktopControl : IDisposable
     }
     private nint KeyboardCore(int code, nuint message, nint data)
     {
+        lastKeyboardHook = unchecked((uint)Environment.TickCount);
         if (code >= 0)
         {
             var evt = Marshal.PtrToStructure<DesktopNative.KeyboardEvent>(data);
@@ -362,6 +420,7 @@ public sealed class DesktopControl : IDisposable
     }
     private nint MouseCore(int code, nuint message, nint data)
     {
+        lastMouseHook = unchecked((uint)Environment.TickCount);
         if (code >= 0)
         {
             var evt = Marshal.PtrToStructure<DesktopNative.MouseEvent>(data);

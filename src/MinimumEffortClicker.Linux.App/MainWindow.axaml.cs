@@ -86,6 +86,8 @@ public partial class MainWindow : Window
             if (startupLoaded) return;
             startupLoaded = true;
             Pages.IsEnabled = false;
+            // The top bar icon exists from the start, so closing while settings load asks to wait instead of quitting.
+            InitializeTray();
             RefreshLinuxSetup();
             bool settingsLoaded = false;
             try
@@ -143,14 +145,14 @@ public partial class MainWindow : Window
             await MakeSavedMacrosAvailable();
             await ConfigureScreenshotHotkey();
             settingsLoaded = true;
-            InitializeTray();
             }
             catch (Exception ex) { if (!allowClose) ReasonLabel.Text = "Startup settings could not be loaded: " + ex.Message; }
             finally
             {
                 if (!allowClose)
                 {
-                    initialized = true; Pages.IsEnabled = true;
+                    // If loading failed the defaults stand, and closing must still work.
+                    initialized = true; Pages.IsEnabled = true; traySettingsLoaded = true;
                     if (StartupMeasurement.Enabled)
                     {
                         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);

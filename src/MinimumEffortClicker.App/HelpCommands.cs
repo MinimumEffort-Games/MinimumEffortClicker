@@ -66,7 +66,7 @@ public partial class MainWindow
             "- Emergency stop: by default the left and right mouse buttons together stop the Action List. Choose Stop on my input to stop everything when you press a key or button the clicker is using, or move the mouse while it does. F9 always stops everything.",
             "- Overlay: a small status box beside the target shows what is running and which keys stop it. Toggles show Ready, or On in blue. Set its opacity and size here, or hide it.",
             "- The overlay's square brings the clicker window back to the front. Its X stops anything running and quits the clicker. The rest of the overlay lets clicks through to the app beneath it.",
-            "- Keys: F8 starts and stops Actions, F9 stops everything, F10 records. Each needs its own key.",
+            "- Keys: F8 starts and stops Actions, F9 stops everything, F10 records. Each needs its own key. If Stop All is not one of F1–F11, Ctrl+Alt+F9 also stops everything, even while an administrator window is in front.",
         ]),
         ("If something is stuck",
         [

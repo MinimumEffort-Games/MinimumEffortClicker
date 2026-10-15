@@ -29,6 +29,11 @@
   elsewhere in the clicker stops editing; Duplicate selects the copy.
 - Looped recordings keep the pause after the last action, so a recorded drag drags again in every loop.
 - The Toggles page says toggles only work with a click target selected.
+- Stopping a paused run now logs why it stopped instead of "Resumed explicitly".
+- Windows: when Windows drops the clicker's input hook, the clicker notices within a second and installs it again.
+  A Stop All key outside F1–F11 gets Ctrl+Alt+F9 as a backup that also works while an administrator window is in
+  front.
+- Closing the window in the first second no longer quits the app when close-to-tray is on.
 - A Help button in the header explains each page.
 - Safety: an unexpected error now stops playback and releases every held key before it is reported, the Stop All
   hooks can no longer be lost while input is being sent, and the app no longer mistakes its own held key for the
