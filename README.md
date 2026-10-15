@@ -12,15 +12,14 @@ not a promise of universal compatibility or a warning-free Windows download.
 
 ## What it looks like
 
-| Actions | Toggles |
-| --- | --- |
-| ![Actions page](docs/screenshots/actions.png) | ![Toggles page](docs/screenshots/toggles.png) |
+Dark and light mode, switched in Settings.
 
-| Screenshot | Settings |
-| --- | --- |
-| ![Screenshot page](docs/screenshots/screenshot.png) | ![Settings page](docs/screenshots/settings.png) |
-
-Light mode is in Settings: [Actions](docs/screenshots/actions-light.png), [Settings](docs/screenshots/settings-light.png).
+| | Dark | Light |
+| --- | --- | --- |
+| **Actions** | ![Actions page, dark](docs/screenshots/actions.png) | ![Actions page, light](docs/screenshots/actions-light.png) |
+| **Toggles** | ![Toggles page, dark](docs/screenshots/toggles.png) | ![Toggles page, light](docs/screenshots/toggles-light.png) |
+| **Screenshot** | ![Screenshot page, dark](docs/screenshots/screenshot.png) | ![Screenshot page, light](docs/screenshots/screenshot-light.png) |
+| **Settings** | ![Settings page, dark](docs/screenshots/settings.png) | ![Settings page, light](docs/screenshots/settings-light.png) |
 
 ## Download and run
 
