@@ -27,6 +27,9 @@
   X, with the keys you bound. The run line is short ("Running · 10 Actions · Looping") and a toggle that is on shows
   in blue.
 - A "Minimize on Start" checkbox under Loop: untick it to keep the clicker up when Start runs on the Desktop target.
+- With "Only Stop All (F9)", your own clicks never end a run: if you hold the button the clicker is about to press, it
+  waits until you let go; if you press a button the clicker is holding, your release finishes the click. Before, either
+  overlap ended the run ("physical input takes priority" or "cleanup pending"). "Stop on my input" is unchanged.
 - Add Action is blue; with a row selected it turns green "Save Changes". Clicking an empty spot in the list or
   elsewhere in the clicker stops editing; Duplicate selects the copy.
 - Looped recordings keep the pause after the last action, so a recorded drag drags again in every loop.
