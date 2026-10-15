@@ -27,6 +27,10 @@
   X, with the keys you bound. The run line is short ("Running · 10 Actions · Looping") and a toggle that is on shows
   in blue.
 - A "Minimize on Start" checkbox under Loop: untick it to keep the clicker up when Start runs on the Desktop target.
+- Windows: the clicker comes back to the front by itself after everything in the Action List that needed the target:
+  the list ending or being stopped, Ping click location, Test Selected Action, Set location and recording, with a
+  window target as well as Desktop. Toggles never change focus. A list that ends while a toggle keeps running leaves
+  the clicker out of the way.
 - With "Only Stop All (F9)", your own clicks never end a run: if you hold the button the clicker is about to press, it
   waits until you let go; if you press a button the clicker is holding, your release finishes the click. Before, either
   overlap ended the run ("physical input takes priority" or "cleanup pending"). "Stop on my input" is unchanged.

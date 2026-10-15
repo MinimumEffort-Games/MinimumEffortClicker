@@ -46,7 +46,7 @@ public partial class MainWindow
         var step = row.Step with { Enabled = true };
         if (WorkshopKeysBlocked(new([row.Step]))) return;
         operations.Begin(Operation.Quick);
-        WindowState? minimizedFrom = null;
+        StepAside? away = null;
         bool? passed = null; string detail;
         using var cancellation = new CancellationTokenSource(); quickCancellation = cancellation;
         void Cancel(string reason) { _ = cancellation.CancelAsync(); }
@@ -58,12 +58,13 @@ public partial class MainWindow
                 var frame = runtime.GetTargetFrame();
                 SequenceCompiler.Compile(new([step]), quickPoints).ValidateDesktopMode(frame.Width, frame.Height, frame.Dpi);
             }
-            if (WindowState != WindowState.Minimized) { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
+            // A test always gets the clicker out of the picture, also with a window target (a colour check reads the screen).
+            away = StepAsideForTarget(minimize: true);
             if (!step.LeaveCursorFree && !runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             if (step.Condition is { } condition && step.Kind == StepKind.Condition)
             {
                 // A monitor area is read from the screen: let the minimise animation finish so the clicker is not in it.
-                if (minimizedFrom is not null) await Task.Delay(400, cancellation.Token);
+                if (away.MinimizedFrom is not null) await Task.Delay(400, cancellation.Token);
                 (passed, detail) = await CheckConditionOnce(condition, cancellation.Token);
             }
             else
@@ -92,7 +93,7 @@ public partial class MainWindow
         finally
         {
             runtime.Control.StopRequested -= Cancel; quickCancellation = null; operations.End(Operation.Quick);
-            RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus();
+            ComeBack(away); RefreshStatus();
         }
         rowTests[step.Id] = (row.Step, passed, detail);
         if (passed == false) AppLog.Note($"Test of action {row.Index + 1} ({row.Step.Name})", detail);
@@ -181,14 +182,14 @@ public partial class MainWindow
         bool minimize = MinimizeOnRecordBox.IsChecked == true;
         bool movement = RecordMovementBox.IsChecked == true;
         operations.Begin(Operation.Quick);
-        WindowState? minimizedFrom = null;
+        StepAside? away = null;
         using var cancellation = new CancellationTokenSource(); quickCancellation = cancellation;
         void Cancel(string reason) { _ = cancellation.CancelAsync(); }
         runtime.Control.StopRequested += Cancel; RefreshStatus();
         try
         {
-            if (minimize && (runtime.IsDesktopMode || !fromHotkey) && WindowState != WindowState.Minimized)
-            { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
+            // User (2026-10-15): the clicker comes back when the recording ends, also after F10 with a window target.
+            away = StepAsideForTarget(minimize && (runtime.IsDesktopMode || !fromHotkey));
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             // Recording starts the moment the key or button is pressed. The target was just brought forward, so give the
             // foreground switch a few short retries instead of a fixed countdown.
@@ -230,10 +231,10 @@ public partial class MainWindow
             ReasonLabel.Text = reason;
         }
         catch (OperationCanceledException) { QuickRecordStatus.Text = "Recording cancelled."; }
-        catch (Exception ex) { QuickRecordStatus.Text = "Recording ended: " + ex.Message; AppLog.Failure("Recording", ex); Activate(); }
+        catch (Exception ex) { QuickRecordStatus.Text = "Recording ended: " + ex.Message; AppLog.Failure("Recording", ex); }
         finally
         {
-            runtime.Control.StopRequested -= Cancel; quickRecorder = null; quickCancellation = null; operations.End(Operation.Quick); RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus();
+            runtime.Control.StopRequested -= Cancel; quickRecorder = null; quickCancellation = null; operations.End(Operation.Quick); ComeBack(away); RefreshStatus();
             // A cancelled or empty recording leaves preview rows behind; put the real list back.
             if (QuickActionList.ItemsSource is QuickRow[] rows && rows.Length != quickHistory.Current.Steps.Count) RefreshQuickList();
         }

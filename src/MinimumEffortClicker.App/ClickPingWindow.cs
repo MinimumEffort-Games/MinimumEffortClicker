@@ -16,6 +16,8 @@ internal sealed class ClickPingWindow : Window
 {
     private const int SizePixels = 120;
     public static readonly Color Landed = Color.FromRgb(0x3D, 0xDC, 0x84), Location = Color.FromRgb(0xE5, 0x39, 0x35);
+    /// <summary>How long one grow-and-fade of the ring takes; Ping click location waits for its pulses before the clicker comes back.</summary>
+    public static readonly TimeSpan Pulse = TimeSpan.FromSeconds(1);
 
     public ClickPingWindow(int screenX, int screenY, Color colour, int times = 1)
     {
@@ -41,7 +43,7 @@ internal sealed class ClickPingWindow : Window
         Loaded += (_, _) =>
         {
             // Grows with an ease-out and fades with an ease-in over one second, once per time asked.
-            var duration = TimeSpan.FromSeconds(1);
+            var duration = Pulse;
             var repeat = new RepeatBehavior(Math.Max(1, times));
             var grow = new DoubleAnimation(0.15, 1, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }, RepeatBehavior = repeat };
             var fade = new DoubleAnimation(1, 0, duration) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }, RepeatBehavior = repeat };
