@@ -194,7 +194,7 @@ public partial class MainWindow
             DesktopRecorder? started = null;
             for (int attempt = 0; started is null; attempt++)
             {
-                try { started = new DesktopRecorder(runtime, new(Keyboard: true, MouseButtons: true, PointerPath: true)); }
+                try { started = new DesktopRecorder(runtime, new(Keyboard: true, MouseButtons: true, Scroll: true, PointerPath: true)); }
                 catch (InvalidOperationException) when (attempt < 10) { await Task.Delay(50, cancellation.Token); }
             }
             using var recorder = started;

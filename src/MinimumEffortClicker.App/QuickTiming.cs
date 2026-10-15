@@ -14,6 +14,10 @@ public partial class MainWindow
         AfterLabel.Text = "Pause after this action (ms)";
         MaxAfterLabel.Text = ModeBox.SelectedIndex == 2 ? "Maximum pause duration (ms)" : "Maximum pause after (ms)";
     }
+    /// <summary>The Action List line for a scroll action.</summary>
+    private static string ScrollSummary(QuickScroll scroll) => $"{scroll.Notches} notch{(scroll.Notches == 1 ? "" : "es")}"
+        + (scroll.Notches > 1 ? $" · {Ms(scroll.Gap)} ms apart" : "") + (scroll.Position is { } p ? $" · at {p.X}, {p.Y}" : " · at cursor")
+        + (scroll.After > TimeSpan.Zero ? $" · {Ms(scroll.After)} ms after" : "");
     private static string TimingSummary(SequenceStep step)
     {
         if (step.Kind == StepKind.Screenshot) return $"Save PNG · {Ms(step.Duration)} ms pause after saving";

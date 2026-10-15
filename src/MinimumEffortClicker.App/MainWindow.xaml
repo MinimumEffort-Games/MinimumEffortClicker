@@ -83,12 +83,19 @@
                       <TextBlock Text="Create an action" Style="{StaticResource Heading}"/>
                       <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2"><StackPanel>
                         <TextBlock Text="Action" FontWeight="SemiBold"/>
-                        <ComboBox x:Name="ModeBox" SelectedIndex="-1" SelectionChanged="ActionType_Changed" AutomationProperties.Name="Action"><ComboBoxItem Content="Click"/><ComboBoxItem Content="Key Press"/><ComboBoxItem Content="Pause"/><ComboBoxItem Content="Wait Until"/><ComboBoxItem Content="Take fullscreen screenshot"/></ComboBox>
+                        <ComboBox x:Name="ModeBox" SelectedIndex="-1" SelectionChanged="ActionType_Changed" AutomationProperties.Name="Action"><ComboBoxItem Content="Click"/><ComboBoxItem Content="Key Press"/><ComboBoxItem Content="Pause"/><ComboBoxItem Content="Wait Until"/><ComboBoxItem Content="Take fullscreen screenshot"/><ComboBoxItem Content="Scroll"/></ComboBox>
                         <TextBlock x:Name="ActionHint" Text="Choose an action to see its settings." Style="{StaticResource Secondary}" Margin="0,4,0,8"/>
                         <StackPanel x:Name="ActionFields" Visibility="Collapsed">
                           <StackPanel x:Name="MouseFields" Visibility="Collapsed">
                             <TextBlock Text="Mouse button"/><ComboBox x:Name="ButtonBox" SelectedIndex="0" AutomationProperties.Name="Mouse button"><ComboBoxItem Content="Left"/><ComboBoxItem Content="Middle"/><ComboBoxItem Content="Right"/><ComboBoxItem Content="Side 1"/><ComboBoxItem Content="Side 2"/></ComboBox>
                             <TextBlock Text="Click type"/><ComboBox x:Name="ClickKindBox" SelectedIndex="0" SelectionChanged="ClickKind_Changed" AutomationProperties.Name="Click type"><ComboBoxItem Content="Single click"/><ComboBoxItem Content="Double click"/><ComboBoxItem Content="Hold"/></ComboBox>
+                          </StackPanel>
+                          <StackPanel x:Name="ScrollFields" Visibility="Collapsed">
+                            <TextBlock Text="Direction"/><ComboBox x:Name="ScrollDirectionBox" SelectedIndex="1" AutomationProperties.Name="Scroll direction"><ComboBoxItem Content="Up"/><ComboBoxItem Content="Down"/><ComboBoxItem Content="Left"/><ComboBoxItem Content="Right"/></ComboBox>
+                            <TextBlock Text="Notches (1–100)"/><TextBox x:Name="ScrollNotchesBox" Text="3" AutomationProperties.Name="Scroll notches" ToolTip="One notch is one click of the mouse wheel."/>
+                            <TextBlock Text="Time between notches (ms)"/><TextBox x:Name="ScrollGapBox" Text="30" AutomationProperties.Name="Time between scroll notches"/>
+                          </StackPanel>
+                          <StackPanel x:Name="LocationFields" Visibility="Collapsed">
                             <WrapPanel>
                               <Button x:Name="CursorLocationButton" Width="{Binding ActualWidth, ElementName=PingLocationButton}" Margin="0,0,6,0" Content="Cursor location" Click="CursorLocation_Click" Style="{StaticResource GreenButton}"/>
                               <Button x:Name="SetLocationButton" Content="Set Location…" Click="PickQuickPoint_Click"/>
@@ -96,7 +103,8 @@
                               <TextBlock Text="Y" VerticalAlignment="Center" Margin="4,0,4,0"/><TextBox x:Name="QuickYBox" Width="48" VerticalContentAlignment="Center" AutomationProperties.Name="Click Y coordinate"/>
                             </WrapPanel>
                             <Button x:Name="PingLocationButton" Margin="0,6,0,0" Content="Ping click location" Click="PingLocation_Click" HorizontalAlignment="Left"/>
-<StackPanel x:Name="MotionFields" Visibility="Collapsed"><CheckBox x:Name="VaryPositionBox" Content="Randomize click location offset"/><TextBlock Text="Maximum offset (pixels, 0–25)"/><TextBox x:Name="PositionOffsetBox" Text="3" AutomationProperties.Name="Click position variation"/></StackPanel>                          </StackPanel>
+                          </StackPanel>
+<StackPanel x:Name="MotionFields" Visibility="Collapsed"><CheckBox x:Name="VaryPositionBox" Content="Randomize click location offset"/><TextBlock Text="Maximum offset (pixels, 0–25)"/><TextBox x:Name="PositionOffsetBox" Text="3" AutomationProperties.Name="Click position variation"/></StackPanel>
                           <StackPanel x:Name="KeyFields" Visibility="Collapsed">
                             <TextBlock Text="Key"/><ComboBox x:Name="KeyBox" AutomationProperties.Name="Key"/>
                             <WrapPanel><CheckBox x:Name="CtrlBox" Margin="0,8,12,8" Content="Ctrl"/><CheckBox x:Name="ShiftBox" Margin="0,8,12,8" Content="Shift"/><CheckBox x:Name="AltBox" Margin="0,8,12,8" Content="Alt"/></WrapPanel>
