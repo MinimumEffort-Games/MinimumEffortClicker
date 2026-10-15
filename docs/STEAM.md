@@ -1,0 +1,74 @@
+# Steam build
+
+The Steam build is the Windows app with two extra files beside the exe: `steam.mode`, which switches the Workshop on,
+and Valve's `steam_api64.dll`. The portable ZIP from GitHub has neither, never loads Steam code and stays offline.
+
+The Steam build goes online only through the Steam client: when the user shares a macro, and when Steam downloads
+macros the user subscribed to (User, 2026-10-15).
+
+## What it adds
+
+- **Steam Cloud** with Steam Auto-Cloud. There is no cloud code in the app. The Steam build has no `portable.mode`, so
+  its data lives in `%LocalAppData%\MinimumEffortClicker`, and Steam syncs the files listed below when the app starts
+  and closes.
+- **Workshop**:
+  - *Share on Workshop* (under Save Macro) saves the macro, then uploads it. `workshop.json` remembers the item, so
+    sharing the macro again updates the same item.
+  - *Browse Workshop* opens the Workshop page in the Steam client. The Steam overlay cannot draw over a desktop app.
+  - Subscribed macros are copied into `Macros\Workshop`, so Load Macro shows them. Each copy is named
+    `<name> - <item id>.mecprofile`. Copies are updated when the author updates the item and removed when the user
+    unsubscribes.
+  - Loading a Workshop macro says it was made by someone else. Save Macro then writes the user's own copy.
+  - Workshop files go through the normal importer. It refuses anything the app cannot build itself, for example a
+    Windows-key press.
+
+Code: `src/MinimumEffortClicker.Steam` (Steamworks.NET 2024.8.0, the only project that talks to Steam). Behind it,
+`IWorkshopClient`, `WorkshopPublisher`, `WorkshopMacros` and `WorkshopShares` live in Storage, with tests.
+`src/MinimumEffortClicker.App/SteamMode.cs` loads the Steam project only when `steam.mode` is present.
+
+## Steamworks site setup (app 5440990)
+
+**Steam Cloud**: App Admin > Cloud.
+
+1. Byte quota per user: 200 MB. Number of files per user: 2000.
+2. Enable Auto-Cloud. Add these root paths, with OS = Windows for each:
+
+   | Root | Subdirectory | Pattern | Recursive |
+   |---|---|---|---|
+   | WinAppDataLocal | `MinimumEffortClicker` | `preferences.json` | No |
+   | WinAppDataLocal | `MinimumEffortClicker` | `profiles.json` | No |
+   | WinAppDataLocal | `MinimumEffortClicker` | `workshop.json` | No |
+   | WinAppDataLocal | `MinimumEffortClicker/Macros` | `*.mecprofile` | No |
+
+3. Publish the change on the Steamworks site.
+
+These files are deliberately left out:
+
+- `bindings.json`: per-toggle shortcuts are machine-local by design.
+- `log.txt`.
+- `Macros/Workshop`: the copies are rebuilt from your subscriptions on each PC.
+
+**Workshop**: App Admin > Workshop > General.
+
+1. Enable ISteamUGC for file transfer.
+2. Publish the change.
+
+The first time an account shares, Steam may keep the item hidden until that account accepts the Workshop agreement on
+the item's page. The app opens that page by itself.
+
+## Build, test locally, upload
+
+1. Download the **Steamworks SDK 1.60** from partner.steamgames.com (it must match Steamworks.NET 2024.8.0) and
+   unpack it outside the repository. Never commit any file from it.
+2. Build the package:
+   `scripts/Build-Steam.ps1 -SteamworksSdk <unpacked folder>\sdk`.
+   It writes `artifacts/package/MinimumEffortClicker-<version>-steam`.
+3. Test locally:
+   - Steam must be running and signed in to an account that owns the app.
+   - Put a `steam_appid.txt` containing `5440990` beside the exe and start the exe directly.
+   - Delete that file again afterwards; the upload script refuses a folder that has it.
+4. Upload:
+   `scripts/Upload-Steam.ps1 -SteamCmd <sdk>\tools\ContentBuilder\builder\steamcmd.exe -Account <account> -Build <package folder> -DepotId <depot id>`.
+   - SteamCMD asks for the password and Steam Guard code itself.
+   - The depot id is on the Steamworks site under SteamPipe > Depots.
+   - The script never sets a build live; you do that under SteamPipe > Builds.
