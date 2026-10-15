@@ -6,16 +6,11 @@ namespace Core.Tests;
 public sealed class OverlayHintsTests
 {
     [TestMethod]
-    public void TheShortcutLineNamesTheStopThatWorksRightNow()
+    public void TheShortcutLineUsesTheBoundKeys()
     {
-        var both = EmergencyStopMode.BothMouseButtons; var any = EmergencyStopMode.AnyInput;
-        Assert.AreEqual("F8 to Start/Stop - LMB+RMB to Stop", OverlayHints.WhileRunning("F8", "F9", both, actionsActive: true, togglesActive: false));
-        Assert.AreEqual("F8 to Start/Stop - F9 to Stop All Toggles", OverlayHints.WhileRunning("F8", "F9", both, actionsActive: false, togglesActive: true));
-        Assert.AreEqual("F8 to Start/Stop - LMB+RMB to Stop - F9 to Stop All", OverlayHints.WhileRunning("F8", "F9", both, actionsActive: true, togglesActive: true));
-        Assert.AreEqual("F8 to Start/Stop - F9 to Stop All", OverlayHints.WhileRunning("F8", "F9", any, actionsActive: true, togglesActive: false));
-        // Rebound keys show up as bound.
-        Assert.AreEqual("F6 to Start/Stop - Pause to Stop All Toggles", OverlayHints.WhileRunning("F6", "Pause", any, actionsActive: false, togglesActive: true));
-        Assert.AreEqual("F8 to Start/Stop", OverlayHints.WhileRunning("F8", "F9", both, actionsActive: false, togglesActive: false));
+        Assert.AreEqual("F8 to Start/Stop", OverlayHints.StartStop("F8"));
+        Assert.AreEqual("F9 to Stop All", OverlayHints.StopAll("F9"));
+        Assert.AreEqual("Pause to Stop All", OverlayHints.StopAll("Pause"));
     }
 
     [TestMethod]

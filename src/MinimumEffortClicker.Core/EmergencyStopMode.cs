@@ -6,8 +6,9 @@ namespace MinimumEffortClicker.Core;
 /// </summary>
 public enum EmergencyStopMode
 {
-    /// <summary>Default: the left and right mouse buttons pressed together stop the Action List; nothing else you do stops anything.</summary>
-    BothMouseButtons = 0,
+    /// <summary>Default: only Stop All stops the clicker; nothing else you press or move stops a run, so you can click into
+    /// your game. (Value 0 once meant left + right mouse button together; User dropped that stop on 2026-10-15.)</summary>
+    OnlyStopAll = 0,
     /// <summary>The original safety stop: pressing a key or button the clicker is using, or moving the mouse while it moves it, stops everything.</summary>
     AnyInput = 1,
 }

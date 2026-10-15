@@ -19,7 +19,7 @@ public partial class MainWindow
         operations.Begin(Operation.Quick); quickCancellation = stop;
         try
         {
-            if (runtime.IsDesktopMode) { previous = WindowState; WindowState = WindowState.Minimized; }
+            if (runtime.IsDesktopMode && MinimizeOnStartBox.IsChecked == true) { previous = WindowState; WindowState = WindowState.Minimized; }
             if (!runtime.BringTargetForward(resume: true)) return;
             RefreshStatus();
             // Let the initiating press release and foreground handoff settle, with no countdown.

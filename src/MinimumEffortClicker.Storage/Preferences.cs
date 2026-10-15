@@ -7,7 +7,7 @@ namespace MinimumEffortClicker.Storage;
 public sealed record UserPreferences(int SchemaVersion, int Appearance, int ToggleKey, int StopKey, bool HoldTrigger, bool Overlay,
     OverlayOptions? OverlayOptions = null, bool MainTopmost = false, int ClicksPerSecond = 20, bool KeepAwake = false, bool ScaleClickPositions = true,
     bool CloseToTray = true, bool TrayNoticeShown = false, ScreenshotSettings? Screenshots = null, int RecordKey = ShortcutKeys.DefaultRecordKey,
-    EmergencyStopMode EmergencyStop = EmergencyStopMode.BothMouseButtons)
+    EmergencyStopMode EmergencyStop = EmergencyStopMode.OnlyStopAll)
 {
     public static UserPreferences Default => new(1, 0, ShortcutKeys.DefaultStartKey, ShortcutKeys.DefaultStopKey, false, true);
     public bool Valid => SchemaVersion == 1 && Appearance is >= 0 and <= 2 && ShortcutKeys.Supported(ToggleKey)

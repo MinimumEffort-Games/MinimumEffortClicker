@@ -9,7 +9,7 @@ public sealed class RunPauseStatusTests
     public void StoppingAPausedRunKeepsTheStopReason()
     {
         // The engine unpauses from its cleanup when a paused run is stopped; the log must still say why it stopped.
-        Assert.IsNull(RunPauseStatus.After(paused: false, automatic: true, cancelling: true, "Stopped: left and right mouse buttons pressed together."));
+        Assert.IsNull(RunPauseStatus.After(paused: false, automatic: true, cancelling: true, "Stopped with global hotkey."));
         Assert.AreEqual(("Running", RunPauseStatus.ResumedByUser), RunPauseStatus.After(paused: false, automatic: false, cancelling: false, "Resuming."));
         Assert.AreEqual(("Running", RunPauseStatus.TargetBack),
             RunPauseStatus.After(paused: false, automatic: true, cancelling: false, "The target window is back in front. Continuing."));

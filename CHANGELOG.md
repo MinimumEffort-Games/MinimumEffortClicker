@@ -2,12 +2,6 @@
 
 ## Unreleased
 
-- Linux: F9 (Stop All) is the one stop again: it ends the Action List and every toggle. The default Emergency stop
-  setting is now "Only Stop All (F9) stops the clicker"; left + right mouse buttons no longer stop anything. The
-  overlay keeps its shortcut line on top, shows "F9 to Stop All" in red beside a red X, and shortens the run line to
-  "Running · 10 Actions · Looping".
-- Linux: a "Minimize on Start" checkbox under Loop. Untick it to keep the clicker up when Start runs on the Desktop
-  target.
 - The code now matches the four pages. The hidden macro-library page, the step editor, the setup wizard and the
   overlay drag mode are gone, together with the engine features only they used (typed text, reusable groups,
   if/repeat branches, "run helpers together", logical keys).
@@ -26,11 +20,13 @@
 - Windows: the overlay has the Linux buttons to bring the clicker back and to quit; the rest stays click-through.
 - Scroll: recording captures the mouse wheel (a quick run of notches becomes one "Scroll down ×5" action), and a new
   Scroll action turns the wheel a set number of notches at the cursor or a saved spot. Every notch is sent on its own.
-- Emergency stop choice in Settings: by default the left and right mouse buttons pressed together stop a running or
-  looping Action List and nothing else you do stops it; "Stop on my input" brings back the old stop on any input.
-  F9 always stops everything. Older settings files get the new default.
-- The overlay names the stop that works right now ("F8 to Start/Stop - LMB+RMB to Stop", "F9 to Stop All Toggles")
-  with the keys you bound, and shows a toggle that is on in blue.
+- Emergency stop choice in Settings: by default only Stop All (F9) stops the clicker, ending the Action List and every
+  toggle, and nothing else you press or move stops a run, so you can click into your game; "Stop on my input" brings
+  back the old stop on any input. Older settings files get the new default.
+- The overlay keeps its shortcut line on top: "F8 to Start/Stop" on the left and "F9 to Stop All" in red beside a red
+  X, with the keys you bound. The run line is short ("Running · 10 Actions · Looping") and a toggle that is on shows
+  in blue.
+- A "Minimize on Start" checkbox under Loop: untick it to keep the clicker up when Start runs on the Desktop target.
 - Add Action is blue; with a row selected it turns green "Save Changes". Clicking an empty spot in the list or
   elsewhere in the clicker stops editing; Duplicate selects the copy.
 - Looped recordings keep the pause after the last action, so a recorded drag drags again in every loop.
