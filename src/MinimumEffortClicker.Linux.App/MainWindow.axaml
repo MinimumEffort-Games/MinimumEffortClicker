@@ -66,7 +66,7 @@
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Text="Create an action" Classes="heading" />
-                                <Border Classes="card" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2">
+                                <Border x:Name="CreateActionCard" Classes="card" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2">
                                     <StackPanel>
                                         <TextBlock Text="Action" FontWeight="SemiBold" />
                                         <ComboBox x:Name="ModeBox" SelectedIndex="-1" SelectionChanged="ActionType_Changed" AutomationProperties.Name="Action">
@@ -185,7 +185,7 @@
                                 </Border>
                             </StackPanel>
                             <WrapPanel x:Name="QuickEditorTools" Margin="0,4,0,12">
-                                <Button x:Name="AddActionButton" Content="Add Action" Click="AddAction_Click" IsEnabled="False" Classes="green" />
+                                <Button x:Name="AddActionButton" Content="Add Action" Click="AddAction_Click" IsEnabled="False" Classes="blue" />
                                 <Button Content="Clear editor" Click="NewAction_Click" ToolTip.Tip="Clear the settings to create another action. The Action List is kept." />
                             </WrapPanel>
                             <TextBlock x:Name="TestResultLabel" Classes="secondary optional" Margin="0,0,0,5" />
@@ -197,7 +197,7 @@
                             <Grid MinHeight="{Binding #PickTargetHeading.Bounds.Height}" Margin="0,0,0,8">
                                 <Button x:Name="TestSelectedButton" Content="Test Selected Action" Click="TestSelected_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="12,5" ToolTip.ShowOnDisabled="True" AutomationProperties.Name="Test selected action" />
                             </Grid>
-                            <Border Grid.Row="1" Classes="card" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2" Margin="0,0,0,12">
+                            <Border x:Name="ActionListCard" Grid.Row="1" Classes="card" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2" Margin="0,0,0,12">
                                 <Grid RowDefinitions="*,Auto">
                                     <local:FillHeightPanel MinHeight="240">
                                     <ListBox x:Name="QuickActionList" SelectionChanged="QuickSelection_Changed" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Action List" x:CompileBindings="False">
@@ -304,6 +304,12 @@
                             <TextBlock x:Name="HotkeyStatus" Classes="secondary optional" Margin="0,8,0,0" />
                             <TextBlock x:Name="ScreenshotHotkeyStatus" Classes="secondary optional" />
 
+                            <TextBlock Text="Emergency stop" Classes="heading" Margin="0,18,0,8" />
+                            <ComboBox x:Name="EmergencyStopBox" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" Width="420" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop">
+                                <ComboBoxItem Content="Left + right mouse button stop the Action List (default)" /><ComboBoxItem Content="Stop on my input" />
+                            </ComboBox>
+                            <TextBlock x:Name="EmergencyStopHint" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" />
+
                             <TextBlock Text="Linux setup" Classes="heading" Margin="0,18,0,8" />
                             <Border Classes="card" x:Name="LinuxSetupCard">
                                 <StackPanel>
@@ -337,7 +343,7 @@
                                 <StackPanel>
                                     <TextBlock Text="Click target" FontWeight="SemiBold" />
                                     <ComboBox x:Name="ToggleTargetLabel" DropDownOpened="ClickTargets_Opened" SelectionChanged="ClickTarget_Changed" AutomationProperties.Name="Toggle click target" DisplayMemberBinding="{Binding Title, x:DataType=linux:TargetWindow}" />
-                                    <TextBlock Text="If no app is selected, physical desktop coordinates are used." Classes="secondary" />
+                                    <TextBlock Text="Toggles only work when a click target is selected." Classes="secondary" />
                                 </StackPanel>
                             </Border>
                             <TextBlock Text="Create Toggle" Classes="heading" Margin="0,10,0,8" />

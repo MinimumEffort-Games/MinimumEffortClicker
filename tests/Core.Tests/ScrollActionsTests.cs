@@ -40,7 +40,7 @@ public sealed class ScrollActionsTests
             Edge(2000, left), Edge(2060, left, false)], Ms(2500)).Sequence;
 
         var actions = QuickActions.RecordedActions(recording, includePauses: true);
-        CollectionAssert.AreEqual(new[] { "Scroll down ×3", "Pause", "Scroll down", "Pause", "Scroll up", "Pause", "Left click" }, actions.Steps.Select(s => s.Name).ToArray());
+        CollectionAssert.AreEqual(new[] { "Scroll down ×3", "Pause", "Scroll down", "Pause", "Scroll up", "Pause", "Left click", "Pause" }, actions.Steps.Select(s => s.Name).ToArray());
         CollectionAssert.AreEqual(new[] { 0d, 50, 90 }, actions.Steps[0].Children!.Select(c => c.Offset.TotalMilliseconds).ToArray());
         Assert.AreEqual(Ms(1110), actions.Steps[1].Duration);
         Assert.AreEqual(new QuickScroll(ScrollDirection.Down, 3, Ms(45), Spot, TimeSpan.Zero), QuickActions.ReadScroll(actions.Steps[0]));
@@ -55,7 +55,7 @@ public sealed class ScrollActionsTests
         // A touchpad reports a third of a notch per step; six of them make two notches and replay exactly as recorded.
         var third = new InputControl(InputKind.Scroll, -40);
         var recording = RecordingNormalizer.Normalize(Enumerable.Range(0, 6).Select(i => Edge(i * 20, third)).ToArray(), Ms(200)).Sequence;
-        var scroll = QuickActions.RecordedActions(recording, includePauses: true).Steps.Single();
+        var scroll = QuickActions.RecordedActions(recording, includePauses: false).Steps.Single();
         Assert.AreEqual("Scroll down ×2", scroll.Name);
         Assert.HasCount(6, scroll.Children!);
         Assert.IsTrue(scroll.Children!.All(c => c.Control == third));
