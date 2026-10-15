@@ -170,6 +170,11 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             if (DesktopNative.DwmGetWindowAttribute(hwnd, 14, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
             ProbeNative.GetWindowThreadProcessId(hwnd, out uint pid);
             if (pid == Environment.ProcessId || pid == 0) return true;
+            long style = ProbeNative.GetWindowLongPtr(hwnd, -20).ToInt64(); // GWL_EXSTYLE
+            bool minimized = ProbeNative.IsIconic(hwnd);
+            ProbeNative.GetWindowRect(hwnd, out var frame);
+            if (!TargetWindowRules.IsChoosable(toolWindow: (style & 0x80) != 0, appWindow: (style & 0x40000) != 0,
+                owned: DesktopNative.GetWindow(hwnd, 4) != 0, frame.Right - frame.Left, frame.Bottom - frame.Top, minimized)) return true; // GW_OWNER
             var title = new StringBuilder(512);
             DesktopNative.GetWindowText(hwnd, title, title.Capacity);
             if (title.Length > 0) result.Add(new(hwnd, (int)pid, title.ToString()));
