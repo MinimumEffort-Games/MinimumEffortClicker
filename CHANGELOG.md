@@ -49,6 +49,9 @@
 - Suspended Store apps no longer appear as Click targets. Orphaned toggle shortcuts no longer block their key.
 - Browsing the shutdown options no longer switches Loop on by itself.
 - Choosing a non-F key for Stop All explains that it will not work while an administrator window is in front.
+- Linux: KDE Plasma 6 on Wayland works as well as GNOME. KWin itself is the helper there: `install.sh` sets it up
+  with no log-out, and a separate small input process lets go of every held key and button if the clicker
+  crashes and sends nothing while the screen is locked.
 - Building: the SDK pin accepts newer 10.0.4xx patches, the portable ZIP is written under `artifacts\package`,
   and the VM probe needs `MEC_ISOLATED_VM=1` in a virtual machine instead of a specific user account.
 

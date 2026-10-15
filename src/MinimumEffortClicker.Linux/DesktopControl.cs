@@ -24,7 +24,7 @@ public sealed class DesktopControl : IDisposable
     private volatile bool bindingsSuspended, disposed;
     private volatile int[] controlKeys = [];
     private EvdevMonitor? evdev;
-    public ShellHelper? Helper { get; private set; }
+    public IDesktopHelper? Helper { get; private set; }
     public string? HelperError { get; private set; }
     public bool HelperAccessDenied { get; private set; }
     public bool PhysicalInputAvailable => evdev is not null;
@@ -68,13 +68,13 @@ public sealed class DesktopControl : IDisposable
         {
             try
             {
-                var helper = ShellHelper.Connect();
+                var helper = DesktopHelper.Connect();
                 helper.FocusChanged += id => { if (Available) WindowChanged?.Invoke(id, 3); };
                 helper.WindowClosed += id => WindowChanged?.Invoke(id, 0x8001);
                 helper.AcceleratorChanged += OnAccelerator;
                 Helper = helper; HelperError = null; HelperAccessDenied = false;
             }
-            catch (ShellHelperException ex) { HelperError = ex.Message; HelperAccessDenied = ex.AccessDenied; }
+            catch (HelperException ex) { HelperError = ex.Message; HelperAccessDenied = ex.AccessDenied; }
         }
         // Access was removed (setup-input-access.sh --remove): devices already open would keep working until a restart.
         // Let them go, so the app does what the user chose and Settings shows it.
@@ -94,10 +94,10 @@ public sealed class DesktopControl : IDisposable
 
     public string PlatformSummary => (Helper, evdev) switch
     {
-        (not null, not null) => "GNOME helper and physical input access are ready.",
-        (not null, null) => "GNOME helper ready. Physical input access is off, so recording, mouse-button shortcuts and the physical-input safety stop are unavailable.",
-        (null, not null) => "Physical input access is ready, but the GNOME helper is missing: " + HelperError,
-        _ => "The GNOME helper is missing (" + HelperError + ") and physical input access is off."
+        (not null, not null) => LinuxSetup.HelperName + " and physical input access are ready.",
+        (not null, null) => LinuxSetup.HelperName + " ready. Physical input access is off, so recording, mouse-button shortcuts and the physical-input safety stop are unavailable.",
+        (null, not null) => "Physical input access is ready, but the " + LinuxSetup.HelperName + " is missing: " + HelperError,
+        _ => "The " + LinuxSetup.HelperName + " is missing (" + HelperError + ") and physical input access is off."
     };
 
     private int[] Pressed => evdev?.Down ?? [];
@@ -219,9 +219,9 @@ public sealed class DesktopControl : IDisposable
         bool routes = evdev is not null || Helper is not null && grabbed.ContainsValue(stopKey) && grabbed.ContainsValue(toggleKey);
         Available = routes && CanUse(stopKey) && CanUse(toggleKey) && Helper is not null;
         Error = Available ? null
-            : Helper is null ? HelperError ?? "The ME Clicker GNOME helper is not available."
+            : Helper is null ? HelperError ?? "The ME Clicker " + LinuxSetup.HelperName + " is not available."
             : evdev is null && (!CanUse(stopKey) || !CanUse(toggleKey)) ? "Mouse-button shortcuts need physical input access. Choose keyboard keys, or enable input access in Settings."
-            : "A global shortcut is already used by GNOME or another app. Choose different keys and apply.";
+            : "A global shortcut is already used by the desktop or another app. Choose different keys and apply.";
         return Available;
     }
 
@@ -247,7 +247,7 @@ public sealed class DesktopControl : IDisposable
             if (evdev is not null && ShortcutKeys.UsesHook(key)) continue;
             if (LinuxKeys.Accelerator(key) is not { } accelerator) continue;
             try { grabbed[helper.GrabAccelerator(accelerator)] = key; }
-            catch (ShellHelperException) { /* Already used elsewhere; Reapply reports a missing control route. */ }
+            catch (HelperException) { /* Already used elsewhere; Reapply reports a missing control route. */ }
         }
     }
     private void Ungrab()
@@ -255,7 +255,7 @@ public sealed class DesktopControl : IDisposable
         var helper = Helper;
         foreach (uint action in grabbed.Keys)
         {
-            try { helper?.UngrabAccelerator(action); } catch (ShellHelperException) { }
+            try { helper?.UngrabAccelerator(action); } catch (HelperException) { }
         }
         grabbed.Clear();
     }
@@ -312,7 +312,7 @@ public sealed class DesktopControl : IDisposable
         // Button edges always ask, so a recorded click keeps its exact position.
         long now = Environment.TickCount64;
         if (!exact && now - Interlocked.Read(ref lastPointerQuery) < 8) return lastPointer;
-        try { lastPointer = Helper?.GetPointer() ?? lastPointer; } catch (ShellHelperException) { }
+        try { lastPointer = Helper?.GetPointer() ?? lastPointer; } catch (HelperException) { }
         Interlocked.Exchange(ref lastPointerQuery, now);
         return lastPointer;
     }
@@ -387,7 +387,7 @@ public sealed class DesktopControl : IDisposable
             Ungrab();
         }
         evdev?.Dispose();
-        try { Helper?.ReleaseAll(); } catch (ShellHelperException) { }
+        try { Helper?.ReleaseAll(); } catch (HelperException) { }
         Helper?.Dispose();
     }
 }

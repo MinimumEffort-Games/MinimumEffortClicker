@@ -163,7 +163,7 @@ public partial class MainWindow
         }
         if (runtime.Control.Helper is not { } helper)
         {
-            ScreenshotStatus.Text = "Screenshots need the ME Clicker GNOME helper. Install it in Settings.";
+            ScreenshotStatus.Text = "Screenshots need the ME Clicker " + LinuxSetup.HelperName + ". Set it up in Settings.";
             if (fromAction) throw new InvalidOperationException(ScreenshotStatus.Text);
             return;
         }

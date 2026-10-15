@@ -1,7 +1,7 @@
 # Minimum Effort Clicker
 
 A free, open-source mouse and keyboard automation app for **Windows 11 x64**, with a
-**Linux preview** for GNOME (see [Linux](docs/LINUX.md)).
+**Linux preview** for GNOME and KDE Plasma (see [Linux](docs/LINUX.md)).
 Repeat clicks and keys, create hold/spam toggles, record editable action lists,
 and save screenshots. Runs locally and offline; no account or subscription is
 needed to use the app.
@@ -50,8 +50,9 @@ app describes each page.
 ## Linux preview
 
 The Linux build (`MinimumEffortClicker-<version>-linux-x64.tar.gz`) has the same pages and controls,
-reads the same macro files and needs GNOME (tested on Ubuntu 26.04, Wayland). Extract it, run
-`./install.sh`, then log out and back in once so GNOME loads the small ME Clicker helper extension.
+reads the same macro files and needs GNOME (tested on Ubuntu 26.04) or KDE Plasma 6 (checked on CachyOS), on
+Wayland. Extract it and run `./install.sh`. On GNOME, log out and back in once so GNOME loads the small ME
+Clicker helper extension; on KDE Plasma it works straight away.
 Recording and hotkeys in every app also need a one-time `sudo` input-access rule. Full steps,
 what the helper can do and current limits are in [docs/LINUX.md](docs/LINUX.md).
 
@@ -87,7 +88,7 @@ and Vision handles explicit local capture/conditions. Dependencies and lock file
 are pinned. Release builds are self-contained and untrimmed.
 
 The Linux build shares Core, Engine and Storage. `MinimumEffortClicker.Linux` holds its native
-adapters (GNOME helper over D-Bus, evdev, logind) and `MinimumEffortClicker.Linux.App` is the
+adapters (GNOME helper or KWin over D-Bus and Wayland, evdev, logind) and `MinimumEffortClicker.Linux.App` is the
 Avalonia UI; they build from `MinimumEffortClicker.Linux.slnx` with `scripts/linux/*.sh` and
 never change the Windows solution. See [docs/LINUX.md](docs/LINUX.md#build-from-source).
 

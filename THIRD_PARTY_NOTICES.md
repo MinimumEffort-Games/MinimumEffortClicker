@@ -35,7 +35,12 @@ online only through the Steam client: when the user shares a macro, and when Ste
 | SkiaSharp / HarfBuzzSharp (Avalonia dependencies) | 3.119.4 / 8.3.1.3 | MIT | Linux app rendering |
 | MicroCom.Runtime (Avalonia dependency) | 0.11.6 | MIT | Avalonia internals |
 | Avalonia.Angle.Windows.Natives (Avalonia dependency) | 2.1.27548.20260419 | BSD-3-Clause, notice copied | Restored with Avalonia; not used on Linux |
-| Tmds.DBus.Protocol | 0.94.1 | MIT | Linux D-Bus (GNOME helper, logind, notifications) |
+| Tmds.DBus.Protocol | 0.94.1 | MIT | Linux D-Bus (GNOME helper, KWin, logind, notifications) |
+
+On KDE Plasma the Linux app talks to KWin directly. It loads the system's `libwayland-client` (MIT, part of the
+desktop, not shipped) and restates the request names and argument types of KWin's `org_kde_kwin_fake_input`
+protocol (plasma-wayland-protocols, `fake-input.xml`, © 2015 Martin Gräßlin, LGPL-2.1-or-later) in
+`src/MinimumEffortClicker.Linux/Kde/FakeInput.cs` so it can speak it; no protocol file or KDE code is copied.
 
 These packages are used only by the Linux projects (`MinimumEffortClicker.Linux.slnx`); the Windows app's
 dependency graph is unchanged by them. Avalonia's build-time usage statistics are switched off by the Linux app

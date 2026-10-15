@@ -4,7 +4,7 @@ namespace MinimumEffortClicker.Linux;
 
 /// <summary>
 /// Reports the Linux equivalents of the Windows session-switch and power-mode events: the screen
-/// locking (GNOME screensaver) and the computer preparing to sleep (logind). Both stop playback.
+/// locking (GNOME's screensaver, or org.freedesktop.ScreenSaver that KWin serves on KDE) and the computer preparing to sleep (logind). Both stop playback.
 /// </summary>
 public sealed class SessionWatcher : IDisposable
 {
@@ -16,7 +16,8 @@ public sealed class SessionWatcher : IDisposable
 
     public SessionWatcher()
     {
-        Watch(DBusAddress.Session, "org.gnome.ScreenSaver", "/org/gnome/ScreenSaver", "org.gnome.ScreenSaver", "ActiveChanged", active => { if (active) SessionChanged?.Invoke(); });
+        if (LinuxSetup.IsKde) Watch(DBusAddress.Session, "org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", "ActiveChanged", active => { if (active) SessionChanged?.Invoke(); });
+        else Watch(DBusAddress.Session, "org.gnome.ScreenSaver", "/org/gnome/ScreenSaver", "org.gnome.ScreenSaver", "ActiveChanged", active => { if (active) SessionChanged?.Invoke(); });
         Watch(DBusAddress.System, "org.freedesktop.login1", "/org/freedesktop/login1", "org.freedesktop.login1.Manager", "PrepareForSleep", start => { if (start) PowerChanged?.Invoke(); });
     }
 

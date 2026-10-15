@@ -7,7 +7,7 @@ public sealed record DesktopScreenshotFrame(ScreenshotBounds Bounds, byte[] Bgr3
 /// <summary>One explicit desktop copy through the GNOME helper, in GNOME's logical desktop pixels.</summary>
 public static class DesktopScreenshot
 {
-    public static ScreenshotBounds Bounds(ShellHelper helper)
+    public static ScreenshotBounds Bounds(IDesktopHelper helper)
     {
         var monitors = helper.GetMonitors();
         if (monitors.Count == 0) throw new InvalidOperationException("No monitor is available for capture.");
@@ -17,7 +17,7 @@ public static class DesktopScreenshot
         return bounds;
     }
 
-    public static DesktopScreenshotFrame Capture(ShellHelper helper, CancellationToken cancellation)
+    public static DesktopScreenshotFrame Capture(IDesktopHelper helper, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
         var bounds = Bounds(helper);
@@ -31,7 +31,7 @@ public static class DesktopScreenshot
     /// Copies one rectangle of the desktop in logical pixels, on any monitor, as BGRA. Used for Desktop-mode colour and
     /// image waits and their area picker.
     /// </summary>
-    public static byte[] CaptureArea(ShellHelper helper, int x, int y, int width, int height, CancellationToken cancellation)
+    public static byte[] CaptureArea(IDesktopHelper helper, int x, int y, int width, int height, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
         var bounds = Bounds(helper);

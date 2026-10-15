@@ -68,7 +68,7 @@ public sealed partial class DesktopRuntime
                         if (!area.Origin.Matches(frame.Width, frame.Height, frame.Dpi)) return unreadable;
                         pixels = DesktopScreenshot.CaptureArea(Helper, area.Origin.X, area.Origin.Y, area.Width, area.Height, token);
                     }
-                    catch (Exception ex) when (ex is InvalidOperationException or ShellHelperException) { return unreadable; }
+                    catch (Exception ex) when (ex is InvalidOperationException or HelperException) { return unreadable; }
                     return Judge(new RasterSample(area.Width, area.Height, pixels), ++screenFrame, token);
                 }), budget.Token, observed, service);
             }
@@ -91,7 +91,7 @@ public sealed partial class DesktopRuntime
                 // The window went behind another one, was resized or closed: report it as unavailable rather than failing
                 // the whole run, so playback can wait for the window to come back.
                 try { capture ??= new RegionCapture(Helper, selected.Handle, windowArea, () => TargetAvailable); frame = capture.Capture(token); }
-                catch (Exception ex) when (ex is InvalidOperationException or ShellHelperException) { return new(ConditionObservationState.Unavailable, 0, lastFrame); }
+                catch (Exception ex) when (ex is InvalidOperationException or HelperException) { return new(ConditionObservationState.Unavailable, 0, lastFrame); }
                 lastFrame = frame.FrameId;
                 return Judge(frame.Image, frame.FrameId, token);
             }), budget.Token, observed, service);
