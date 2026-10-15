@@ -939,6 +939,18 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         _ => RecordingNormalizer.Label(plan.Control)
     };
 
+    /// <summary>State and reason after the engine pauses or unpauses a run. The engine also unpauses from its cleanup
+    /// when a paused run is cancelled; that is not a resume, so the stop reason Stop() set is kept (null).</summary>
+    internal static (string State, string Reason)? PauseStatus(bool paused, bool automatic, bool cancelling, string current)
+    {
+        if (!paused && cancelling) return null;
+        return paused
+            ? ("Paused", automatic ? TargetLostReason
+                : "Paused with input released. Resume rechecks the target and continues remaining timing or retries this condition.")
+            : ("Running", current.StartsWith("The target window is back", StringComparison.Ordinal) ? current
+                : "Resumed explicitly after target and physical-input checks.");
+    }
+
     private void Worker()
     {
         while (true)
@@ -967,10 +979,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 lock (gate)
                 {
                     automatic = playbackControl?.Automatic == true;
-                    state = paused ? "Paused" : "Running";
-                    reason = !paused ? (reason.StartsWith("The target window is back", StringComparison.Ordinal) ? reason : "Resumed explicitly after target and physical-input checks.")
-                        : automatic ? TargetLostReason
-                        : "Paused with input released. Resume rechecks the target and continues remaining timing or retries this condition.";
+                    if (PauseStatus(paused, automatic, stop.IsCancellationRequested, reason) is { } status)
+                        (state, reason) = status;
                     targetBackSince = -1;
                 }
                 // The timer only runs while a pause can resume by itself; it checks every 100 ms.

@@ -82,4 +82,16 @@ public sealed class LinuxKeysTests
         Assert.IsTrue(DesktopRuntime.InputMatchesKey(InputControl.Key(SequenceKeys.Supported["W"]), 'W'));
         Assert.IsFalse(DesktopRuntime.InputMatchesKey(InputControl.Key(SequenceKeys.Supported["W"]), 'Q'));
     }
+
+    [TestMethod]
+    public void CancellingAPausedRunKeepsTheStopReason()
+    {
+        // The engine unpauses from its cleanup when a paused run is stopped; the stop reason must reach the log.
+        Assert.IsNull(DesktopRuntime.PauseStatus(paused: false, automatic: true, cancelling: true, "Stopped by you."));
+        Assert.AreEqual(("Running", "Resumed explicitly after target and physical-input checks."),
+            DesktopRuntime.PauseStatus(paused: false, automatic: false, cancelling: false, "Resuming the remaining timing after explicit review."));
+        Assert.AreEqual(("Running", "The target window is back in front. Continuing."),
+            DesktopRuntime.PauseStatus(paused: false, automatic: true, cancelling: false, "The target window is back in front. Continuing."));
+        Assert.AreEqual("Paused", DesktopRuntime.PauseStatus(paused: true, automatic: true, cancelling: true, "Stopped by you.")?.State);
+    }
 }
