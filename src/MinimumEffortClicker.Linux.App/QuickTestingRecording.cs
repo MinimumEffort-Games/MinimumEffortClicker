@@ -180,7 +180,7 @@ public partial class MainWindow
     });
     private async void QuickRecord_Click(object sender, RoutedEventArgs e) => await RecordQuick(fromHotkey: false);
     /// <summary>
-    /// The record button hides the clicker, brings the target forward and records from the first input.
+    /// The record button hides the clicker (unless Minimize on record is unticked), brings the target forward and records from the first input.
     /// The recording hotkey records at once and keeps the pause from the key press to the first input.
     /// </summary>
     private async Task RecordQuick(bool fromHotkey)
@@ -189,6 +189,7 @@ public partial class MainWindow
         if (quickCancellation is not null) { quickCancellation.Cancel(); runtime?.Stop("Current operation cancelled."); return; }
         if (runtime is null || quickOperation || macroFileBusy || ioBusy || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) return;
         bool includePauses = RecordDelaysBox.IsChecked == true;
+        bool minimize = MinimizeOnRecordBox.IsChecked == true;
         bool movement = RecordMovementBox.IsChecked == true;
         quickOperation = true;
         WindowState? minimizedFrom = null;
@@ -197,7 +198,7 @@ public partial class MainWindow
         runtime.Control.StopRequested += Cancel; RefreshStatus();
         try
         {
-            if ((runtime.IsDesktopMode || !fromHotkey) && WindowState != WindowState.Minimized)
+            if (minimize && (runtime.IsDesktopMode || !fromHotkey) && WindowState != WindowState.Minimized)
             { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             cancellation.Token.ThrowIfCancellationRequested();
