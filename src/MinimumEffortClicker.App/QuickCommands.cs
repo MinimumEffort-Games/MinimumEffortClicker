@@ -31,7 +31,7 @@ public partial class MainWindow
     {
         var frame = runtime!.GetTargetFrame();
         var plan = SequenceCompiler.Compile(new([step with { Enabled = true }]), quickPoints).AdaptClickPoints(frame.Width, frame.Height, frame.Dpi, ResizeClicksBox.SelectedIndex == 0);
-        if (plan.Inputs.FirstOrDefault(i => i.Down && i.Control.Kind == InputKind.MouseButton)?.Position is not { } point) return null;
+        if (plan.Inputs.FirstOrDefault(i => i.Down && i.Control.Kind is InputKind.MouseButton or InputKind.Scroll or InputKind.HorizontalScroll)?.Position is not { } point) return null;
         return point.Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi);
     }
 

@@ -1,0 +1,42 @@
+<Window x:Class="MinimumEffortClicker.App.WorkshopShareWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Share on Workshop" Icon="Assets/App.ico"
+        Width="520" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource AppBackground}" Foreground="{DynamicResource TextPrimary}"
+        FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True">
+    <StackPanel Margin="20">
+        <TextBlock x:Name="HeadingText" Text="Share on the Steam Workshop" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,12"/>
+        <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="1" CornerRadius="8" Padding="12">
+            <StackPanel>
+                <TextBlock Text="Title"/>
+                <TextBox x:Name="TitleBox" MaxLength="128" Margin="0,4,0,10" AutomationProperties.Name="Workshop title"/>
+                <TextBlock Text="Description"/>
+                <TextBox x:Name="DescriptionBox" MaxLength="8000" Height="110" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,4,0,10" AutomationProperties.Name="Workshop description"/>
+                <TextBlock Text="Who can see it"/>
+                <ComboBox x:Name="VisibilityBox" SelectedIndex="0" Margin="0,4,0,10" HorizontalAlignment="Left" MinWidth="200" AutomationProperties.Name="Workshop visibility">
+                    <ComboBoxItem Content="Public"/>
+                    <ComboBoxItem Content="Friends only"/>
+                    <ComboBoxItem Content="Private (only you)"/>
+                </ComboBox>
+                <TextBlock Text="Preview image"/>
+                <Grid Margin="0,4,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                    <Button Content="Choose image…" Click="ChoosePreview_Click" Margin="0,0,10,0" Padding="10,5" Style="{StaticResource StandardButton}" AutomationProperties.Name="Choose preview image"/>
+                    <TextBlock x:Name="PreviewText" Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextSecondary}"/>
+                </Grid>
+                <TextBlock x:Name="ImageWarning" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,12,0,0" Foreground="{DynamicResource StopBorder}"
+                           Text="This macro holds image areas captured from your screen. Everyone who can see the item can see those pictures."/>
+            </StackPanel>
+        </Border>
+        <TextBlock Text="Uploads go through Steam. Shared macros never hold your hotkeys or window details." TextWrapping="Wrap" Margin="0,10,0,0" Foreground="{DynamicResource TextSecondary}"/>
+        <Grid Margin="0,18,0,0">
+            <Button Content="Cancel" IsCancel="True" MinWidth="90" HorizontalAlignment="Left" Margin="0"
+                    Style="{StaticResource StandardButton}" Background="{DynamicResource StopFill}"
+                    BorderBrush="{DynamicResource StopBorder}" Foreground="{DynamicResource ColourButtonText}"/>
+            <Button x:Name="ShareButton" Content="Share" Click="Share_Click" IsDefault="True" MinWidth="90" HorizontalAlignment="Right" Margin="0"
+                    Style="{StaticResource StandardButton}" Background="{DynamicResource SuccessFill}"
+                    BorderBrush="{DynamicResource SuccessBorder}" Foreground="{DynamicResource ColourButtonText}"/>
+        </Grid>
+    </StackPanel>
+</Window>

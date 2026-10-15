@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Interop;
 using System.Windows.Media;
 using MinimumEffortClicker.Core;
@@ -10,7 +11,7 @@ namespace MinimumEffortClicker.App;
 
 internal interface IOverlayPresenter
 {
-    void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<string>? toggles = null, string recordKey = "F10", bool actionsEmpty = false);
+    void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false, EmergencyStopMode emergencyStop = EmergencyStopMode.BothMouseButtons);
     void Configure(OverlayOptions options);
 }
 
@@ -21,8 +22,10 @@ internal interface IOverlayPresenter
 internal sealed class StatusOverlay : Window, IOverlayPresenter
 {
     private static readonly Brush ButtonNormal = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)), ButtonHover = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255));
+    // Light blue keeps "On" readable on both the dark idle background and the green running one.
+    private static readonly Brush ToggleOn = new SolidColorBrush(Color.FromRgb(140, 200, 255));
     private readonly TextBlock label = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.NoWrap };
-    private readonly TextBlock activityLabel = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, MaxHeight = 40 };
+    private readonly TextBlock activityLabel = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly StackPanel body = new();
     private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
     private readonly DockPanel row = new();
@@ -140,7 +143,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         MaxWidth = 580 * value.Scale;
         row.LayoutTransform = new ScaleTransform(value.Scale, value.Scale);
     }
-    public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<string>? toggles = null, string recordKey = "F10", bool actionsEmpty = false)
+    public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false, EmergencyStopMode emergencyStop = EmergencyStopMode.BothMouseButtons)
     {
         bool capturing = state.Recording;
         bool running = state.PlaybackActive && !state.CleanupPending;
@@ -153,21 +156,34 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
             label.Text = $"{recordKey} · Stop recording · {stopKey} · Stop all";
             return;
         }
-        bool toggleOnly = toggles?.Count > 0;
-        if (!state.Busy && !state.CleanupPending)
+        toggles ??= [];
+        bool togglesActive = toggles.Any(t => t.Active);
+        if (state.CleanupPending) { ShowLines("Input release pending", toggles); ShowHint($"Stop all: {stopKey}"); return; }
+        if (!state.Busy) { ShowLines(actionsEmpty ? "Actionlist Empty" : OverlayHints.StartStop(startKey), toggles); ShowHint(null); return; }
+        ShowLines(state.ActionsActive || !togglesActive ? $"{state.State} · {(state.Activity is "Minimum Effort" or "Named points" ? "Actions" : state.Activity)}" : null, toggles);
+        ShowHint(OverlayHints.WhileRunning(startKey, stopKey, emergencyStop, state.ActionsActive, togglesActive));
+    }
+    /// <summary>The heading line, then one line per toggle with its state word coloured: "On" blue, the rest white.</summary>
+    private void ShowLines(string? heading, IReadOnlyList<OverlayToggle> toggles)
+    {
+        activityLabel.Inlines.Clear();
+        var plain = new List<string>();
+        if (heading is not null) { activityLabel.Inlines.Add(new Run(heading)); plain.Add(heading); }
+        foreach (var toggle in toggles)
         {
-            activityLabel.Text = (actionsEmpty ? "Actionlist Empty" : $"{startKey} to start/stop")
-                + (toggles?.Count > 0 ? "\n" + string.Join("\n", toggles) : "");
-            activityLabel.ToolTip = activityLabel.Text;
-            label.Visibility = Visibility.Collapsed;
-            return;
+            if (plain.Count > 0) activityLabel.Inlines.Add(new LineBreak());
+            activityLabel.Inlines.Add(new Run($"{toggle.Name} · {toggle.Key} · "));
+            var state = new Run(toggle.State);
+            if (toggle.On && !SystemParameters.HighContrast) state.Foreground = ToggleOn;
+            activityLabel.Inlines.Add(state);
+            plain.Add($"{toggle.Name} · {toggle.Key} · {toggle.State}");
         }
-        activityLabel.MaxHeight = double.PositiveInfinity;
-        activityLabel.Text = toggleOnly ? (state.CleanupPending ? "Input release pending\n" : state.ActionsActive ? $"{state.State} · {state.Activity}\n" : "") + string.Join("\n", toggles!)
-            : $"{state.State} · {(state.Activity is "Minimum Effort" or "Named points" ? "Actions" : state.Activity)}";
-        activityLabel.ToolTip = activityLabel.Text;
-        label.Visibility = toggleOnly && !state.ActionsActive && !state.CleanupPending ? Visibility.Collapsed : Visibility.Visible;
-        label.Text = state.CleanupPending ? $"Stop all: {stopKey}" : $"{startKey} to start/stop";
+        activityLabel.ToolTip = string.Join("\n", plain);
+    }
+    private void ShowHint(string? hint)
+    {
+        label.Visibility = hint is null ? Visibility.Collapsed : Visibility.Visible;
+        if (hint is not null) label.Text = hint;
     }
     public void PlaceAt(double right, double top)
     {

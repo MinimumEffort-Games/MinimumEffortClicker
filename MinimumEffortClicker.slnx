@@ -6,6 +6,7 @@
     <Project Path="src/MinimumEffortClicker.Windows/MinimumEffortClicker.Windows.csproj" />
     <Project Path="src/MinimumEffortClicker.Vision/MinimumEffortClicker.Vision.csproj" />
     <Project Path="src/MinimumEffortClicker.Storage/MinimumEffortClicker.Storage.csproj" />
+    <Project Path="src/MinimumEffortClicker.Steam/MinimumEffortClicker.Steam.csproj" />
     <Project Path="src/MinimumEffortClicker.TestTarget/MinimumEffortClicker.TestTarget.csproj" />
   </Folder>
   <Folder Name="/tests/">

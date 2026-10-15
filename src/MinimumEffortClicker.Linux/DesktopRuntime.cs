@@ -128,7 +128,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         cleanupRetry = new(action => ThreadPool.QueueUserWorkItem(_ => action()), RecoverDeferredCleanup);
         Control = new();
         Control.StopRequested += Stop;
-        Control.ActionStopRequested += StopActions;
+        Control.ActionStopRequested += () => StopActions();
         Control.TriggerAllowed = () => TargetAvailable;
         Control.ToggleRequested += Toggle;
         Control.MacroTriggered += MacroTriggered;
@@ -136,7 +136,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         Control.PhysicalChanged += OnPhysical;
         Control.MouseObserved += sample =>
         {
-            if (!observingWindowActive && Volatile.Read(ref activeControls).Any(c => c.Kind == InputKind.PointerMove)) Stop("Stopped: physical pointer input takes priority.");
+            if (EmergencyStop == EmergencyStopMode.AnyInput && !observingWindowActive && Volatile.Read(ref activeControls).Any(c => c.Kind == InputKind.PointerMove)) Stop("Stopped: physical pointer input takes priority.");
         };
         worker = new Thread(Worker) { IsBackground = true, Name = "MEC scheduler" };
         worker.Start();
@@ -539,7 +539,13 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     }
 
     public void StopForShutdown() => StopPlayback("Stopped for automatic shutdown. Cancel shutdown to keep working.");
-    public void StopActions()
+    /// <summary>
+    /// How your own input stops a run. BothMouseButtons (default): only the left and right mouse buttons pressed together
+    /// stop the Action List. AnyInput: pressing a key or button the clicker is using, or moving the mouse while it moves
+    /// it, stops everything (the original safety stop). Stop All (F9) always works.
+    /// </summary>
+    public EmergencyStopMode EmergencyStop { get; set; } = EmergencyStopMode.BothMouseButtons;
+    public void StopActions(string message = "Actions stopped.")
     {
         foreach (var observer in StopIssued?.GetInvocationList() ?? [])
         { try { ((Action)observer)(); } catch (Exception) { Interlocked.Increment(ref notificationFailures); } }
@@ -547,7 +553,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         {
             if (actionToggleSession is { } session && session.ActiveIds.Length > 0)
             { session.StopAction(); reason = "Actions stopped; unrelated toggles continue."; NotifyChanged(); }
-            else StopPlayback("Actions stopped.");
+            else StopPlayback(message);
         }
     }
     public bool Pause(string message = "Paused by you. Resume explicitly after reviewing the target.")
@@ -569,11 +575,10 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             if (!busy || countingDown || cancellation?.IsCancellationRequested != false || playbackControl is not { } control) return false;
             if (control.Automatic) return true;
             if (!control.RequestPause(automatic: true)) return control.IsPaused;
-            state = "Pausing"; reason = TargetLostReason;
+            state = "Pausing"; reason = RunPauseStatus.TargetLost;
         }
         NotifyChanged(); return true;
     }
-    private const string TargetLostReason = "Paused: the target window is not in front. It continues by itself when the window is back in front. Stop All cancels.";
     public bool TryResume() => TryResume(automatic: false);
     private bool TryResume(bool automatic)
     {
@@ -590,7 +595,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 if (!CursorFreeActive && Control.IsPhysicalDown(input)) { if (automatic) return false; reason = "Release physical inputs before resuming."; NotifyChanged(); return false; }
             }
             if (!playbackControl.RequestResume()) return false;
-            state = "Resuming"; reason = automatic ? "The target window is back in front. Continuing." : "Resuming the remaining timing after explicit review.";
+            state = "Resuming"; reason = automatic ? RunPauseStatus.TargetBack : "Resuming the remaining timing after explicit review.";
         }
         NotifyChanged(); return true;
     }
@@ -735,6 +740,15 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         // A physical press can interrupt an owned hold. Retry its deferred up after
         // release, off the input thread; a helper call must never block that callback.
         if (!down) QueueCleanupRetry();
+        if (EmergencyStop == EmergencyStopMode.BothMouseButtons)
+        {
+            // Left and right together stop the Action List (toggles carry on); nothing else you press stops anything.
+            if (down && input.Kind == InputKind.MouseButton && input.Code is (int)PointerButton.Left or (int)PointerButton.Right
+                && Control.IsPhysicalDown(InputControl.Mouse(input.Code == (int)PointerButton.Left ? PointerButton.Right : PointerButton.Left))
+                && Snapshot.ActionsActive)
+                ThreadPool.QueueUserWorkItem(_ => StopActions("Stopped: left and right mouse buttons pressed together."));
+            return;
+        }
         if (countingDown || observingWindowActive || CursorFreeActive) return;
         var controls = actionToggleSession?.ActiveControls ?? Volatile.Read(ref activeControls);
         if (controls.Length == 0) return;
@@ -967,10 +981,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 lock (gate)
                 {
                     automatic = playbackControl?.Automatic == true;
-                    state = paused ? "Paused" : "Running";
-                    reason = !paused ? (reason.StartsWith("The target window is back", StringComparison.Ordinal) ? reason : "Resumed explicitly after target and physical-input checks.")
-                        : automatic ? TargetLostReason
-                        : "Paused with input released. Resume rechecks the target and continues remaining timing or retries this condition.";
+                    if (RunPauseStatus.After(paused, automatic, stop.IsCancellationRequested, reason) is { } status) (state, reason) = status;
                     targetBackSince = -1;
                 }
                 // The timer only runs while a pause can resume by itself; it checks every 100 ms.

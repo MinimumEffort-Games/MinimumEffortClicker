@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using MinimumEffortClicker.Core;
 using MinimumEffortClicker.Engine;
@@ -137,9 +139,12 @@ public partial class MainWindow
         bool complex = editingQuick is not null && ModeBox.SelectedIndex < 0;
         ActionFields.Visibility = ModeBox.SelectedIndex >= 0 || complex ? Visibility.Visible : Visibility.Collapsed;
         MouseFields.Visibility = ModeBox.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ScrollFields.Visibility = ModeBox.SelectedIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
+        LocationFields.Visibility = ModeBox.SelectedIndex is 0 or 5 ? Visibility.Visible : Visibility.Collapsed;
         KeyFields.Visibility = ModeBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         RandomFields.Visibility = ModeBox.SelectedIndex is 0 or 1 or 2 ? Visibility.Visible : Visibility.Collapsed;
-        PressFields.Visibility = AfterFields.Visibility = ModeBox.SelectedIndex is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
+        PressFields.Visibility = ModeBox.SelectedIndex is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
+        AfterFields.Visibility = ModeBox.SelectedIndex is 0 or 1 or 5 ? Visibility.Visible : Visibility.Collapsed;
         MotionFields.Visibility = ModeBox.SelectedIndex == 0 && !useCursorLocation ? Visibility.Visible : Visibility.Collapsed;
         DoubleFields.Visibility = ModeBox.SelectedIndex == 0 && ClickKindBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         PauseFields.Visibility = ModeBox.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
@@ -147,12 +152,14 @@ public partial class MainWindow
         ScanIntervalFields.Visibility = ConditionFields.Visibility = ModeBox.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         ComplexFields.Visibility = complex ? Visibility.Visible : Visibility.Collapsed;
         AddActionButton.IsEnabled = ModeBox.SelectedIndex >= 0 || complex;
-        AddActionButton.Content = editingQuick is null ? "Add Action" : "Save changes";
+        // Blue Add Action adds a new action; green Save Changes changes the selected one, so it is always clear which.
+        AddActionButton.Content = editingQuick is null ? "Add Action" : "Save Changes";
+        AddActionButton.SetResourceReference(StyleProperty, editingQuick is null ? "BlueButton" : "GreenButton");
         PressLabel.Text = ClickKindBox.SelectedIndex == 2 && ModeBox.SelectedIndex == 0 || HoldKeyBox.IsChecked == true && ModeBox.SelectedIndex == 1 ? "Hold duration (ms)" : "Press duration (ms)";
         ShowTimingOptions();
         Location_Changed(this, new RoutedEventArgs());
         ActionHint.Text = complex ? "Edit the recorded inputs below. Their overlap is preserved." : ModeBox.SelectedIndex switch
-        { 0 => "Click at your cursor or a saved location.", 1 => "Press a key, with optional modifiers or a longer hold.", 2 => "Wait before the next action.", 3 => "Continue when a colour appears or disappears.", 4 => "Save a fullscreen PNG of all monitors.", _ => "Choose an action to see its settings." };
+        { 0 => "Click at your cursor or a saved location.", 1 => "Press a key, with optional modifiers or a longer hold.", 2 => "Wait before the next action.", 3 => "Continue when a colour appears or disappears.", 4 => "Save a fullscreen PNG of all monitors.", 5 => "Turn the mouse wheel at your cursor or a saved location.", _ => "Choose an action to see its settings." };
     }
     private void ClickKind_Changed(object sender, SelectionChangedEventArgs e)
     { if (!initialized || loadingQuick) return; PressBox.Text = ClickKindBox.SelectedIndex == 2 ? "1000" : "20"; ShowQuickFields(); }
@@ -230,7 +237,7 @@ public partial class MainWindow
     private SequenceStep ReadQuickAction(bool useGeneratedName = false)
     {
         SequenceStep step;
-        var after = ModeBox.SelectedIndex is 0 or 1 ? OptionalPause(AfterBox) : TimeSpan.Zero;
+        var after = ModeBox.SelectedIndex is 0 or 1 or 5 ? OptionalPause(AfterBox) : TimeSpan.Zero;
         switch (ModeBox.SelectedIndex)
         {
             case 0:
@@ -245,6 +252,9 @@ public partial class MainWindow
             case 2: step = QuickActions.Pause(TimeSpan.FromMilliseconds(Number(PauseDurationBox) * (PauseUnitBox.SelectedIndex == 1 ? 1000 : 1))); break;
             case 3: step = SequenceStep.WaitUntil("Wait Until", ReadQuickCondition()); break;
             case 4: step = SequenceStep.Screenshot(Milliseconds(ScreenshotPauseBox)); break;
+            case 5:
+                if (!int.TryParse(ScrollNotchesBox.Text, out int notches)) throw new ArgumentException("Enter a whole number of notches, 1–100.");
+                step = QuickActions.Scroll((ScrollDirection)ScrollDirectionBox.SelectedIndex, notches, Milliseconds(ScrollGapBox), after, useCursorLocation ? null : ReadQuickPoint()); break;
             default:
                 if (editingQuick is null) throw new ArgumentException("Choose an action first.");
                 if (!QuickChildrenGrid.CommitEdit(DataGridEditingUnit.Cell, true) || !QuickChildrenGrid.CommitEdit(DataGridEditingUnit.Row, true)) throw new ArgumentException("Finish editing the input row first.");
@@ -280,7 +290,9 @@ public partial class MainWindow
             int index = editingQuick is null ? -1 : list.FindIndex(s => s.Id == editingQuick.Id);
             if (index < 0) list.Add(step); else list[index] = step;
             quickHistory.Commit(ApplyListOptions(quickHistory.Current with { Steps = list }));
-            RefreshQuickList(index); ReasonLabel.Text = index < 0 ? "Action added. Select a row to edit it." : "Action updated.";
+            // Saving ends the edit: nothing stays selected, and the editor keeps its values for adding a similar action.
+            RefreshQuickList(); ShowQuickFields();
+            ReasonLabel.Text = index < 0 ? "Action added. Select a row to edit it." : "Changes saved. Select a row to edit it again.";
         }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
     }
@@ -291,7 +303,7 @@ public partial class MainWindow
         ButtonBox.SelectedIndex = ClickKindBox.SelectedIndex = 0; useCursorLocation = true; quickPoint = null; ShowQuickCoordinates();
         KeyBox.SelectedItem = "W"; CtrlBox.IsChecked = ShiftBox.IsChecked = AltBox.IsChecked = HoldKeyBox.IsChecked = false;
         PressBox.Text = "20"; DoubleGapBox.Text = "80"; AfterBox.Text = "20"; PauseDurationBox.Text = "1"; PauseUnitBox.SelectedIndex = 1;
-        ScreenshotPauseBox.Text = "1000";
+        ScreenshotPauseBox.Text = "1000"; ScrollDirectionBox.SelectedIndex = 1; ScrollNotchesBox.Text = "3"; ScrollGapBox.Text = "30";
         quickCondition = null; QuickScanIntervalBox.Text = "500"; ConditionKindBox.SelectedIndex = 0; ConditionLabel.Text = "Select the area to scan and what to look for.";
         RandomTimingBox.IsChecked = false; MaxPressBox.Text = "40"; MaxAfterBox.Text = "80";
         VaryPositionBox.IsChecked = false; PositionOffsetBox.Text = "3";
@@ -299,7 +311,7 @@ public partial class MainWindow
         loadingQuick = false; Location_Changed(sender, e); ShowQuickFields(); ShowConditionColour();
     }
     private QuickRow[] QuickRows(IEnumerable<SequenceStep> steps) => steps.Select((s, i) =>
-        new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
+        new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : QuickActions.ReadScroll(s) is { } scroll ? ScrollSummary(scroll) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
             s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } colour ? ColourBrush(colour.Color) : Brushes.Transparent,
             s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (Brush)FindResource("TextPrimary"))).ToArray();
     /// <summary>Shows actions captured so far below the existing list while recording runs.</summary>
@@ -344,7 +356,14 @@ public partial class MainWindow
             {
                 var actions = s.Kind == StepKind.Input ? new[] { new TimedAction(Guid.NewGuid(), TimeSpan.Zero, s.Control!.Value, s.Duration, s.Position, s.EndPosition, s.TargetId) } : s.Children?.ToArray() ?? [];
                 bool uncomplicated = actions.Length > 0 && actions.All(c => c.TargetId is null && (c.EndPosition is null || c.EndPosition == c.Position));
-                if (uncomplicated && actions.All(c => c.Control.Kind == InputKind.MouseButton) && actions.Length <= 2 && actions[0].Offset == TimeSpan.Zero && (actions.Length == 1 || actions[1].Control == actions[0].Control && actions[1].Duration == actions[0].Duration && actions[1].Offset >= actions[0].Duration && actions[1].Position == actions[0].Position))
+                if (QuickActions.ReadScroll(s) is { } scroll)
+                {
+                    ModeBox.SelectedIndex = 5; ScrollDirectionBox.SelectedIndex = (int)scroll.Direction;
+                    ScrollNotchesBox.Text = scroll.Notches.ToString(CultureInfo.CurrentCulture); ScrollGapBox.Text = Ms(scroll.Gap);
+                    quickPoint = scroll.Position; useCursorLocation = quickPoint is null; ShowQuickCoordinates();
+                    AfterBox.Text = Ms(scroll.After);
+                }
+                else if (uncomplicated && actions.All(c => c.Control.Kind == InputKind.MouseButton) && actions.Length <= 2 && actions[0].Offset == TimeSpan.Zero && (actions.Length == 1 || actions[1].Control == actions[0].Control && actions[1].Duration == actions[0].Duration && actions[1].Offset >= actions[0].Duration && actions[1].Position == actions[0].Position))
                 {
                     ModeBox.SelectedIndex = 0; MouseChoice = (PointerButton)actions[0].Control.Code;
                     ClickKindBox.SelectedIndex = actions.Length == 2 ? 1 : s.Name.StartsWith("Hold ", StringComparison.Ordinal) || actions[0].Duration.TotalMilliseconds >= 500 ? 2 : 0;
@@ -424,7 +443,12 @@ public partial class MainWindow
     private void QuickDuplicate_Click(object sender, RoutedEventArgs e)
     {
         if (QuickActionList.SelectedItem is not QuickRow row) return;
-        try { quickHistory.Commit(SequenceEdits.Replace(quickHistory.Current, row.Index + 1, 0, SequenceEdits.CopyWithNewIds([row.Step]), quickPoints)); RefreshQuickList(row.Index + 1); }
+        try
+        {
+            var copies = SequenceEdits.CopyWithNewIds([row.Step]);
+            quickHistory.Commit(SequenceEdits.Replace(quickHistory.Current, row.Index + 1, 0, copies, quickPoints)); RefreshQuickList(row.Index + 1);
+            MarkWorkshopCopies([row.Step], copies);
+        }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
     }
     private void QuickRemove_Click(object sender, RoutedEventArgs e)
@@ -436,6 +460,50 @@ public partial class MainWindow
         RefreshQuickList(); NewAction_Click(sender, e);
         ReasonLabel.Text = "Action List cleared. Undo restores it; saved macros are kept.";
     }
-    private void QuickUndo_Click(object sender, RoutedEventArgs e) { quickHistory.Undo(); RefreshQuickList(); NewAction_Click(sender, e); }
-    private void QuickRedo_Click(object sender, RoutedEventArgs e) { quickHistory.Redo(); RefreshQuickList(); NewAction_Click(sender, e); }
+    private void QuickUndo_Click(object sender, RoutedEventArgs e) { var kept = (QuickActionList.SelectedItem as QuickRow)?.Step.Id; quickHistory.Undo(); KeepSelection(kept, sender, e); }
+    private void QuickRedo_Click(object sender, RoutedEventArgs e) { var kept = (QuickActionList.SelectedItem as QuickRow)?.Step.Id; quickHistory.Redo(); KeepSelection(kept, sender, e); }
+    /// <summary>After undo or redo the same action stays selected while it still exists; otherwise the editor is cleared.</summary>
+    private void KeepSelection(Guid? id, object sender, RoutedEventArgs e)
+    {
+        int index = id is { } kept ? quickHistory.Current.Steps.ToList().FindIndex(s => s.Id == kept) : -1;
+        RefreshQuickList(index);
+        if (index < 0) NewAction_Click(sender, e);
+    }
+
+    /// <summary>
+    /// Ends editing the selected action: nothing stays selected, the button turns back into a blue Add Action, and the
+    /// editor keeps its values, so Add Action now adds a new action instead of changing the old one.
+    /// </summary>
+    private void StopEditing()
+    {
+        if (editingQuick is null && QuickActionList.SelectedIndex < 0) return;
+        loadingQuick = true; QuickActionList.SelectedIndex = -1; loadingQuick = false;
+        editingQuick = null; ActionNameBox.Text = "";
+        ShowQuickFields(); ShowTestSelectedButton();
+    }
+
+    /// <summary>
+    /// A click anywhere in the clicker outside the Create an action panel and the Action List's rows and buttons ends
+    /// editing. The panel edits the selected action, and the list's buttons act on it, so those keep it selected.
+    /// </summary>
+    private void EditingWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (editingQuick is null && QuickActionList.SelectedIndex < 0 || e.OriginalSource is not DependencyObject source) return;
+        if (IsInside(source, CreateActionCard) || IsInside(source, QuickEditorTools) || IsInside(source, TestSelectedButton)) return;
+        if (IsInside(source, ActionListCard) && (Ancestor<ListBoxItem>(source) is not null || Ancestor<ButtonBase>(source) is not null
+            || Ancestor<System.Windows.Controls.Primitives.ScrollBar>(source) is not null)) return;
+        StopEditing();
+    }
+    private static bool IsInside(DependencyObject node, DependencyObject root)
+    {
+        for (DependencyObject? at = node; at is not null; at = TreeParent(at)) if (at == root) return true;
+        return false;
+    }
+    private static T? Ancestor<T>(DependencyObject node) where T : DependencyObject
+    {
+        for (DependencyObject? at = node; at is not null; at = TreeParent(at)) if (at is T found) return found;
+        return null;
+    }
+    // Text runs are not visuals, so walk their logical parent.
+    private static DependencyObject? TreeParent(DependencyObject node) => node is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node);
 }

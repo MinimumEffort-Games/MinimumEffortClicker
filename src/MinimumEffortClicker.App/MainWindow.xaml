@@ -81,14 +81,21 @@
                     <TextBlock x:Name="PickTargetHeading" Text="Pick a target" Style="{StaticResource Heading}"/><StackPanel x:Name="QuickFields">
                       <Border x:Name="TargetCard" Style="{StaticResource Card}" BorderBrush="{DynamicResource StopBorder}" BorderThickness="2"><StackPanel><TextBlock Text="Click target" FontWeight="SemiBold"/><ComboBox x:Name="TargetLabel" Text="Desktop" DisplayMemberPath="Title" IsEditable="False" IsTextSearchEnabled="False" DropDownOpened="ClickTargets_Opened" SelectionChanged="ClickTarget_Changed" AutomationProperties.Name="Click target" ToolTip="Desktop uses screen coordinates. Open this list to refresh available windows."/><TextBlock Text="If no app is selected, physical desktop coordinates are used." Style="{StaticResource Secondary}" FontSize="12" Margin="0,6,0,0"/></StackPanel></Border>
                       <TextBlock Text="Create an action" Style="{StaticResource Heading}"/>
-                      <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2"><StackPanel>
+                      <Border x:Name="CreateActionCard" Style="{StaticResource Card}" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2"><StackPanel>
                         <TextBlock Text="Action" FontWeight="SemiBold"/>
-                        <ComboBox x:Name="ModeBox" SelectedIndex="-1" SelectionChanged="ActionType_Changed" AutomationProperties.Name="Action"><ComboBoxItem Content="Click"/><ComboBoxItem Content="Key Press"/><ComboBoxItem Content="Pause"/><ComboBoxItem Content="Wait Until"/><ComboBoxItem Content="Take fullscreen screenshot"/></ComboBox>
+                        <ComboBox x:Name="ModeBox" SelectedIndex="-1" SelectionChanged="ActionType_Changed" AutomationProperties.Name="Action"><ComboBoxItem Content="Click"/><ComboBoxItem Content="Key Press"/><ComboBoxItem Content="Pause"/><ComboBoxItem Content="Wait Until"/><ComboBoxItem Content="Take fullscreen screenshot"/><ComboBoxItem Content="Scroll"/></ComboBox>
                         <TextBlock x:Name="ActionHint" Text="Choose an action to see its settings." Style="{StaticResource Secondary}" Margin="0,4,0,8"/>
                         <StackPanel x:Name="ActionFields" Visibility="Collapsed">
                           <StackPanel x:Name="MouseFields" Visibility="Collapsed">
                             <TextBlock Text="Mouse button"/><ComboBox x:Name="ButtonBox" SelectedIndex="0" AutomationProperties.Name="Mouse button"><ComboBoxItem Content="Left"/><ComboBoxItem Content="Middle"/><ComboBoxItem Content="Right"/><ComboBoxItem Content="Side 1"/><ComboBoxItem Content="Side 2"/></ComboBox>
                             <TextBlock Text="Click type"/><ComboBox x:Name="ClickKindBox" SelectedIndex="0" SelectionChanged="ClickKind_Changed" AutomationProperties.Name="Click type"><ComboBoxItem Content="Single click"/><ComboBoxItem Content="Double click"/><ComboBoxItem Content="Hold"/></ComboBox>
+                          </StackPanel>
+                          <StackPanel x:Name="ScrollFields" Visibility="Collapsed">
+                            <TextBlock Text="Direction"/><ComboBox x:Name="ScrollDirectionBox" SelectedIndex="1" AutomationProperties.Name="Scroll direction"><ComboBoxItem Content="Up"/><ComboBoxItem Content="Down"/><ComboBoxItem Content="Left"/><ComboBoxItem Content="Right"/></ComboBox>
+                            <TextBlock Text="Notches (1–100)"/><TextBox x:Name="ScrollNotchesBox" Text="3" AutomationProperties.Name="Scroll notches" ToolTip="One notch is one click of the mouse wheel."/>
+                            <TextBlock Text="Time between notches (ms)"/><TextBox x:Name="ScrollGapBox" Text="30" AutomationProperties.Name="Time between scroll notches"/>
+                          </StackPanel>
+                          <StackPanel x:Name="LocationFields" Visibility="Collapsed">
                             <WrapPanel>
                               <Button x:Name="CursorLocationButton" Width="{Binding ActualWidth, ElementName=PingLocationButton}" Margin="0,0,6,0" Content="Cursor location" Click="CursorLocation_Click" Style="{StaticResource GreenButton}"/>
                               <Button x:Name="SetLocationButton" Content="Set Location…" Click="PickQuickPoint_Click"/>
@@ -96,7 +103,8 @@
                               <TextBlock Text="Y" VerticalAlignment="Center" Margin="4,0,4,0"/><TextBox x:Name="QuickYBox" Width="48" VerticalContentAlignment="Center" AutomationProperties.Name="Click Y coordinate"/>
                             </WrapPanel>
                             <Button x:Name="PingLocationButton" Margin="0,6,0,0" Content="Ping click location" Click="PingLocation_Click" HorizontalAlignment="Left"/>
-<StackPanel x:Name="MotionFields" Visibility="Collapsed"><CheckBox x:Name="VaryPositionBox" Content="Randomize click location offset"/><TextBlock Text="Maximum offset (pixels, 0–25)"/><TextBox x:Name="PositionOffsetBox" Text="3" AutomationProperties.Name="Click position variation"/></StackPanel>                          </StackPanel>
+                          </StackPanel>
+<StackPanel x:Name="MotionFields" Visibility="Collapsed"><CheckBox x:Name="VaryPositionBox" Content="Randomize click location offset"/><TextBlock Text="Maximum offset (pixels, 0–25)"/><TextBox x:Name="PositionOffsetBox" Text="3" AutomationProperties.Name="Click position variation"/></StackPanel>
                           <StackPanel x:Name="KeyFields" Visibility="Collapsed">
                             <TextBlock Text="Key"/><ComboBox x:Name="KeyBox" AutomationProperties.Name="Key"/>
                             <WrapPanel><CheckBox x:Name="CtrlBox" Margin="0,8,12,8" Content="Ctrl"/><CheckBox x:Name="ShiftBox" Margin="0,8,12,8" Content="Shift"/><CheckBox x:Name="AltBox" Margin="0,8,12,8" Content="Alt"/></WrapPanel>
@@ -131,7 +139,7 @@
                         </StackPanel>
                       </StackPanel></Border>
                     </StackPanel>
-<WrapPanel x:Name="QuickEditorTools" Margin="0,4,0,12"><Button x:Name="AddActionButton" Content="Add Action" Click="AddAction_Click" IsEnabled="False" Style="{StaticResource GreenButton}"/><Button Content="Clear editor" Click="NewAction_Click" ToolTip="Clear the settings to create another action. The Action List is kept."/></WrapPanel>
+<WrapPanel x:Name="QuickEditorTools" Margin="0,4,0,12"><Button x:Name="AddActionButton" Content="Add Action" Click="AddAction_Click" IsEnabled="False" Style="{StaticResource BlueButton}"/><Button Content="Clear editor" Click="NewAction_Click" ToolTip="Clear the settings to create another action. The Action List is kept."/></WrapPanel>
 <TextBlock x:Name="TestResultLabel" Style="{StaticResource OptionalStatus}" AutomationProperties.LiveSetting="Polite" Margin="0,0,0,5"/>
 
 </StackPanel></ScrollViewer><ScrollViewer x:Name="ActionListScroll" Padding="0,0,16,0" Grid.Column="2" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -140,7 +148,7 @@
                     <Grid MinHeight="{Binding ActualHeight, ElementName=PickTargetHeading}" Margin="0,0,0,8">
                       <Button x:Name="TestSelectedButton" Content="Test Selected Action" Click="TestSelected_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="12,5" ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="Test selected action"/>
                     </Grid>
-                    <Border Grid.Row="1" Style="{StaticResource Card}" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2" Margin="0,0,0,12"><Grid><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Border x:Name="ActionListCard" Grid.Row="1" Style="{StaticResource Card}" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2" Margin="0,0,0,12"><Grid><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                       <app:FillHeightPanel MinHeight="240">
                       <ListBox ScrollViewer.VerticalScrollBarVisibility="Auto" x:Name="QuickActionList" SelectionChanged="QuickSelection_Changed" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Action List"><ListBox.ItemTemplate><DataTemplate><Border Background="{Binding Background}" Padding="6,4" CornerRadius="3"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding Title}" Style="{StaticResource ActionRowText}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding Detail}" Style="{StaticResource ActionRowText}" FontSize="12" TextWrapping="Wrap"/></StackPanel><StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"><CheckBox Content="Active" Foreground="{Binding Foreground}" IsChecked="{Binding Step.Enabled, Mode=OneWay}" Click="QuickActive_Click" ToolTip="Unchecked actions stay in the list and are skipped."/><ComboBox SelectedIndex="{Binding RepeatIndex, Mode=OneWay}" SelectionChanged="QuickRepeat_Changed" AutomationProperties.Name="Repeat this action" Margin="0,4,0,0" MinHeight="0" Padding="6,2" FontSize="12" HorizontalAlignment="Stretch"
                         ToolTip="With Loop on: Repeating actions run in every loop. Once actions run only in the first loop and are skipped in every loop after it. Without Loop, every action runs once."><ComboBoxItem Content="Repeating"/><ComboBoxItem Content="Once"/></ComboBox></StackPanel></Grid></Border></DataTemplate></ListBox.ItemTemplate></ListBox>
@@ -165,7 +173,13 @@
                         <Button Grid.Column="1" Content="Save Macro" Click="SaveProfile_Click" Margin="0,0,8,0" Padding="6,7"/>
                         <Button Grid.Column="2" x:Name="LoadMacroButton" Content="Load Macro" Click="LoadMacroFile_Click" Margin="0" Padding="6,7"/>
                       </Grid>
-                      <TextBlock Grid.Row="3" x:Name="MacroSaveStatus" Style="{StaticResource OptionalStatus}" Margin="0,4,0,0"/>
+                      <StackPanel Grid.Row="3">
+                        <Grid x:Name="WorkshopButtons" Visibility="Collapsed" Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                          <Button x:Name="ShareWorkshopButton" Content="Share on Workshop" Click="ShareWorkshop_Click" Margin="0,0,8,0" Padding="6,7" ToolTip="Saves the macro, then uploads it to the Steam Workshop. Sharing it again updates the same item." AutomationProperties.Name="Share on Workshop"/>
+                          <Button x:Name="BrowseWorkshopButton" Grid.Column="1" Content="Browse Workshop" Click="BrowseWorkshop_Click" Margin="0" Padding="6,7" ToolTip="Opens the clicker's Workshop in Steam. Macros you subscribe to appear in Load Macro, in the Workshop folder." AutomationProperties.Name="Browse Workshop"/>
+                        </Grid>
+                        <TextBlock x:Name="MacroSaveStatus" Style="{StaticResource OptionalStatus}" Margin="0,4,0,0"/>
+                      </StackPanel>
 
 <StackPanel Grid.Row="4" x:Name="QuickAdvanced" Margin="0,12,0,0">
   <CheckBox x:Name="RecordMovementBox" Content="Simulate mouse movement between click points" Checked="Config_Changed" Unchecked="Config_Changed"/>
@@ -214,6 +228,10 @@
                   <TextBlock x:Name="HotkeyStatus" Style="{StaticResource OptionalStatus}" Margin="0,8,0,0"/>
                   <TextBlock x:Name="ScreenshotHotkeyStatus" Style="{StaticResource OptionalStatus}"/>
 
+                  <TextBlock Text="Emergency stop" Style="{StaticResource Heading}" Margin="0,18,0,8"/>
+                  <ComboBox x:Name="EmergencyStopBox" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" Width="420" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop"><ComboBoxItem Content="Left + right mouse button stop the Action List (default)"/><ComboBoxItem Content="Stop on my input"/></ComboBox>
+                  <TextBlock x:Name="EmergencyStopHint" Style="{StaticResource Secondary}" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left"/>
+
                  </StackPanel></ScrollViewer>
                 </Grid>
                 <Grid x:Name="TogglePage" Visibility="Collapsed">
@@ -223,7 +241,7 @@
   <TextBlock Text="Pick a target" Style="{StaticResource Heading}"/>
   <Border x:Name="ToggleTargetCard" Style="{StaticResource Card}" BorderBrush="{DynamicResource StopBorder}" BorderThickness="2"><StackPanel>
    <TextBlock Text="Click target" FontWeight="SemiBold"/><ComboBox x:Name="ToggleTargetLabel" Text="Desktop" DisplayMemberPath="Title" IsEditable="False" IsTextSearchEnabled="False" DropDownOpened="ClickTargets_Opened" SelectionChanged="ClickTarget_Changed" AutomationProperties.Name="Toggle click target"/>
-   <TextBlock Text="If no app is selected, physical desktop coordinates are used." Style="{StaticResource Secondary}"/>
+   <TextBlock Text="Toggles only work when a click target is selected." Style="{StaticResource Secondary}"/>
   </StackPanel></Border>
   <TextBlock Text="Create Toggle" Style="{StaticResource Heading}" Margin="0,10,0,8"/>
   <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2"><StackPanel>

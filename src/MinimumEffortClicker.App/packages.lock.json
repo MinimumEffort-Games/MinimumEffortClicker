@@ -11,6 +11,13 @@
           "MinimumEffortClicker.Core": "[0.5.0-preview.34.16, )"
         }
       },
+      "minimumeffortclicker.steam": {
+        "type": "Project",
+        "dependencies": {
+          "MinimumEffortClicker.Storage": "[0.5.0-preview.34.16, )",
+          "Steamworks.NET": "[2024.8.0, )"
+        }
+      },
       "minimumeffortclicker.storage": {
         "type": "Project",
         "dependencies": {
@@ -29,8 +36,21 @@
           "MinimumEffortClicker.Engine": "[0.5.0-preview.34.16, )",
           "MinimumEffortClicker.Vision": "[0.5.0-preview.34.16, )"
         }
+      },
+      "Steamworks.NET": {
+        "type": "CentralTransitive",
+        "requested": "[2024.8.0, )",
+        "resolved": "2024.8.0",
+        "contentHash": "FHTj80ZyT09d0XwSnhE8+e6r/hwpp1+PmQ3RZbUqlyEQCVNrWDVmdA1ElIgQgx72XGIkF947kXL53z51puGD2g=="
       }
     },
-    "net10.0-windows10.0.22000/win-x64": {}
+    "net10.0-windows10.0.22000/win-x64": {
+      "Steamworks.NET": {
+        "type": "CentralTransitive",
+        "requested": "[2024.8.0, )",
+        "resolved": "2024.8.0",
+        "contentHash": "FHTj80ZyT09d0XwSnhE8+e6r/hwpp1+PmQ3RZbUqlyEQCVNrWDVmdA1ElIgQgx72XGIkF947kXL53z51puGD2g=="
+      }
+    }
   }
 }

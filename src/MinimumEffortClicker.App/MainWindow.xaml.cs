@@ -43,12 +43,14 @@ public partial class MainWindow : Window
         bindingsStore = new(store.DirectoryPath);
         if (!previewOnly) AppLog.Initialize(store.DirectoryPath);
         InitializeComponent();
+        PreviewMouseDown += EditingWindow_PreviewMouseDown;
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();
         ToggleHeldKeyBox.Content = "W"; ToggleShortcutBox.Content = "Choose a key…";
         ToggleKeyBox.Content = "F8"; StopKeyBox.Content = "F9";
         if (previewOnly) return;
         runtime = new DesktopRuntime();
+        InitializeWorkshop();
         runtime.CaptureScreenshot = stop => Dispatcher.InvokeAsync(() => TakeScreenshotAsync(fromAction: true, stop)).Task.Unwrap();
         StartupMeasurement.Mark("Native controls and scheduler ready");
         runtime.Changed += RuntimeChanged;
@@ -80,6 +82,8 @@ public partial class MainWindow : Window
             if (startupLoaded) return;
             startupLoaded = true;
             Pages.IsEnabled = false;
+            // The tray icon exists from the start, so closing while settings load asks to wait instead of quitting.
+            InitializeTray();
             bool settingsLoaded = false;
             try
             {
@@ -120,6 +124,7 @@ public partial class MainWindow : Window
             OverlayOpacity.Value = overlayOptions.Opacity; OverlayScale.Value = overlayOptions.Scale;
             Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
+            EmergencyStopBox.SelectedIndex = (int)settings.EmergencyStop; runtime.EmergencyStop = settings.EmergencyStop; EmergencyStop_Changed(this, null!);
             appliedClickLimit = 20; appliedKeepAwake = settings.KeepAwake;
             KeepAwakeBox.IsChecked = appliedKeepAwake;
             runtime.SetClickRateLimit(appliedClickLimit); runtime.KeepAwakeWhileRunning = appliedKeepAwake;
@@ -133,16 +138,17 @@ public partial class MainWindow : Window
             RefreshTargetChoices();
             await SetQuickRecordKey();
             await MakeSavedMacrosAvailable();
+            SyncWorkshopMacros();
             await ConfigureScreenshotHotkey();
             settingsLoaded = true;
-            InitializeTray();
             }
             catch (Exception ex) { if (!allowClose) ReasonLabel.Text = "Startup settings could not be loaded: " + ex.Message; }
             finally
             {
                 if (!allowClose)
                 {
-                    initialized = true; Pages.IsEnabled = true;
+                    // If loading failed the defaults stand, and closing must still work.
+                    initialized = true; Pages.IsEnabled = true; traySettingsLoaded = true;
                     if (StartupMeasurement.Enabled)
                     {
                         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
@@ -167,6 +173,7 @@ public partial class MainWindow : Window
             timer.Stop(); overlayFollowTimer.Stop(); SystemEvents.SessionSwitch -= SessionChanged; SystemEvents.PowerModeChanged -= PowerChanged;
             SystemEvents.DisplaySettingsChanged -= DisplaysChanged;
             CancelPowerSchedule(); CloseShutdownNotice();
+            CloseWorkshop();
             if (runtime is null) return; // --render-preview never creates a runtime.
             runtime.StopIssued -= CancelPowerSchedule;
             runtime.Control.RecordingRequested -= QuickRecordHotkey;
@@ -228,7 +235,7 @@ public partial class MainWindow : Window
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
-            overlay.Update(snapshot, stopKey, MacroBindings.KeyLabel(appliedToggleKey), ToggleOverlayLines(snapshot), ShortcutKeys.Label(appliedRecordKey), !quickHistory.Current.Steps.Any());
+            overlay.Update(snapshot, stopKey, MacroBindings.KeyLabel(appliedToggleKey), ToggleOverlayLines(snapshot), ShortcutKeys.Label(appliedRecordKey), !quickHistory.Current.Steps.Any(), ChosenEmergencyStop);
             bool newlyShown = !overlay.IsVisible;
             if (newlyShown) overlay.Show();
             PositionOverlay(newlyShown);
@@ -269,6 +276,7 @@ public partial class MainWindow : Window
         if (runtime is null || !operations.Idle) return;
         if (runtime.CanResume) { await ResumeActionsAsync(); return; }
         if (!TryQuickSequence(out var definition, out var plan, out var error)) { ReasonLabel.Text = error; return; }
+        if (WorkshopKeysBlocked(definition!)) return;
         TestResultLabel.Text = "";
         WindowState? minimizedFrom = null;
         using var startCancellation = new CancellationTokenSource();
@@ -324,6 +332,17 @@ public partial class MainWindow : Window
     private void Stop_Click(object sender, RoutedEventArgs e) { screenshotCancellation?.Cancel(); quickCancellation?.Cancel(); quickRecorder?.Stop(); runtime?.Stop(); }
     private void Cleanup_Click(object sender, RoutedEventArgs e) => runtime?.RetryCleanup();
     private void Overlay_Changed(object sender, RoutedEventArgs e) { if (initialized) { RefreshStatus(); PersistPreferences(); } }
+    private EmergencyStopMode ChosenEmergencyStop => (EmergencyStopMode)Math.Max(0, EmergencyStopBox.SelectedIndex);
+    /// <summary>Settings → Emergency stop: shows what the choice does and hands it to the runtime.</summary>
+    private void EmergencyStop_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (EmergencyStopHint is null) return;
+        EmergencyStopHint.Text = ChosenEmergencyStop == EmergencyStopMode.BothMouseButtons
+            ? "Press the left and right mouse buttons together to stop a running or looping Action List, for when a game catches the Stop All key. Toggles keep running. Nothing else you press or move stops the clicker, so you can click into your game while it runs. Stop All still stops everything."
+            : "Any key or mouse button the clicker is using, or moving the mouse while the clicker moves it, stops everything at once. Safer, but clicking into your game to bring it to the front also stops a run. Stop All still stops everything.";
+        if (runtime is not null) runtime.EmergencyStop = ChosenEmergencyStop;
+        if (initialized) { RefreshStatus(); PersistPreferences(); }
+    }
     private void Navigation_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (Pages is null) return;
@@ -412,7 +431,7 @@ public partial class MainWindow : Window
         if (!initialized) return;
         pendingPreferences = new(1, ThemeBox.SelectedIndex, appliedToggleKey,
             appliedStopKey, appliedHoldTrigger, OverlayBox.IsChecked == true, overlayOptions, false, appliedClickLimit, appliedKeepAwake, ResizeClicksBox.SelectedIndex == 0,
-            CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey);
+            CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop);
         if (operations.Has(Operation.Preferences)) return;
         operations.Begin(Operation.Preferences);
         try
@@ -434,12 +453,14 @@ public partial class MainWindow : Window
         try { await Task.Run(() => store.Save(updated)); profiles = updated; RefreshToggleList(); }
         finally { operations.End(Operation.Library); }
     }
-    private async void SaveProfile_Click(object sender, RoutedEventArgs e)
+    private async void SaveProfile_Click(object sender, RoutedEventArgs e) => await SaveCurrentMacroAsync();
+    /// <summary>Saves the Action List under the name in the box. True when the file is written; Share on Workshop relies on it.</summary>
+    private async Task<bool> SaveCurrentMacroAsync()
     {
-        if (!operations.Idle || runtime?.Snapshot.Busy == true) { MacroSaveStatus.Text = "Stop before saving the macro."; return; }
+        if (!operations.Idle || runtime?.Snapshot.Busy == true) { MacroSaveStatus.Text = "Stop before saving the macro."; return false; }
         string name = ActionMacroNameBox.Text.Trim();
-        if (name.Length == 0) { MacroSaveStatus.Text = "Input macro name."; ActionMacroNameBox.Focus(); return; }
-        if (!TryQuickSequence(out var sequence, out _, out var error)) { ReasonLabel.Text = error; return; }
+        if (name.Length == 0) { MacroSaveStatus.Text = "Input macro name."; ActionMacroNameBox.Focus(); return false; }
+        if (!TryQuickSequence(out var sequence, out _, out var error)) { ReasonLabel.Text = error; return false; }
         operations.Begin(Operation.MacroFile); RefreshStatus();
         string? exportedPath = null;
         try
@@ -474,8 +495,9 @@ public partial class MainWindow : Window
             loadedMacroFile = path; loadedFileProfile = file;
             MacroSaveStatus.Text = $"Saved ‘{name}’."; MacroSaveStatus.ToolTip = path;
             ReasonLabel.Text = "Macro saved. Use Load Macro to open it for editing or playback.";
+            return true;
         }
-        catch (Exception ex) { MacroSaveStatus.Text = exportedPath is null ? "Could not save: " + ex.Message : $"File saved at {exportedPath}, but the local library update failed: {ex.Message}"; }
+        catch (Exception ex) { MacroSaveStatus.Text = exportedPath is null ? "Could not save: " + ex.Message : $"File saved at {exportedPath}, but the local library update failed: {ex.Message}"; return false; }
         finally { operations.End(Operation.MacroFile); RefreshStatus(); }
     }
     private void LoadActionMacro(ProfileDefinition profile, MacroDefinition macro)

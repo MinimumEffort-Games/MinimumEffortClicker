@@ -1,6 +1,7 @@
 using System.Windows;
 using MinimumEffortClicker.Core;
 using MinimumEffortClicker.Engine;
+using MinimumEffortClicker.Windows;
 
 namespace MinimumEffortClicker.App;
 
@@ -36,8 +37,11 @@ public partial class MainWindow
         if (await CaptureShortcut("Stop All shortcut") is not { } key) return;
         selectedStopKey = key; await ApplyHotkeysAsync();
         // F1–F11 are registered system-wide hotkeys; anything else relies on the input hook, which Windows does
-        // not deliver while an administrator window is in front.
-        if (ShortcutKeys.UsesHook(key)) ReasonLabel.Text = "Saved. Note: this Stop All key will not work while an administrator (elevated) window is in front. F1–F11 always work.";
+        // not deliver while an administrator window is in front. Ctrl+Alt+F9 is registered as the backup then.
+        if (ShortcutKeys.UsesHook(key))
+            ReasonLabel.Text = runtime?.Control.BackupStopActive == true
+                ? $"Saved. While an administrator (elevated) window is in front this key does not reach the clicker; {DesktopControl.BackupStopLabel} still stops everything."
+                : $"Saved. Note: this Stop All key will not work while an administrator (elevated) window is in front, and {DesktopControl.BackupStopLabel} is taken by another app. F1–F11 always work.";
     }
     private async void CaptureRecordKey_Click(object sender, RoutedEventArgs e)
     { if (await CaptureShortcut("Record Macro / Stop shortcut") is { } key) { selectedRecordKey = key; await SetQuickRecordKey(); } }

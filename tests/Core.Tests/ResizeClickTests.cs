@@ -51,13 +51,12 @@ public sealed class ResizeClickTests
     }
 
     [TestMethod]
-    public void DragsDesktopPointsScrollAndColourAreasRemainStrictIncludingReturningDragPaths()
+    public void DragsDesktopPointsAndColourAreasRemainStrictIncludingReturningDragPaths()
     {
         var drag = SequenceStep.Input("Drag", InputControl.Mouse(PointerButton.Right), Ms(100)) with { Position = Saved, EndPosition = Saved with { X = 500 } };
         var desktop = Click(Saved with { Space = CoordinateSpace.Desktop });
-        var scroll = SequenceStep.Input("Wheel", new(InputKind.Scroll, 120), TimeSpan.Zero) with { Position = Saved };
         var colour = SequenceStep.WaitUntil("Colour", new(ConditionKind.RegionColor, new(Ms(500)), new(Saved, 10, 10)));
-        var plan = SequenceCompiler.Compile(new([drag, desktop, scroll, colour])).AdaptClickPoints(1600, 1200, 96, true);
+        var plan = SequenceCompiler.Compile(new([drag, desktop, colour])).AdaptClickPoints(1600, 1200, 96, true);
         Assert.IsFalse(plan.Inputs.Any(i => i.Position?.ScaleWithWindow == true));
         Assert.IsFalse(plan.Conditions[0].Definition.Region!.Origin.Matches(1600, 1200, 96));
         Assert.ThrowsExactly<ArgumentException>(() => (new CaptureRegion(Saved with { ScaleWithWindow = true }, 10, 10)).Validate());
@@ -67,6 +66,17 @@ public sealed class ResizeClickTests
             new(Ms(60), InputControl.Mouse(PointerButton.Left), false, Saved)], Ms(60));
         var returningDrag = SequenceCompiler.Compile(recorded.Sequence).AdaptClickPoints(1600, 1200, 96, true);
         Assert.IsFalse(returningDrag.Inputs.Any(i => i.Position?.ScaleWithWindow == true));
+    }
+
+    [TestMethod]
+    public void ScrollSpotsFollowTheWindowLikeClickSpots()
+    {
+        // A scroll action has a saved spot like a click, so a resized window must not break it while clicks keep working.
+        var scroll = QuickActions.Scroll(ScrollDirection.Down, 2, Ms(30), TimeSpan.Zero, Saved);
+        var scaled = SequenceCompiler.Compile(new([scroll])).AdaptClickPoints(1600, 1200, 96, true);
+        Assert.IsTrue(scaled.Inputs.All(i => i.Position?.ScaleWithWindow == true));
+        var fixedOffsets = SequenceCompiler.Compile(new([scroll])).AdaptClickPoints(1600, 1200, 96, false);
+        Assert.IsTrue(fixedOffsets.Inputs.All(i => i.Position is { Width: 1600, Height: 1200 } p && p.X == Saved.X && p.Y == Saved.Y));
     }
 
     [TestMethod]

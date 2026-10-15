@@ -69,6 +69,8 @@ public sealed class DesktopRecorder : IDisposable
             if (sample.Down && runtime.IsDesktopMode && runtime.IsOwnPoint(sample.X, sample.Y)) { ignoredClicks.Add(sample.Control); return; }
             if (!sample.Down && ignoredClicks.Remove(sample.Control)) return;
         }
+        // Scrolling the clicker itself (its Action List) is not part of the macro.
+        if (sample.Control.Kind is InputKind.Scroll or InputKind.HorizontalScroll && runtime.IsDesktopMode && runtime.IsOwnPoint(sample.X, sample.Y)) return;
         var point = runtime.CapturePoint(sample.X, sample.Y);
         if (!sample.Down && clickPositions.TryGetValue(sample.Control, out var pressedAt)
             && (!channels.PointerPath || !dragged.Contains(sample.Control) && point is not null && Math.Abs(point.X - pressedAt.X) <= 3 && Math.Abs(point.Y - pressedAt.Y) <= 3)) point = pressedAt;

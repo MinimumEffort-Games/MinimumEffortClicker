@@ -18,6 +18,29 @@
   tests wait until the clicker is out of the picture. Save Macro is a plain button on both platforms.
 - A "Minimize on record" choice next to Record/Stop: untick it to record without minimising the clicker.
 - Windows: the overlay has the Linux buttons to bring the clicker back and to quit; the rest stays click-through.
+- Scroll: recording captures the mouse wheel (a quick run of notches becomes one "Scroll down ×5" action), and a new
+  Scroll action turns the wheel a set number of notches at the cursor or a saved spot. Every notch is sent on its own.
+- Emergency stop choice in Settings: by default the left and right mouse buttons pressed together stop a running or
+  looping Action List and nothing else you do stops it; "Stop on my input" brings back the old stop on any input.
+  F9 always stops everything. Older settings files get the new default.
+- The overlay names the stop that works right now ("F8 to Start/Stop - LMB+RMB to Stop", "F9 to Stop All Toggles")
+  with the keys you bound, and shows a toggle that is on in blue.
+- Add Action is blue; with a row selected it turns green "Save Changes". Clicking an empty spot in the list or
+  elsewhere in the clicker stops editing; Duplicate selects the copy.
+- Looped recordings keep the pause after the last action, so a recorded drag drags again in every loop.
+- The Toggles page says toggles only work with a click target selected.
+- Stopping a paused run now logs why it stopped instead of "Resumed explicitly".
+- Windows: when Windows drops the clicker's input hook, the clicker notices within a second and installs it again.
+  A Stop All key outside F1–F11 gets Ctrl+Alt+F9 as a backup that also works while an administrator window is in
+  front.
+- Closing the window in the first second no longer quits the app when close-to-tray is on.
+- Steam version (built with `scripts/Build-Steam.ps1`): Steam Cloud carries saved macros, toggles and settings to
+  your other PCs, and the Workshop shares macros. Share on Workshop uploads the saved macro and updates the same item
+  next time; Browse Workshop opens the Workshop in Steam; subscribed macros appear in Load Macro's Workshop folder.
+  The portable ZIP is unchanged and stays offline. See `docs/STEAM.md`.
+- Workshop safety: a Workshop macro that presses a system shortcut (Ctrl+Esc, Ctrl+Shift+Esc, Alt+F4, Ctrl+Alt+T,
+  Alt+F2, Alt+Space, Ctrl+Alt+Delete, Ctrl+Alt+F-keys, Alt+Print Screen) is refused, sharing one is refused, and key
+  presses from Workshop actions only run with a window as Click target. Your own macros are not limited.
 - A Help button in the header explains each page.
 - Safety: an unexpected error now stops playback and releases every held key before it is reported, the Stop All
   hooks can no longer be lost while input is being sent, and the app no longer mistakes its own held key for the

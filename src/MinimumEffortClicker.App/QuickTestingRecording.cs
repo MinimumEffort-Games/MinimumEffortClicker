@@ -44,6 +44,7 @@ public partial class MainWindow
         if (!operations.Idle || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending)
         { ReasonLabel.Text = "Finish or stop the current run before testing an action."; return; }
         var step = row.Step with { Enabled = true };
+        if (WorkshopKeysBlocked(new([row.Step]))) return;
         operations.Begin(Operation.Quick);
         WindowState? minimizedFrom = null;
         bool? passed = null; string detail;
@@ -194,7 +195,7 @@ public partial class MainWindow
             DesktopRecorder? started = null;
             for (int attempt = 0; started is null; attempt++)
             {
-                try { started = new DesktopRecorder(runtime, new(Keyboard: true, MouseButtons: true, PointerPath: true)); }
+                try { started = new DesktopRecorder(runtime, new(Keyboard: true, MouseButtons: true, Scroll: true, PointerPath: true)); }
                 catch (InvalidOperationException) when (attempt < 10) { await Task.Delay(50, cancellation.Token); }
             }
             using var recorder = started;

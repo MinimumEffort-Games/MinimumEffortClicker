@@ -92,7 +92,8 @@ public sealed class SequencePlan
         }
         var inputs = Inputs.Select(i =>
         {
-            if (i.Control.Kind != InputKind.MouseButton || i.Position is not { Space: CoordinateSpace.WindowClient } p || drags.Contains(i.ActionId)) return i;
+            // Scroll spots follow the window like click spots.
+            if (i.Control.Kind is not (InputKind.MouseButton or InputKind.Scroll or InputKind.HorizontalScroll) || i.Position is not { Space: CoordinateSpace.WindowClient } p || drags.Contains(i.ActionId)) return i;
             if (scaleWithWindow) return i with { Position = p with { ScaleWithWindow = true } };
             var point = new ClientPoint(checked((int)Math.Round(p.X * (double)dpi / p.Dpi)), checked((int)Math.Round(p.Y * (double)dpi / p.Dpi)), width, height, dpi);
             if (!point.IsValid) throw new ArgumentException($"Saved click at {p.X}, {p.Y} is outside this window. Use Set Location to choose a new point.");
