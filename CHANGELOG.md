@@ -31,7 +31,7 @@
   waits until you let go; if you press a button the clicker is holding, your release finishes the click. Before, either
   overlap ended the run ("physical input takes priority" or "cleanup pending"). "Stop on my input" is unchanged.
 - Add Action is blue; with a row selected it turns green "Save Changes". Clicking an empty spot in the list or
-  elsewhere in the clicker stops editing; Duplicate selects the copy.
+  elsewhere in the clicker stops editing; picking from a dropdown keeps the row selected; Duplicate selects the copy.
 - Looped recordings keep the pause after the last action, so a recorded drag drags again in every loop.
 - The Toggles page says toggles only work with a click target selected.
 - Stopping a paused run now logs why it stopped instead of "Resumed explicitly".
