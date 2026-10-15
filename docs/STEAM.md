@@ -46,7 +46,7 @@ Code: `src/MinimumEffortClicker.Steam` (Steamworks.NET 2024.8.0, the only projec
 **Steam Cloud**: App Admin > Cloud.
 
 1. Byte quota per user: 200 MB. Number of files per user: 2000.
-2. Enable Auto-Cloud. Add these root paths, with OS = Windows for each:
+2. Enable Auto-Cloud. Add these root paths, with OS = **[Cross-Platform]** for each (Steam recommends it even for a Windows-only app, so Linux and Steam Deck can be added later without losing synced files):
 
    | Root | Subdirectory | Pattern | Recursive |
    |---|---|---|---|
