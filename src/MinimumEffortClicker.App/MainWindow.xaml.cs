@@ -200,11 +200,13 @@ public partial class MainWindow : Window
         statusRefreshCount++;
         var snapshot = runtime.Snapshot;
         AppLog.RunState(snapshot);
-        if (!snapshot.Busy && desktopPlaybackFrom is { } previous)
+        if (playbackAway is { } away)
         {
-            desktopPlaybackFrom = null;
-            // User (2026-10-14): the clicker comes back when the run it minimised for ends, however it ended.
-            RestoreDesktopOperationWindow(previous);
+            if (snapshot.ActionsActive) playbackSeenActive = true;
+            // User (2026-10-14/15): the clicker comes back when the Action List ends, however it ended, with any target.
+            // A list that ends while a toggle keeps running leaves the clicker out of the way: the user is playing.
+            if (!snapshot.Busy) { playbackAway = null; ComeBack(away); }
+            else if (playbackSeenActive && !snapshot.ActionsActive) playbackAway = null;
         }
         TargetLabel.IsEnabled = ToggleTargetLabel.IsEnabled = !snapshot.Busy && !snapshot.CleanupPending
             && operations.Idle && !closing;
@@ -265,7 +267,8 @@ public partial class MainWindow : Window
             throw new ArgumentException("Enter finite numeric timing values.");
         return value;
     }
-    private WindowState? desktopPlaybackFrom;
+    private StepAside? playbackAway;
+    private bool playbackSeenActive;
     private bool actionsStartPending;
     private async void Run_Click(object sender, RoutedEventArgs e)
     {
@@ -278,7 +281,7 @@ public partial class MainWindow : Window
         if (!TryQuickSequence(out var definition, out var plan, out var error)) { ReasonLabel.Text = error; return; }
         if (WorkshopKeysBlocked(definition!)) return;
         TestResultLabel.Text = "";
-        WindowState? minimizedFrom = null;
+        StepAside? away = null;
         using var startCancellation = new CancellationTokenSource();
         operations.Begin(Operation.Quick); actionsStartPending = true; quickCancellation = startCancellation;
         long startIntent = runtime.StopVersion;
@@ -289,8 +292,9 @@ public partial class MainWindow : Window
             if (runtime.IsDesktopMode)
             {
                 var frame = runtime.GetTargetFrame(); plan!.ValidateDesktopMode(frame.Width, frame.Height, frame.Dpi);
-                if (MinimizeOnStartBox.IsChecked == true) { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
+                away = StepAsideForTarget(MinimizeOnStartBox.IsChecked == true);
             }
+            away ??= StepAsideForTarget(minimize: false); // A window target comes forward below; the clicker comes back after.
             if (!plan!.LeaveCursorFree && !runtime.BringTargetForward()) { ReasonLabel.Text = runtime.Snapshot.Reason; return; }
             // Allow the initiating mouse/key release and foreground handoff to settle BEFORE
             // sampling physical input. The old countdown ran after that sample.
@@ -317,7 +321,7 @@ public partial class MainWindow : Window
             }
             if (startIntent != runtime.StopVersion || allowClose || closing) return;
             accepted = runtime.TryStartQuick(plan!, definition!.Steps.Count, TimeSpan.Zero, ResizeClicksBox.SelectedIndex == 0);
-            if (accepted) desktopPlaybackFrom = minimizedFrom;
+            if (accepted) { playbackAway = away; playbackSeenActive = false; }
             if (!accepted) { ReasonLabel.Text = runtime.Snapshot.Reason; }
         }
         catch (OperationCanceledException) { }
@@ -325,7 +329,7 @@ public partial class MainWindow : Window
         finally
         {
             quickCancellation = null; operations.End(Operation.Quick); actionsStartPending = false;
-            if (!accepted) RestoreDesktopOperationWindow(minimizedFrom);
+            if (!accepted) ComeBack(away);
             RefreshStatus();
         }
     }
