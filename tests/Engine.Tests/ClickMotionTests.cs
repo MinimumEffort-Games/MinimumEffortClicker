@@ -121,6 +121,20 @@ public sealed class ClickMotionTests
         Assert.AreEqual(InputEdge.Up, input.Accepted[^1].Edge); Assert.IsFalse(engine.HasOwnedInput);
     }
     [TestMethod]
+    public void ScrollPlaysEveryNotchAsItsOwnInputAtTheSavedSpot()
+    {
+        var clock = new FakeClock(); var input = new FakeInputSink(); var target = Guid.NewGuid();
+        var engine = new ClickExecutor(input, clock, new Wait(clock), new FakeForegroundProvider { Current = new(target, true) });
+        var spot = new ClientPoint(300, 200, 800, 600, 96);
+        var result = engine.Execute(SequenceCompiler.Compile(new([QuickActions.Scroll(ScrollDirection.Down, 4, Ms(40), Ms(100), spot)])), target, default);
+        Assert.AreEqual(ClickRunOutcome.Completed, result.Outcome, result.Error);
+        var wheels = input.Accepted.Where(i => i.Control.Kind == InputKind.Scroll).ToArray();
+        Assert.HasCount(4, wheels);
+        Assert.IsTrue(wheels.All(w => w.Control.Code == -QuickActions.Notch && w.Position == spot));
+        Assert.AreEqual(Ms(220), clock.Elapsed);
+        Assert.IsFalse(engine.HasOwnedInput);
+    }
+    [TestMethod]
     public void LoopTravelsToTheFirstClickDuringTheClosingPauseInsteadOfJumping()
     {
         var clock = new FakeClock(); var input = new FakeInputSink(); var target = Guid.NewGuid();
