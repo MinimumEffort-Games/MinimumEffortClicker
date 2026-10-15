@@ -14,11 +14,14 @@ public sealed class RecordingLabelsTests
             new(TimeSpan.FromMinutes(1) + TimeSpan.FromMilliseconds(280), mouse, true), new(TimeSpan.FromMinutes(1) + TimeSpan.FromMilliseconds(360), mouse, false)
         ], TimeSpan.FromMinutes(2)).Sequence;
         var actions = QuickActions.RecordedActions(recording, true);
-        Assert.HasCount(3, actions.Steps);
+        // The minute before the first click is dropped; the wait after the last one (until recording stopped) is kept,
+        // so a looped recording repeats at the recorded pace.
+        Assert.HasCount(4, actions.Steps);
         Assert.AreEqual(StepKind.Input, actions.Steps[0].Kind);
         Assert.AreEqual(TimeSpan.FromMilliseconds(200), actions.Steps[1].Duration);
         Assert.AreEqual(StepKind.Input, actions.Steps[2].Kind);
-        Assert.AreEqual(TimeSpan.FromMilliseconds(360), SequenceCompiler.Compile(actions).Duration);
+        Assert.AreEqual(TimeSpan.FromSeconds(60) - TimeSpan.FromMilliseconds(360), actions.Steps[3].Duration);
+        Assert.AreEqual(TimeSpan.FromSeconds(60), SequenceCompiler.Compile(actions).Duration);
         Assert.HasCount(2, QuickActions.RecordedActions(recording, false).Steps);
     }
     [TestMethod]

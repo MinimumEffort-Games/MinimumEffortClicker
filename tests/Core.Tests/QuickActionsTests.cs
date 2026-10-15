@@ -35,7 +35,8 @@ public sealed class QuickActionsTests
             new(Ms(100), InputControl.Key(0x11), true), new(Ms(200), InputControl.Key(0x39), true),
             new(Ms(240), InputControl.Key(0x39), false), new(Ms(500), InputControl.Key(0x11), false)], Ms(900)).Sequence with { KeyboardLayout = "04090409" };
         var withPauses = QuickActions.RecordedActions(recorded, true);
-        Assert.AreEqual(1, withPauses.Steps.Count); Assert.AreEqual(recorded.Steps[1], withPauses.Steps[0]);
+        // The wait after the last input (until recording stopped) is kept when pauses are recorded.
+        Assert.AreEqual(2, withPauses.Steps.Count); Assert.AreEqual(recorded.Steps[1], withPauses.Steps[0]); Assert.AreEqual(Ms(400), withPauses.Steps[1].Duration);
         var without = QuickActions.RecordedActions(recorded, false);
         Assert.AreEqual(1, without.Steps.Count); Assert.AreEqual(recorded.Steps[1], without.Steps[0]);
         Assert.AreEqual("04090409", without.KeyboardLayout);

@@ -24,7 +24,13 @@ public static class QuickActions
     }
     public static SequenceDefinition RecordedActions(SequenceDefinition recording, bool includePauses, bool movement = false)
     {
-        var inputs = MergeScrollBursts(recording.Steps.SkipWhile(s => s.Kind == StepKind.Wait).Reverse().SkipWhile(s => s.Kind == StepKind.Wait).Reverse().ToList());
+        // The wait before the first input is dropped (the recording hotkey adds its own lead pause). The wait after the
+        // last input is kept when pauses are recorded: with Loop on it is the time the app needs before the next round,
+        // for example a dropped item settling back; without it the next loop's first press lands at the same moment.
+        var trimmed = recording.Steps.SkipWhile(s => s.Kind == StepKind.Wait).ToList();
+        if (!includePauses) trimmed = trimmed.AsEnumerable().Reverse().SkipWhile(s => s.Kind == StepKind.Wait).Reverse().ToList();
+        else if (trimmed.All(s => s.Kind == StepKind.Wait)) trimmed.Clear();
+        var inputs = MergeScrollBursts(trimmed);
         var result = recording with { Steps = inputs.Where(s => includePauses || s.Kind != StepKind.Wait)
             .Select(s => s.Kind == StepKind.Wait ? s with { Name = "Pause" } : movement && includePauses && IsOrdinaryClick(s) ? s with { Motion = new(UsePreviousPause: true) } : s).ToArray(), Repetition = new() };
         var plan = SequenceCompiler.Compile(result);
