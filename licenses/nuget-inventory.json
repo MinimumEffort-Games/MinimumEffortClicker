@@ -451,6 +451,17 @@
     ]
   },
   {
+    "package": "Steamworks.NET",
+    "version": "2024.8.0",
+    "licenseType": "expression",
+    "license": "MIT",
+    "licenseUrl": "https://licenses.nuget.org/MIT",
+    "repository": "https://github.com/rlabrecque/Steamworks.NET.git",
+    "commit": "15.0.1",
+    "contentHash": "FHTj80ZyT09d0XwSnhE8+e6r/hwpp1+PmQ3RZbUqlyEQCVNrWDVmdA1ElIgQgx72XGIkF947kXL53z51puGD2g==",
+    "localNotices": []
+  },
+  {
     "package": "Tmds.DBus.Protocol",
     "version": "0.94.1",
     "licenseType": "expression",

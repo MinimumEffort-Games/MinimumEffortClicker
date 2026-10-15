@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The only project that talks to Steam. The app loads it only when steam.mode sits beside the exe (Steam package);
+       the GitHub package has neither steam.mode nor Valve's steam_api64.dll, so this code never runs there. -->
+  <PropertyGroup>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Steamworks.NET" />
+    <ProjectReference Include="../MinimumEffortClicker.Storage/MinimumEffortClicker.Storage.csproj" />
+  </ItemGroup>
+</Project>
