@@ -14,15 +14,30 @@ internal interface IOverlayPresenter
     void Configure(OverlayOptions options);
 }
 
-/// <summary>Click-through status window pinned beside the Click target. It never takes focus or input.</summary>
+/// <summary>
+/// Status window pinned beside the Click target. It never takes focus. It is click-through except for its two buttons
+/// (bring the clicker back, quit), which take only a real mouse click: the clicker's own clicks pass them by.
+/// </summary>
 internal sealed class StatusOverlay : Window, IOverlayPresenter
 {
+    private static readonly Brush ButtonNormal = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)), ButtonHover = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255));
     private readonly TextBlock label = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.NoWrap };
     private readonly TextBlock activityLabel = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, MaxHeight = 40 };
     private readonly StackPanel body = new();
+    private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
+    private readonly DockPanel row = new();
+    private readonly List<(Border Button, System.Windows.Shapes.Shape Glyph)> buttons = [];
+    // The window is click-through as a whole; while the pointer is over a button it takes clicks, so the rest never does.
+    private readonly System.Windows.Threading.DispatcherTimer pointerWatch = new() { Interval = TimeSpan.FromMilliseconds(50) };
+    private bool clickable;
     private OverlayOptions options = new();
     private bool configured;
     private bool recording, active;
+
+    /// <summary>The overlay's square: bring the clicker window to the front.</summary>
+    public event Action? ShowRequested;
+    /// <summary>The overlay's X: stop whatever runs and quit the clicker.</summary>
+    public event Action? ExitRequested;
 
     public StatusOverlay()
     {
@@ -32,15 +47,57 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         ShowActivated = false; ShowInTaskbar = false; Topmost = true; ResizeMode = ResizeMode.NoResize; Focusable = false;
         FontFamily = new FontFamily("Segoe UI");
         body.Children.Add(activityLabel); body.Children.Add(label);
-        Content = new Border { Background = new SolidColorBrush(Color.FromRgb(17, 16, 16)), BorderBrush = new SolidColorBrush(Color.FromRgb(163, 158, 147)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 9, 4), Child = body };
+        AddButton("Show Minimum Effort Clicker", new System.Windows.Shapes.Rectangle { Width = 9, Height = 9, StrokeThickness = 1.5 }, () => ShowRequested?.Invoke());
+        AddButton("Quit Minimum Effort Clicker (stops anything running)", new System.Windows.Shapes.Path { Data = Geometry.Parse("M0,0 L9,9 M9,0 L0,9"), StrokeThickness = 1.5, Width = 9, Height = 9 }, () => ExitRequested?.Invoke());
+        DockPanel.SetDock(actions, Dock.Right);
+        row.Children.Add(actions); row.Children.Add(body);
+        Content = new Border { Background = new SolidColorBrush(Color.FromRgb(17, 16, 16)), BorderBrush = new SolidColorBrush(Color.FromRgb(163, 158, 147)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 6, 4), Child = row };
         ApplyContrast();
         SystemParameters.StaticPropertyChanged += ContrastChanged;
-        Closed += (_, _) => SystemParameters.StaticPropertyChanged -= ContrastChanged;
+        pointerWatch.Tick += (_, _) => WatchPointer();
+        IsVisibleChanged += (_, _) => { if (IsVisible) pointerWatch.Start(); else { pointerWatch.Stop(); SetClickable(false); } };
+        Closed += (_, _) => { pointerWatch.Stop(); SystemParameters.StaticPropertyChanged -= ContrastChanged; };
         SourceInitialized += (_, _) =>
         {
             HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WindowMessage);
             ApplyStyles();
         };
+    }
+
+    private void AddButton(string tip, System.Windows.Shapes.Shape glyph, Action click)
+    {
+        var button = new Border { Width = 20, Height = 20, Margin = new Thickness(4, 0, 0, 0), CornerRadius = new CornerRadius(3), Background = ButtonNormal,
+            Child = new Viewbox { Width = 11, Height = 11, Child = glyph, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+        System.Windows.Automation.AutomationProperties.SetName(button, tip);
+        button.ToolTip = tip;
+        button.MouseLeftButtonUp += (_, e) => { e.Handled = true; click(); };
+        buttons.Add((button, glyph)); actions.Children.Add(button);
+    }
+
+    /// <summary>Lets clicks reach the overlay only while the pointer is over one of its buttons, and shows the hover.</summary>
+    private void WatchPointer()
+    {
+        if (!ProbeNative.GetCursorPos(out var pointer)) return;
+        Border? over = null;
+        try
+        {
+            foreach (var (button, _) in buttons)
+            {
+                var from = button.PointToScreen(new Point(0, 0)); var to = button.PointToScreen(new Point(button.ActualWidth, button.ActualHeight));
+                if (pointer.X >= from.X && pointer.X < to.X && pointer.Y >= from.Y && pointer.Y < to.Y) { over = button; break; }
+            }
+        }
+        catch (InvalidOperationException) { } // Not on screen yet.
+        foreach (var (button, _) in buttons) button.Background = button == over ? ButtonHover : ButtonNormal;
+        SetClickable(over is not null);
+    }
+    private void SetClickable(bool on)
+    {
+        if (on == clickable) return;
+        var hwnd = new WindowInteropHelper(this).Handle; if (hwnd == 0) return;
+        clickable = on;
+        long style = ProbeNative.GetWindowLongPtr(hwnd, -20).ToInt64();
+        ProbeNative.SetWindowLongPtr(hwnd, -20, (nint)(on ? style & ~0x20L : style | 0x20L)); // WS_EX_TRANSPARENT
     }
     private void ContrastChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -50,6 +107,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     {
         bool contrast = SystemParameters.HighContrast;
         label.Foreground = activityLabel.Foreground = contrast ? SystemColors.WindowTextBrush : Brushes.White;
+        foreach (var (_, glyph) in buttons) glyph.Stroke = contrast ? SystemColors.WindowTextBrush : Brushes.White;
         if (Content is Border border)
         {
             border.Background = contrast ? SystemColors.WindowBrush : recording ? Brushes.DarkRed : active ? new SolidColorBrush(Color.FromRgb(28, 96, 50)) : new SolidColorBrush(Color.FromRgb(17, 16, 16));
@@ -60,6 +118,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private nint WindowMessage(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
         if (message == 0x21) { handled = true; return 3; } // WM_MOUSEACTIVATE → MA_NOACTIVATE
+        // A left click the clicker itself sent (a macro click that lands on the overlay) never presses its buttons.
+        if (message is 0x201 or 0x202 or 0x203 && ProbeNative.GetMessageExtraInfo() == (nint)ProbeNative.InputTag) { handled = true; return 0; }
         return 0;
     }
     private void ApplyStyles()
@@ -78,7 +138,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         configured = true;
         options = value; Opacity = SystemParameters.HighContrast ? 1 : value.Opacity;
         MaxWidth = 580 * value.Scale;
-        body.LayoutTransform = new ScaleTransform(value.Scale, value.Scale);
+        row.LayoutTransform = new ScaleTransform(value.Scale, value.Scale);
     }
     public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<string>? toggles = null, string recordKey = "F10", bool actionsEmpty = false)
     {

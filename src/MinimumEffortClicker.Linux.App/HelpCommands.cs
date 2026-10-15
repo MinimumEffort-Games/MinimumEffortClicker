@@ -40,7 +40,7 @@ public partial class MainWindow
             "Select a row to edit it. The arrow, copy, delete and undo buttons arrange the list.",
             "",
             "Record (F10) starts recording right away. Click and type in your target, then press F10 again. Your clicks and keys appear in the list as you go.",
-            "The Record button minimises the clicker first. F10 leaves it where it is, unless the Click target is Desktop.",
+            "The Record button minimises the clicker first. F10 leaves it where it is, unless the Click target is Desktop. Untick Minimize on record to keep the clicker where it is either way.",
             "With Record pauses on, the time between them is kept as pauses you can edit. When you start with F10, the time before your first click or key is kept too.",
             "With Simulate mouse movement on, the pointer travels to the next click during the pause before it instead of jumping. With Loop on, the pause at the end of the list is used for the trip back to the first click.",
             "",

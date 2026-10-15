@@ -60,7 +60,11 @@ public partial class MainWindow
             if (WindowState != WindowState.Minimized) { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
             if (!step.LeaveCursorFree && !runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             if (step.Condition is { } condition && step.Kind == StepKind.Condition)
+            {
+                // A monitor area is read from the screen: let the minimise animation finish so the clicker is not in it.
+                if (minimizedFrom is not null) await Task.Delay(400, cancellation.Token);
                 (passed, detail) = await CheckConditionOnce(condition, cancellation.Token);
+            }
             else
             {
                 // A click at the cursor needs time to put the mouse where it should click; everything else starts after the
@@ -119,19 +123,15 @@ public partial class MainWindow
         };
     }
 
-    /// <summary>Where a tested click landed: the pointer for normal clicks; the saved point for cursor-free clicks.</summary>
+    /// <summary>The green ring where a tested click landed: its saved location, or the pointer for a click at the cursor.</summary>
     private void ShowClickPing(SequenceStep step)
     {
-        if (!step.LeaveCursorFree) { ClickPingWindow.AtCursor(); return; }
         try
         {
-            if ((step.Position ?? step.Children?.FirstOrDefault(c => c.Position is not null)?.Position) is not { } point) return;
-            var frame = runtime!.GetTargetFrame();
-            var resolved = point.InFrame(frame.Width, frame.Height, frame.Dpi);
-            bool desktop = resolved.Space == CoordinateSpace.Desktop;
-            new ClickPingWindow(desktop ? resolved.X : frame.X + resolved.X, desktop ? resolved.Y : frame.Y + resolved.Y).Show();
+            if (ClickScreenPoint(step) is { } screen) ClickPingWindow.At(screen.X, screen.Y, ClickPingWindow.Landed);
+            else ClickPingWindow.AtCursor();
         }
-        catch (InvalidOperationException) { }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
     }
     private int appliedRecordKey = ShortcutKeys.DefaultRecordKey, selectedRecordKey = ShortcutKeys.DefaultRecordKey;
 
@@ -167,7 +167,8 @@ public partial class MainWindow
     });
     private async void QuickRecord_Click(object sender, RoutedEventArgs e) => await RecordQuick(fromHotkey: false);
     /// <summary>
-    /// The Record button always minimises the clicker, so the first click lands in the target. The hotkey leaves it
+    /// With Minimize on record ticked, the Record button minimises the clicker so the first click lands in the target; unticked,
+    /// it stays where it is. The hotkey leaves it
     /// where it is with a window target, and keeps the time from the key press to the first input as a pause.
     /// </summary>
     private async Task RecordQuick(bool fromHotkey)
@@ -176,6 +177,7 @@ public partial class MainWindow
         if (quickCancellation is not null) { quickCancellation.Cancel(); runtime?.Stop("Current operation cancelled."); return; }
         if (runtime is null || !operations.Idle || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) return;
         bool includePauses = RecordDelaysBox.IsChecked == true;
+        bool minimize = MinimizeOnRecordBox.IsChecked == true;
         bool movement = RecordMovementBox.IsChecked == true;
         operations.Begin(Operation.Quick);
         WindowState? minimizedFrom = null;
@@ -184,7 +186,7 @@ public partial class MainWindow
         runtime.Control.StopRequested += Cancel; RefreshStatus();
         try
         {
-            if ((runtime.IsDesktopMode || !fromHotkey) && WindowState != WindowState.Minimized)
+            if (minimize && (runtime.IsDesktopMode || !fromHotkey) && WindowState != WindowState.Minimized)
             { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             // Recording starts the moment the key or button is pressed. The target was just brought forward, so give the

@@ -4,7 +4,13 @@ namespace MinimumEffortClicker.App;
 
 public partial class MainWindow
 {
-    private void EnsureOverlay() => overlay ??= new();
+    private void EnsureOverlay()
+    {
+        if (overlay is not null) return;
+        overlay = new();
+        overlay.ShowRequested += RestoreFromTray;
+        overlay.ExitRequested += ExitApplication;
+    }
     private void DisplaysChanged(object? sender, EventArgs e)
     {
         CancelScreenshot("Display changed");
