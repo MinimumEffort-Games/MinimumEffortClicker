@@ -35,6 +35,7 @@ public partial class App : Application
         SystemParameters.StaticPropertyChanged += OnSystemChanged;
         Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnPreferencesChanged;
         bool preview = e.Args.Length == 2 && e.Args[0] == "--render-preview";
+        if (!preview && SteamMode.RestartThroughSteam()) { Shutdown(); return; }
         if (!preview)
         {
             instance = new Mutex(false, @"Local\MinimumEffortClicker.App");

@@ -50,6 +50,7 @@ public partial class MainWindow : Window
         ToggleKeyBox.Content = "F8"; StopKeyBox.Content = "F9";
         if (previewOnly) return;
         runtime = new DesktopRuntime();
+        InitializeWorkshop();
         runtime.CaptureScreenshot = stop => Dispatcher.InvokeAsync(() => TakeScreenshotAsync(fromAction: true, stop)).Task.Unwrap();
         StartupMeasurement.Mark("Native controls and scheduler ready");
         runtime.Changed += RuntimeChanged;
@@ -137,6 +138,7 @@ public partial class MainWindow : Window
             RefreshTargetChoices();
             await SetQuickRecordKey();
             await MakeSavedMacrosAvailable();
+            SyncWorkshopMacros();
             await ConfigureScreenshotHotkey();
             settingsLoaded = true;
             }
@@ -171,6 +173,7 @@ public partial class MainWindow : Window
             timer.Stop(); overlayFollowTimer.Stop(); SystemEvents.SessionSwitch -= SessionChanged; SystemEvents.PowerModeChanged -= PowerChanged;
             SystemEvents.DisplaySettingsChanged -= DisplaysChanged;
             CancelPowerSchedule(); CloseShutdownNotice();
+            CloseWorkshop();
             if (runtime is null) return; // --render-preview never creates a runtime.
             runtime.StopIssued -= CancelPowerSchedule;
             runtime.Control.RecordingRequested -= QuickRecordHotkey;
@@ -449,12 +452,14 @@ public partial class MainWindow : Window
         try { await Task.Run(() => store.Save(updated)); profiles = updated; RefreshToggleList(); }
         finally { operations.End(Operation.Library); }
     }
-    private async void SaveProfile_Click(object sender, RoutedEventArgs e)
+    private async void SaveProfile_Click(object sender, RoutedEventArgs e) => await SaveCurrentMacroAsync();
+    /// <summary>Saves the Action List under the name in the box. True when the file is written; Share on Workshop relies on it.</summary>
+    private async Task<bool> SaveCurrentMacroAsync()
     {
-        if (!operations.Idle || runtime?.Snapshot.Busy == true) { MacroSaveStatus.Text = "Stop before saving the macro."; return; }
+        if (!operations.Idle || runtime?.Snapshot.Busy == true) { MacroSaveStatus.Text = "Stop before saving the macro."; return false; }
         string name = ActionMacroNameBox.Text.Trim();
-        if (name.Length == 0) { MacroSaveStatus.Text = "Input macro name."; ActionMacroNameBox.Focus(); return; }
-        if (!TryQuickSequence(out var sequence, out _, out var error)) { ReasonLabel.Text = error; return; }
+        if (name.Length == 0) { MacroSaveStatus.Text = "Input macro name."; ActionMacroNameBox.Focus(); return false; }
+        if (!TryQuickSequence(out var sequence, out _, out var error)) { ReasonLabel.Text = error; return false; }
         operations.Begin(Operation.MacroFile); RefreshStatus();
         string? exportedPath = null;
         try
@@ -489,8 +494,9 @@ public partial class MainWindow : Window
             loadedMacroFile = path; loadedFileProfile = file;
             MacroSaveStatus.Text = $"Saved ‘{name}’."; MacroSaveStatus.ToolTip = path;
             ReasonLabel.Text = "Macro saved. Use Load Macro to open it for editing or playback.";
+            return true;
         }
-        catch (Exception ex) { MacroSaveStatus.Text = exportedPath is null ? "Could not save: " + ex.Message : $"File saved at {exportedPath}, but the local library update failed: {ex.Message}"; }
+        catch (Exception ex) { MacroSaveStatus.Text = exportedPath is null ? "Could not save: " + ex.Message : $"File saved at {exportedPath}, but the local library update failed: {ex.Message}"; return false; }
         finally { operations.End(Operation.MacroFile); RefreshStatus(); }
     }
     private void LoadActionMacro(ProfileDefinition profile, MacroDefinition macro)

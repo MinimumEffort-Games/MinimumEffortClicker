@@ -7,6 +7,18 @@ namespace MinimumEffortClicker.App;
 public partial class MainWindow
 {
     /// <summary>Help text, one section per page. A line starting with "- " renders as a bullet; an empty line is a gap.</summary>
+    /// <summary>Shown only in the Steam version.</summary>
+    private static readonly (string Title, string[] Lines) SteamHelp = ("Steam Cloud and Workshop",
+    [
+        "- Steam Cloud: your saved macros, toggles, settings and hotkeys follow you to your other PCs. Steam syncs them when the clicker starts and closes.",
+        "- Share on Workshop (under Save Macro): saves the macro, then uploads it with a title, description and who can see it. Sharing the same macro again updates its Workshop item.",
+        "- Captured image areas in a macro are pictures of your screen. Everyone who can see the item can see them; the share window warns you.",
+        "- Browse Workshop opens the clicker's Workshop in Steam. Macros you subscribe to are copied into the Workshop folder that Load Macro opens, and they update when their author updates them.",
+        "- A Workshop macro was made by someone else: read every action before you press Start. Save Macro keeps your own copy.",
+        "",
+        "The clicker only goes online through Steam: when you share, and when Steam downloads macros you subscribed to.",
+    ]);
+
     private static readonly (string Title, string[] Lines)[] HelpSections =
     [
         ("Nothing runs until you start it",
@@ -80,7 +92,7 @@ public partial class MainWindow
         [
             "With a portable.mode file next to the app, everything is stored in the Data folder beside it. Otherwise it is in your local app data folder.",
             "",
-            "No account, no internet, no tracking. This build is not signed, so Windows may show a warning the first time it runs.",
+            "No account and no tracking. The clicker never goes online, except the Steam version through Steam when you share or subscribe. The GitHub build is not signed, so Windows may show a warning the first time it runs.",
             "",
             "When something goes wrong, the clicker writes it to log.txt in the same folder. It stays on your PC. Attach it to a bug report if you send one.",
         ]),
@@ -90,7 +102,7 @@ public partial class MainWindow
     {
         const string title = "Minimum Effort Clicker · help";
         var page = new StackPanel { Margin = new Thickness(4, 0, 18, 12) };
-        foreach (var (heading, lines) in HelpSections)
+        foreach (var (heading, lines) in workshop is null ? HelpSections : [.. HelpSections, SteamHelp])
         {
             page.Children.Add(new TextBlock { Text = heading, FontSize = 18, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 18, 0, 8) });
             foreach (string line in lines)
