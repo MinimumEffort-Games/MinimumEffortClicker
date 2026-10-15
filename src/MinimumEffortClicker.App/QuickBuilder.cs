@@ -489,6 +489,8 @@ public partial class MainWindow
     private void EditingWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (editingQuick is null && QuickActionList.SelectedIndex < 0 || e.OriginalSource is not DependencyObject source) return;
+        // A dropdown's list opens in its own popup, outside this window's tree; a pick there belongs to the dropdown.
+        if (TreeRoot(source) != this) return;
         if (IsInside(source, CreateActionCard) || IsInside(source, QuickEditorTools) || IsInside(source, TestSelectedButton)) return;
         if (IsInside(source, ActionListCard) && (Ancestor<ListBoxItem>(source) is not null || Ancestor<ButtonBase>(source) is not null
             || Ancestor<System.Windows.Controls.Primitives.ScrollBar>(source) is not null)) return;
@@ -498,6 +500,12 @@ public partial class MainWindow
     {
         for (DependencyObject? at = node; at is not null; at = TreeParent(at)) if (at == root) return true;
         return false;
+    }
+    private static DependencyObject TreeRoot(DependencyObject node)
+    {
+        var at = node;
+        while (TreeParent(at) is { } parent) at = parent;
+        return at;
     }
     private static T? Ancestor<T>(DependencyObject node) where T : DependencyObject
     {
