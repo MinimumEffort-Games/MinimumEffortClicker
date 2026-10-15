@@ -40,7 +40,10 @@
                     <WrapPanel Grid.Row="1" Margin="0,0,0,12" VerticalAlignment="Bottom">
                         <Button x:Name="RunButton" Content="Start F8" Click="Run_Click" Classes="green" MinWidth="100" Margin="0,0,8,0" AutomationProperties.Name="Start Actions" />
                         <Button x:Name="PausePlaybackButton" Content="Pause" Click="PausePlayback_Click" Classes="blue" Margin="0" AutomationProperties.Name="Pause playback" />
-                        <CheckBox x:Name="LoopBox" Content="Loop" IsCheckedChanged="Loop_Changed" VerticalAlignment="Bottom" Margin="14,0,0,2" />
+                        <StackPanel VerticalAlignment="Bottom" Margin="14,0,0,2">
+                            <CheckBox x:Name="LoopBox" Content="Loop" IsCheckedChanged="Loop_Changed" Margin="0,0,0,4" />
+                            <CheckBox x:Name="MinimizeOnStartBox" Content="Minimize on Start" IsChecked="True" ToolTip.Tip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front." />
+                        </StackPanel>
                         <Button x:Name="CleanupButton" Content="Release stuck input" Click="Cleanup_Click" IsVisible="False" Classes="red" HorizontalAlignment="Left" ToolTip.Tip="Release physical buttons and keys first. This retries only inputs owned by ME Clicker and never starts playback." />
                     </WrapPanel>
                     <StackPanel Grid.Column="2" Grid.Row="1" Margin="0,0,0,12">
@@ -48,8 +51,8 @@
                         <WrapPanel>
                             <Button x:Name="QuickRecordButton" Content="F10 Record/Stop" Click="QuickRecord_Click" Classes="red" Margin="0,0,14,0" Padding="6,7" MinWidth="120" />
                             <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,2">
-                                <CheckBox x:Name="MinimizeOnRecordBox" Content="Minimize on record" IsChecked="True" Margin="0,0,0,4" ToolTip.Tip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records." />
-                                <CheckBox x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" ToolTip.Tip="Keep the time between inputs as editable Pause actions." />
+                                <CheckBox x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" Margin="0,0,0,4" ToolTip.Tip="Keep the time between inputs as editable Pause actions." />
+                                <CheckBox x:Name="MinimizeOnRecordBox" Content="Minimize on record" IsChecked="True" ToolTip.Tip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records." />
                             </StackPanel>
                         </WrapPanel>
                     </StackPanel>
@@ -306,7 +309,7 @@
 
                             <TextBlock Text="Emergency stop" Classes="heading" Margin="0,18,0,8" />
                             <ComboBox x:Name="EmergencyStopBox" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" Width="420" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop">
-                                <ComboBoxItem Content="Left + right mouse button stop the Action List (default)" /><ComboBoxItem Content="Stop on my input" />
+                                <ComboBoxItem Content="Only Stop All (F9) stops the clicker (default)" /><ComboBoxItem Content="Stop on my input" />
                             </ComboBox>
                             <TextBlock x:Name="EmergencyStopHint" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" />
 
