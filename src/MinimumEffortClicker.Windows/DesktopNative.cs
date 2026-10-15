@@ -29,6 +29,7 @@ internal static class DesktopNative
     [DllImport("user32.dll")] internal static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] internal static extern nint WindowFromPoint(ProbeNative.Point point);
     [DllImport("user32.dll")] internal static extern nint GetAncestor(nint hwnd, uint flags);
+    [DllImport("user32.dll")] internal static extern nint GetWindow(nint hwnd, uint command);
     [DllImport("user32.dll", SetLastError = true)] internal static extern nint SetWindowsHookExW(int id, Hook callback, nint module, uint thread);
     [DllImport("user32.dll")] internal static extern bool UnhookWindowsHookEx(nint hook);
     [StructLayout(LayoutKind.Sequential)] internal struct LastInputInfo { public uint Size, Time; }

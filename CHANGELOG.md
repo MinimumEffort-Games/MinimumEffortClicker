@@ -51,7 +51,7 @@
   hooks can no longer be lost while input is being sent, and the app no longer mistakes its own held key for the
   user's finger.
 - A spam toggle whose press length equals its interval now keeps full speed.
-- Suspended Store apps no longer appear as Click targets. Orphaned toggle shortcuts no longer block their key.
+- Suspended Store apps no longer appear as Click targets, and neither do background programs' invisible helper windows (for example a printer's update service): the list follows the same rules as Alt+Tab. Orphaned toggle shortcuts no longer block their key.
 - Browsing the shutdown options no longer switches Loop on by itself.
 - Choosing a non-F key for Stop All explains that it will not work while an administrator window is in front.
 - Linux: KDE Plasma 6 on Wayland works as well as GNOME. KWin itself is the helper there: `install.sh` sets it up
