@@ -121,6 +121,7 @@ public partial class MainWindow : Window
             OverlayOpacity.Value = overlayOptions.Opacity; OverlayScale.Value = overlayOptions.Scale;
             Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
+            EmergencyStopBox.SelectedIndex = (int)settings.EmergencyStop; runtime.EmergencyStop = settings.EmergencyStop; EmergencyStop_Changed(this, null!);
             appliedClickLimit = 20; appliedKeepAwake = settings.KeepAwake;
             KeepAwakeBox.IsChecked = appliedKeepAwake;
             runtime.SetClickRateLimit(appliedClickLimit); runtime.KeepAwakeWhileRunning = appliedKeepAwake;
@@ -325,6 +326,17 @@ public partial class MainWindow : Window
     private void Stop_Click(object sender, RoutedEventArgs e) { screenshotCancellation?.Cancel(); quickCancellation?.Cancel(); quickRecorder?.Stop(); runtime?.Stop(); }
     private void Cleanup_Click(object sender, RoutedEventArgs e) => runtime?.RetryCleanup();
     private void Overlay_Changed(object sender, RoutedEventArgs e) { if (initialized) { RefreshStatus(); PersistPreferences(); } }
+    private EmergencyStopMode ChosenEmergencyStop => (EmergencyStopMode)Math.Max(0, EmergencyStopBox.SelectedIndex);
+    /// <summary>Settings → Emergency stop: shows what the choice does and hands it to the runtime.</summary>
+    private void EmergencyStop_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (EmergencyStopHint is null) return;
+        EmergencyStopHint.Text = ChosenEmergencyStop == EmergencyStopMode.BothMouseButtons
+            ? "Press the left and right mouse buttons together to stop a running or looping Action List, for when a game catches the Stop All key. Toggles keep running. Nothing else you press or move stops the clicker, so you can click into your game while it runs. Stop All still stops everything."
+            : "Any key or mouse button the clicker is using, or moving the mouse while the clicker moves it, stops everything at once. Safer, but clicking into your game to bring it to the front also stops a run. Stop All still stops everything.";
+        if (runtime is not null) runtime.EmergencyStop = ChosenEmergencyStop;
+        if (initialized) { RefreshStatus(); PersistPreferences(); }
+    }
     private void Navigation_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (Pages is null) return;
@@ -413,7 +425,7 @@ public partial class MainWindow : Window
         if (!initialized) return;
         pendingPreferences = new(1, ThemeBox.SelectedIndex, appliedToggleKey,
             appliedStopKey, appliedHoldTrigger, OverlayBox.IsChecked == true, overlayOptions, false, appliedClickLimit, appliedKeepAwake, ResizeClicksBox.SelectedIndex == 0,
-            CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey);
+            CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop);
         if (operations.Has(Operation.Preferences)) return;
         operations.Begin(Operation.Preferences);
         try

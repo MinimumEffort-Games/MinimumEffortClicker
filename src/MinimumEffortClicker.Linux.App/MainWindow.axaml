@@ -304,6 +304,12 @@
                             <TextBlock x:Name="HotkeyStatus" Classes="secondary optional" Margin="0,8,0,0" />
                             <TextBlock x:Name="ScreenshotHotkeyStatus" Classes="secondary optional" />
 
+                            <TextBlock Text="Emergency stop" Classes="heading" Margin="0,18,0,8" />
+                            <ComboBox x:Name="EmergencyStopBox" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" Width="420" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop">
+                                <ComboBoxItem Content="Left + right mouse button stop the Action List (default)" /><ComboBoxItem Content="Stop on my input" />
+                            </ComboBox>
+                            <TextBlock x:Name="EmergencyStopHint" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" />
+
                             <TextBlock Text="Linux setup" Classes="heading" Margin="0,18,0,8" />
                             <Border Classes="card" x:Name="LinuxSetupCard">
                                 <StackPanel>

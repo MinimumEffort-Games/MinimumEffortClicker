@@ -222,6 +222,10 @@
                   <TextBlock x:Name="HotkeyStatus" Style="{StaticResource OptionalStatus}" Margin="0,8,0,0"/>
                   <TextBlock x:Name="ScreenshotHotkeyStatus" Style="{StaticResource OptionalStatus}"/>
 
+                  <TextBlock Text="Emergency stop" Style="{StaticResource Heading}" Margin="0,18,0,8"/>
+                  <ComboBox x:Name="EmergencyStopBox" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" Width="420" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop"><ComboBoxItem Content="Left + right mouse button stop the Action List (default)"/><ComboBoxItem Content="Stop on my input"/></ComboBox>
+                  <TextBlock x:Name="EmergencyStopHint" Style="{StaticResource Secondary}" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left"/>
+
                  </StackPanel></ScrollViewer>
                 </Grid>
                 <Grid x:Name="TogglePage" Visibility="Collapsed">
