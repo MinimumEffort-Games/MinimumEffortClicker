@@ -235,7 +235,7 @@ public partial class MainWindow : Window
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
-            overlay.Update(snapshot, stopKey, MacroBindings.KeyLabel(appliedToggleKey), ToggleOverlayLines(snapshot), ShortcutKeys.Label(appliedRecordKey), !quickHistory.Current.Steps.Any(), ChosenEmergencyStop);
+            overlay.Update(snapshot, stopKey, MacroBindings.KeyLabel(appliedToggleKey), ToggleOverlayLines(snapshot), ShortcutKeys.Label(appliedRecordKey), !quickHistory.Current.Steps.Any());
             bool newlyShown = !overlay.IsVisible;
             if (newlyShown) overlay.Show();
             PositionOverlay(newlyShown);
@@ -289,7 +289,7 @@ public partial class MainWindow : Window
             if (runtime.IsDesktopMode)
             {
                 var frame = runtime.GetTargetFrame(); plan!.ValidateDesktopMode(frame.Width, frame.Height, frame.Dpi);
-                minimizedFrom = WindowState; WindowState = WindowState.Minimized;
+                if (MinimizeOnStartBox.IsChecked == true) { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
             }
             if (!plan!.LeaveCursorFree && !runtime.BringTargetForward()) { ReasonLabel.Text = runtime.Snapshot.Reason; return; }
             // Allow the initiating mouse/key release and foreground handoff to settle BEFORE
@@ -337,8 +337,8 @@ public partial class MainWindow : Window
     private void EmergencyStop_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (EmergencyStopHint is null) return;
-        EmergencyStopHint.Text = ChosenEmergencyStop == EmergencyStopMode.BothMouseButtons
-            ? "Press the left and right mouse buttons together to stop a running or looping Action List, for when a game catches the Stop All key. Toggles keep running. Nothing else you press or move stops the clicker, so you can click into your game while it runs. Stop All still stops everything."
+        EmergencyStopHint.Text = ChosenEmergencyStop == EmergencyStopMode.OnlyStopAll
+            ? "Stop All (F9) stops everything at once: the Action List, every toggle and recording. Nothing else you press or move stops the clicker, so you can click into your game while it runs."
             : "Any key or mouse button the clicker is using, or moving the mouse while the clicker moves it, stops everything at once. Safer, but clicking into your game to bring it to the front also stops a run. Stop All still stops everything.";
         if (runtime is not null) runtime.EmergencyStop = ChosenEmergencyStop;
         if (initialized) { RefreshStatus(); PersistPreferences(); }

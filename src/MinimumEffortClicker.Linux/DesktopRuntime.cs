@@ -540,11 +540,11 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
 
     public void StopForShutdown() => StopPlayback("Stopped for automatic shutdown. Cancel shutdown to keep working.");
     /// <summary>
-    /// How your own input stops a run. BothMouseButtons (default; on Linux it means "only Stop All"): nothing you press or
-    /// move stops a run, so Stop All (F9) is the one stop for the Action List and every toggle. AnyInput: pressing a key or button the clicker is using, or moving the mouse while it moves
-    /// it, stops everything (the original safety stop). Stop All (F9) always works.
+    /// How your own input stops a run. OnlyStopAll (default): nothing you press or move stops a run, so Stop All (F9) is
+    /// the one stop for the Action List and every toggle. AnyInput: pressing a key or button the clicker is using, or
+    /// moving the mouse while it moves it, stops everything (the original safety stop). Stop All always works.
     /// </summary>
-    public EmergencyStopMode EmergencyStop { get; set; } = EmergencyStopMode.BothMouseButtons;
+    public EmergencyStopMode EmergencyStop { get; set; } = EmergencyStopMode.OnlyStopAll;
     public void StopActions(string message = "Actions stopped.")
     {
         foreach (var observer in StopIssued?.GetInvocationList() ?? [])
@@ -741,7 +741,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         // release, off the input thread; a helper call must never block that callback.
         if (!down) QueueCleanupRetry();
         // Only Stop All (F9) stops a run; nothing else you press stops anything, so you can click into your game.
-        if (EmergencyStop == EmergencyStopMode.BothMouseButtons) return;
+        if (EmergencyStop == EmergencyStopMode.OnlyStopAll) return;
         if (countingDown || observingWindowActive || CursorFreeActive) return;
         var controls = actionToggleSession?.ActiveControls ?? Volatile.Read(ref activeControls);
         if (controls.Length == 0) return;

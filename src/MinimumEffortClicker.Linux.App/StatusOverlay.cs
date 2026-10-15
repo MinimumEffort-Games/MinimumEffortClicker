@@ -12,7 +12,7 @@ namespace MinimumEffortClicker.App;
 
 internal interface IOverlayPresenter
 {
-    void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false, EmergencyStopMode emergencyStop = EmergencyStopMode.BothMouseButtons);
+    void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false);
     void Configure(OverlayOptions options);
 }
 
@@ -122,7 +122,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         scaler.LayoutTransform = new ScaleTransform(value.Scale, value.Scale);
     }
 
-    public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false, EmergencyStopMode emergencyStop = EmergencyStopMode.BothMouseButtons)
+    public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false)
     {
         bool capturing = state.Busy && state.State.StartsWith("Recording", StringComparison.Ordinal);
         bool running = state.PlaybackActive && !state.CleanupPending;
@@ -136,10 +136,10 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         }
         toggles ??= [];
         bool togglesActive = toggles.Any(t => t.Active);
-        if (state.CleanupPending) { ShowShortcuts(OverlayHints.StartStop(startKey), $"{stopKey} to Stop All"); ShowLines("Input release pending", toggles); return; }
+        if (state.CleanupPending) { ShowShortcuts(OverlayHints.StartStop(startKey), OverlayHints.StopAll(stopKey)); ShowLines("Input release pending", toggles); return; }
         if (!state.Busy) { ShowShortcuts(actionsEmpty ? "Actionlist Empty" : OverlayHints.StartStop(startKey), null); ShowLines(null, toggles); return; }
-        // Stop All is the one stop on Linux: it ends the Action List and every toggle.
-        ShowShortcuts(OverlayHints.StartStop(startKey), $"{stopKey} to Stop All");
+        // Stop All is the one stop: it ends the Action List and every toggle.
+        ShowShortcuts(OverlayHints.StartStop(startKey), OverlayHints.StopAll(stopKey));
         ShowLines(state.ActionsActive || !togglesActive ? $"{state.State} · {(state.Activity is "Minimum Effort" or "Named points" ? "Actions" : OverlayHints.Activity(state.Activity))}" : null, toggles);
     }
 
