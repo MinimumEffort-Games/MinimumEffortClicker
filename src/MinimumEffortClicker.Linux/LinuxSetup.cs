@@ -118,7 +118,7 @@ public static class LinuxSetup
         X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2
         X-KDE-Wayland-Interfaces=org_kde_kwin_fake_input
 
-        """;
+        """.ReplaceLineEndings("\n"); // A Windows checkout gives this text CRLF line ends; desktop entries use LF.
 
     public static string InputAccessCommand => InputRuleScriptPath is { } script ? $"sudo bash '{script}'" : "The input access script is missing from this copy of the app.";
     /// <summary>
