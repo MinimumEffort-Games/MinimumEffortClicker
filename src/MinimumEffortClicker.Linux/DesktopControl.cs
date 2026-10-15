@@ -51,7 +51,7 @@ public sealed class DesktopControl : IDisposable
         Register(toggleKey, stopKey);
     }
 
-    /// <summary>Retries the helper and evdev, for example after running the input-access setup.</summary>
+    /// <summary>Retries the helper and evdev, for example after running the input-access setup or removing it.</summary>
     public Task<bool> RefreshPlatformAsync() => Task.Run(() =>
     {
         lock (gate) { if (disposed) return false; }
@@ -76,6 +76,9 @@ public sealed class DesktopControl : IDisposable
             }
             catch (ShellHelperException ex) { HelperError = ex.Message; HelperAccessDenied = ex.AccessDenied; }
         }
+        // Access was removed (setup-input-access.sh --remove): devices already open would keep working until a restart.
+        // Let them go, so the app does what the user chose and Settings shows it.
+        if (evdev is { } current && !EvdevMonitor.KeyboardAccessible()) { evdev = null; current.Dispose(); }
         if (evdev is null && EvdevMonitor.KeyboardAccessible())
         {
             try
