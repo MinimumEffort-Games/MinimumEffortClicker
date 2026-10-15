@@ -9,14 +9,15 @@ using MinimumEffortClicker.Windows;
 namespace MinimumEffortClicker.App;
 
 /// <summary>
-/// A one-second ring at a physical screen point, so the user sees where a tested click landed.
-/// Click-through and never focused, so it cannot receive or redirect input.
+/// A growing ring at a physical screen point: green once where a tested click landed, red a few times for Ping click
+/// location. Click-through and never focused, so it cannot receive or redirect input, and the app stays usable meanwhile.
 /// </summary>
 internal sealed class ClickPingWindow : Window
 {
     private const int SizePixels = 120;
+    public static readonly Color Landed = Color.FromRgb(0x3D, 0xDC, 0x84), Location = Color.FromRgb(0xE5, 0x39, 0x35);
 
-    public ClickPingWindow(int screenX, int screenY)
+    public ClickPingWindow(int screenX, int screenY, Color colour, int times = 1)
     {
         WindowStyle = WindowStyle.None; AllowsTransparency = true; Background = Brushes.Transparent;
         ShowInTaskbar = false; ShowActivated = false; Topmost = true; ResizeMode = ResizeMode.NoResize;
@@ -25,7 +26,7 @@ internal sealed class ClickPingWindow : Window
         var scale = new ScaleTransform(0.15, 0.15);
         var rings = new Grid { Width = 100, Height = 100, RenderTransformOrigin = new Point(0.5, 0.5), RenderTransform = scale };
         rings.Children.Add(new Ellipse { Stroke = new SolidColorBrush(Color.FromArgb(170, 0, 0, 0)), StrokeThickness = 9 });
-        rings.Children.Add(new Ellipse { Stroke = new SolidColorBrush(Color.FromRgb(0x3D, 0xDC, 0x84)), StrokeThickness = 5, Margin = new Thickness(2) });
+        rings.Children.Add(new Ellipse { Stroke = new SolidColorBrush(colour), StrokeThickness = 5, Margin = new Thickness(2) });
         // The Viewbox keeps the ring proportional when the window is sized in physical pixels on a scaled display.
         Content = new Viewbox { Child = rings };
         SourceInitialized += (_, _) =>
@@ -39,9 +40,11 @@ internal sealed class ClickPingWindow : Window
         };
         Loaded += (_, _) =>
         {
+            // Grows with an ease-out and fades with an ease-in over one second, once per time asked.
             var duration = TimeSpan.FromSeconds(1);
-            var grow = new DoubleAnimation(0.15, 1, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-            var fade = new DoubleAnimation(1, 0, duration) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
+            var repeat = new RepeatBehavior(Math.Max(1, times));
+            var grow = new DoubleAnimation(0.15, 1, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }, RepeatBehavior = repeat };
+            var fade = new DoubleAnimation(1, 0, duration) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }, RepeatBehavior = repeat };
             fade.Completed += (_, _) => Close();
             scale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
             scale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
@@ -49,9 +52,16 @@ internal sealed class ClickPingWindow : Window
         };
     }
 
-    /// <summary>Shows a ring at the current pointer position.</summary>
+    /// <summary>Shows the ring at a physical screen point; failures are ignored because the ring is only a hint.</summary>
+    public static void At(int screenX, int screenY, Color colour, int times = 1)
+    {
+        try { new ClickPingWindow(screenX, screenY, colour, times).Show(); }
+        catch (InvalidOperationException) { }
+    }
+
+    /// <summary>Shows a green ring at the current pointer position, for a click at the cursor.</summary>
     public static void AtCursor()
     {
-        if (ProbeNative.GetCursorPos(out var point)) new ClickPingWindow(point.X, point.Y).Show();
+        if (ProbeNative.GetCursorPos(out var point)) At(point.X, point.Y, Landed);
     }
 }
