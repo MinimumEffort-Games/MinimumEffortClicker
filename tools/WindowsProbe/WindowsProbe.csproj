@@ -11,4 +11,5 @@
   <ItemGroup><Compile Include="../../src/MinimumEffortClicker.App/StatusOverlay.cs" Link="StatusOverlay.cs" /></ItemGroup>
   <ItemGroup><Resource Include="../../assets/brand/source/logo.png" Link="Assets/Logo.png" /></ItemGroup>
   <ItemGroup><Compile Include="../../src/MinimumEffortClicker.App/TargetPreviewWindow.cs" Link="TargetPreviewWindow.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../../src/MinimumEffortClicker.App/ClickPingWindow.cs" Link="ClickPingWindow.cs" /></ItemGroup>
 </Project>

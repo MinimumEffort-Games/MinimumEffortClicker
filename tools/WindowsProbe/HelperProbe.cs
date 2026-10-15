@@ -181,18 +181,18 @@ internal static class HelperProbe
             await Task.Delay(50, deadline.Token);
             report.Checks.Add("A fixed desktop point stayed at its physical screen location after the target moved; an out-of-target desktop point rejected the entire sequence before any input.");
 
-            report.Stage = "Named-point marker and intercepting picker";
+            report.Stage = "Click ring and intercepting picker";
             Require(ProbeNative.AreDpiAwarenessContextsEqual(ProbeNative.GetWindowDpiAwarenessContext(targetHandle), -4), "Receiver is not per-monitor-v2 aware.");
-            var named = new NamedPoint(Guid.NewGuid(), "Receiver centre", anchor);
-            var beforeMarkers = await Request(pipe, "state");
-            var markers = await app.Dispatcher.InvokeAsync(() => { var view = new TargetPreviewWindow(runtime, [named], false); view.Start(); return view; });
-            Require(!runtime.TryStart(clicks), "Playback started during input-free preview.");
-            Require(ProbeNative.GetForegroundWindow() == targetHandle, "Markers stole target activation.");
+            // Ping click location's red ring (three pulses) over the receiver: it must not take focus or block clicks.
+            var beforeRing = await Request(pipe, "state");
+            var ringFrame = runtime.GetTargetFrame();
+            var ringAt = anchor.Resolve(ringFrame.X, ringFrame.Y, ringFrame.Width, ringFrame.Height, ringFrame.Dpi);
+            await app.Dispatcher.InvokeAsync(() => ClickPingWindow.At(ringAt.X, ringAt.Y, ClickPingWindow.Location, times: 3));
+            Require(ProbeNative.GetForegroundWindow() == targetHandle, "The click ring stole target activation.");
             await FixtureClick();
-            var throughMarkers = await WaitForCount(pipe, beforeMarkers.Count + 1, deadline.Token);
-            Require(throughMarkers.Count == beforeMarkers.Count + 1, "Markers blocked a bounded fixture click.");
-            await app.Dispatcher.InvokeAsync(markers.Close); await markers.Finished;
-            var picker = await app.Dispatcher.InvokeAsync(() => { var view = new TargetPreviewWindow(runtime, [], true); view.Start(); return view; });
+            var throughMarkers = await WaitForCount(pipe, beforeRing.Count + 1, deadline.Token);
+            Require(throughMarkers.Count == beforeRing.Count + 1, "The click ring blocked a bounded fixture click.");
+            var picker = await app.Dispatcher.InvokeAsync(() => { var view = new TargetPreviewWindow(runtime); view.Start(); return view; });
             Require(ProbeNative.GetForegroundWindow() == targetHandle, "Picker stole target activation.");
             await FixtureClick();
             var picked = await picker.Finished.WaitAsync(TimeSpan.FromSeconds(2), deadline.Token);
@@ -201,7 +201,7 @@ internal static class HelperProbe
             Require(afterPick.Count == throughMarkers.Count && afterPick.ButtonDownEvents == throughMarkers.ButtonDownEvents
                 && afterPick.ButtonUpEvents == throughMarkers.ButtonUpEvents, "Picker leaked its selecting click to the receiver.");
             Require(!runtime.Snapshot.Busy && runtime.Snapshot.InputsSent == 0, "Preview left runtime busy or sent playback input.");
-            report.Checks.Add("Per-monitor-v2 receiver: marker preview stayed non-activating/click-through; picker intercepted both click edges and returned the exact client point; playback was excluded.");
+            report.Checks.Add("Per-monitor-v2 receiver: the click ring stayed non-activating/click-through; picker intercepted both click edges and returned the exact client point; playback was excluded.");
 
             async Task FixtureClick()
             {
