@@ -575,11 +575,10 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             if (!busy || countingDown || cancellation?.IsCancellationRequested != false || playbackControl is not { } control) return false;
             if (control.Automatic) return true;
             if (!control.RequestPause(automatic: true)) return control.IsPaused;
-            state = "Pausing"; reason = TargetLostReason;
+            state = "Pausing"; reason = RunPauseStatus.TargetLost;
         }
         NotifyChanged(); return true;
     }
-    private const string TargetLostReason = "Paused: the target window is not in front. It continues by itself when the window is back in front. Stop All cancels.";
     public bool TryResume() => TryResume(automatic: false);
     private bool TryResume(bool automatic)
     {
@@ -596,7 +595,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 if (!CursorFreeActive && Control.IsPhysicalDown(input)) { if (automatic) return false; reason = "Release physical inputs before resuming."; NotifyChanged(); return false; }
             }
             if (!playbackControl.RequestResume()) return false;
-            state = "Resuming"; reason = automatic ? "The target window is back in front. Continuing." : "Resuming the remaining timing after explicit review.";
+            state = "Resuming"; reason = automatic ? RunPauseStatus.TargetBack : "Resuming the remaining timing after explicit review.";
         }
         NotifyChanged(); return true;
     }
@@ -982,10 +981,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 lock (gate)
                 {
                     automatic = playbackControl?.Automatic == true;
-                    state = paused ? "Paused" : "Running";
-                    reason = !paused ? (reason.StartsWith("The target window is back", StringComparison.Ordinal) ? reason : "Resumed explicitly after target and physical-input checks.")
-                        : automatic ? TargetLostReason
-                        : "Paused with input released. Resume rechecks the target and continues remaining timing or retries this condition.";
+                    if (RunPauseStatus.After(paused, automatic, stop.IsCancellationRequested, reason) is { } status) (state, reason) = status;
                     targetBackSince = -1;
                 }
                 // The timer only runs while a pause can resume by itself; it checks every 100 ms.
