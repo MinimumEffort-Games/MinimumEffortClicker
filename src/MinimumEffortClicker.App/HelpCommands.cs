@@ -61,6 +61,7 @@ public partial class MainWindow
             "- Appearance: light or dark.",
             "- Scale click positions: when the target window is resized, saved positions scale with it.",
             "- Overlay: a small status box beside the target shows what is running. Set its opacity and size here, or hide it.",
+            "- The overlay's square brings the clicker window back to the front. Its X stops anything running and quits the clicker. The rest of the overlay lets clicks through to the app beneath it.",
             "- Keys: F8 starts and stops Actions, F9 stops everything, F10 records. Each needs its own key.",
         ]),
         ("If something is stuck",

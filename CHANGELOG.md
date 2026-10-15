@@ -13,6 +13,8 @@
 - Each action has a Repeating / Once choice: with Loop on, Once actions run only in the first loop.
 - The Action List grows with the window. One Test Selected Action button above the list replaces the Test
   button on every row.
+- A "Minimize on record" choice next to Record/Stop: untick it to record without minimising the clicker.
+- Windows: the overlay has the Linux buttons to bring the clicker back and to quit; the rest stays click-through.
 - A Help button in the header explains each page.
 - Safety: an unexpected error now stops playback and releases every held key before it is reported, the Stop All
   hooks can no longer be lost while input is being sent, and the app no longer mistakes its own held key for the
