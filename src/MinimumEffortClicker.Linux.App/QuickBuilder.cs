@@ -491,6 +491,8 @@ public partial class MainWindow
         if (editingQuick is null && QuickActionList.SelectedIndex < 0 || e.Source is not Avalonia.Visual source) return;
         bool Inside(Avalonia.Visual root) => source == root || Avalonia.VisualTree.VisualExtensions.IsVisualAncestorOf(root, source);
         bool Within<T>() => source is T || Avalonia.VisualTree.VisualExtensions.GetVisualAncestors(source).OfType<T>().Any();
+        // A dropdown's list opens in a popup (its own top level, or the overlay layer); a pick there belongs to the dropdown.
+        if (TopLevel.GetTopLevel(source) != this || Within<Avalonia.Controls.Primitives.OverlayLayer>() || Within<Avalonia.Controls.Primitives.PopupRoot>()) return;
         if (Inside(CreateActionCard) || Inside(QuickEditorTools) || Inside(TestSelectedButton)) return;
         if (Inside(ActionListCard) && (Within<ListBoxItem>() || Within<Button>() || Within<ScrollBar>())) return;
         StopEditing();
