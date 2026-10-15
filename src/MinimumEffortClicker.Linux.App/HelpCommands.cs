@@ -24,7 +24,7 @@ public partial class MainWindow
             "Loading a macro or switching windows never starts anything.",
             "",
             "F9 stops everything at once: actions, toggles and recording. It also lets go of any key or button the clicker is holding.",
-            "Pressing the left and right mouse buttons together stops a running or looping Action List; toggles keep going. Settings > Emergency stop can switch this to the old stop on any of your input.",
+            "Nothing else you press stops a run, so you can click into your game. Settings > Emergency stop can switch this to the old stop on any of your input.",
         ]),
         ("Actions",
         [
@@ -73,7 +73,7 @@ public partial class MainWindow
             "- Minimize to the top bar: the window hides in the top bar instead of closing. Use the icon's Exit to quit.",
             "- Appearance: light or dark.",
             "- Scale click positions: when the target window is resized, saved positions scale with it.",
-            "- Emergency stop: by default the left and right mouse buttons together stop the Action List. Choose Stop on my input to stop everything when you press a key or button the clicker is using, or move the mouse while it does. F9 always stops everything.",
+            "- Emergency stop: by default only F9 (Stop All) stops the clicker. Choose Stop on my input to stop everything when you press a key or button the clicker is using, or move the mouse while it does. F9 always stops everything.",
             "- Overlay: a small status box beside the target shows what is running and which keys stop it. Toggles show Ready, or On in blue. Set its opacity and size here, or hide it.",
             "- The overlay's square brings the clicker window back to the front (GNOME shows no taskbar icon while it is hidden or minimised). Its X stops anything running and quits the clicker.",
             "- Keys: F8 starts and stops Actions, F9 stops everything, F10 records. Each needs its own key.",

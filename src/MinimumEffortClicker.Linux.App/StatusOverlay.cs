@@ -26,15 +26,17 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private static readonly IBrush Active = new SolidColorBrush(Color.FromRgb(28, 96, 50));
     // Light blue keeps "On" readable on both the dark idle background and the green running one.
     private static readonly IBrush ToggleOn = new SolidColorBrush(Color.FromRgb(140, 200, 255));
-    private readonly TextBlock label = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.NoWrap };
+    // Light red keeps the stop hint readable on the dark idle background and the green running one.
+    private static readonly IBrush StopRed = new SolidColorBrush(Color.FromRgb(255, 138, 128));
+    private readonly TextBlock label = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.NoWrap, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock stopLabel = new() { Foreground = StopRed, FontSize = 13, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.NoWrap, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
     private readonly TextBlock activityLabel = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
-    private readonly StackPanel body = new();
     private readonly LayoutTransformControl scaler = new();
     private readonly Border frame;
     private OverlayOptions options = new();
     private bool configured;
     private bool recording, active;
-    private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Spacing = 4, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
+    private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Spacing = 4, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private PixelRect[] clickable = [];
 
     /// <summary>The overlay's square: bring the clicker window to the front.</summary>
@@ -48,14 +50,19 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         WindowDecorations = WindowDecorations.None; Background = Brushes.Transparent;
         TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
         ShowActivated = false; ShowInTaskbar = false; Topmost = true; CanResize = false; Focusable = false;
-        body.Children.Add(activityLabel); body.Children.Add(label);
         // On GNOME the clicker has no taskbar entry while it is hidden or minimised, so the overlay offers a way back and out.
-        actions.Children.Add(OverlayButton("Show Minimum Effort Clicker", new Rectangle { Width = 9, Height = 9, Stroke = Brushes.White, StrokeThickness = 1.5 }, () => ShowRequested?.Invoke()));
-        actions.Children.Add(OverlayButton("Quit Minimum Effort Clicker (stops anything running)", new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse("M0,0 L9,9 M9,0 L0,9"), Stroke = Brushes.White, StrokeThickness = 1.5, Width = 9, Height = 9 }, () => ExitRequested?.Invoke()));
+        actions.Children.Add(OverlayButton("Show Minimum Effort Clicker", new Rectangle { Width = 9, Height = 9, Stroke = Brushes.White, StrokeThickness = 1.5 }, () => ShowRequested?.Invoke(),
+            new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)), new SolidColorBrush(Color.FromArgb(110, 255, 255, 255))));
+        // A red X, like a window's close button, so it reads as "quit".
+        actions.Children.Add(OverlayButton("Quit Minimum Effort Clicker (stops anything running)", new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse("M0,0 L9,9 M9,0 L0,9"), Stroke = Brushes.White, StrokeThickness = 1.5, Width = 9, Height = 9 }, () => ExitRequested?.Invoke(),
+            new SolidColorBrush(Color.FromRgb(196, 43, 28)), new SolidColorBrush(Color.FromRgb(232, 17, 35))));
+        // The shortcut line stays on top in every state: the start key on the left, the stop that works now in red
+        // beside the buttons. Status and toggle lines follow below.
         var row = new DockPanel();
-        DockPanel.SetDock(actions, Dock.Right);
-        row.Children.Add(actions); row.Children.Add(body);
-        frame = new Border { Background = Idle, BorderBrush = IdleBorder, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 6, 4), Child = row };
+        DockPanel.SetDock(actions, Dock.Right); DockPanel.SetDock(stopLabel, Dock.Right);
+        row.Children.Add(actions); row.Children.Add(stopLabel); row.Children.Add(label);
+        var body = new StackPanel(); body.Children.Add(row); body.Children.Add(activityLabel);
+        frame = new Border { Background = Idle, BorderBrush = IdleBorder, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 6, 4), Child = body };
         scaler.Child = frame;
         Content = scaler;
         ApplyColours();
@@ -63,9 +70,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         LayoutUpdated += (_, _) => UpdateClickable();
     }
 
-    private static Border OverlayButton(string tip, Control glyph, Action click)
+    private static Border OverlayButton(string tip, Control glyph, Action click, IBrush normal, IBrush hover)
     {
-        var normal = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)); var hover = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255));
         var button = new Border { Width = 20, Height = 20, CornerRadius = new CornerRadius(3), Background = normal, Cursor = new Cursor(StandardCursorType.Hand),
             Child = new Viewbox { Width = 11, Height = 11, Child = glyph, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
         ToolTip.SetTip(button, tip);
@@ -123,18 +129,18 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         if (capturing != recording || running != active) { recording = capturing; active = running; ApplyColours(); }
         if (capturing)
         {
-            activityLabel.Text = state.State;
+            ShowShortcuts($"{recordKey} · Stop recording · {stopKey} · Stop all", null);
+            ShowLines(state.State, []);
             ToolTip.SetTip(activityLabel, state.Reason);
-            label.IsVisible = true;
-            label.Text = $"{recordKey} · Stop recording · {stopKey} · Stop all";
             return;
         }
         toggles ??= [];
         bool togglesActive = toggles.Any(t => t.Active);
-        if (state.CleanupPending) { ShowLines("Input release pending", toggles); ShowHint($"Stop all: {stopKey}"); return; }
-        if (!state.Busy) { ShowLines(actionsEmpty ? "Actionlist Empty" : OverlayHints.StartStop(startKey), toggles); ShowHint(null); return; }
-        ShowLines(state.ActionsActive || !togglesActive ? $"{state.State} · {(state.Activity is "Minimum Effort" or "Named points" ? "Actions" : state.Activity)}" : null, toggles);
-        ShowHint(OverlayHints.WhileRunning(startKey, stopKey, emergencyStop, state.ActionsActive, togglesActive));
+        if (state.CleanupPending) { ShowShortcuts(OverlayHints.StartStop(startKey), $"{stopKey} to Stop All"); ShowLines("Input release pending", toggles); return; }
+        if (!state.Busy) { ShowShortcuts(actionsEmpty ? "Actionlist Empty" : OverlayHints.StartStop(startKey), null); ShowLines(null, toggles); return; }
+        // Stop All is the one stop on Linux: it ends the Action List and every toggle.
+        ShowShortcuts(OverlayHints.StartStop(startKey), $"{stopKey} to Stop All");
+        ShowLines(state.ActionsActive || !togglesActive ? $"{state.State} · {(state.Activity is "Minimum Effort" or "Named points" ? "Actions" : OverlayHints.Activity(state.Activity))}" : null, toggles);
     }
 
     /// <summary>The heading line, then one line per toggle with its state word coloured: "On" blue, the rest white.</summary>
@@ -151,13 +157,16 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
             plain.Add($"{toggle.Name} · {toggle.Key} · {toggle.State}");
         }
         activityLabel.Inlines = inlines;
+        activityLabel.IsVisible = plain.Count > 0;
         ToolTip.SetTip(activityLabel, string.Join("\n", plain));
     }
 
-    private void ShowHint(string? hint)
+    /// <summary>The top line: the start key (white, left) and the stop that works now (red, beside the buttons).</summary>
+    private void ShowShortcuts(string start, string? stop)
     {
-        label.IsVisible = hint is not null;
-        if (hint is not null) label.Text = hint;
+        label.Text = start;
+        stopLabel.IsVisible = stop is not null;
+        stopLabel.Text = stop ?? "";
     }
 
     private PixelSize PixelFrame

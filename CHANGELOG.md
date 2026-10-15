@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Linux: F9 (Stop All) is the one stop again: it ends the Action List and every toggle. The default Emergency stop
+  setting is now "Only Stop All (F9) stops the clicker"; left + right mouse buttons no longer stop anything. The
+  overlay keeps its shortcut line on top, shows "F9 to Stop All" in red beside a red X, and shortens the run line to
+  "Running · 10 Actions · Looping".
 - The code now matches the four pages. The hidden macro-library page, the step editor, the setup wizard and the
   overlay drag mode are gone, together with the engine features only they used (typed text, reusable groups,
   if/repeat branches, "run helpers together", logical keys).

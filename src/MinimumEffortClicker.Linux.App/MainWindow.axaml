@@ -306,7 +306,7 @@
 
                             <TextBlock Text="Emergency stop" Classes="heading" Margin="0,18,0,8" />
                             <ComboBox x:Name="EmergencyStopBox" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" Width="420" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop">
-                                <ComboBoxItem Content="Left + right mouse button stop the Action List (default)" /><ComboBoxItem Content="Stop on my input" />
+                                <ComboBoxItem Content="Only Stop All (F9) stops the clicker (default)" /><ComboBoxItem Content="Stop on my input" />
                             </ComboBox>
                             <TextBlock x:Name="EmergencyStopHint" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" />
 

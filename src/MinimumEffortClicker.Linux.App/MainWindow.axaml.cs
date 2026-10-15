@@ -354,7 +354,7 @@ public partial class MainWindow : Window
     {
         if (EmergencyStopHint is null) return;
         EmergencyStopHint.Text = ChosenEmergencyStop == EmergencyStopMode.BothMouseButtons
-            ? "Press the left and right mouse buttons together to stop a running or looping Action List, for when a game catches the Stop All key. Toggles keep running. Nothing else you press or move stops the clicker, so you can click into your game while it runs. Stop All still stops everything. Needs input access (Linux setup)."
+            ? "Stop All (F9) stops everything at once: the Action List, every toggle and recording. Nothing else you press or move stops the clicker, so you can click into your game while it runs."
             : "Any key or mouse button the clicker is using, or moving the mouse while the clicker moves it, stops everything at once. Safer, but clicking into your game to bring it to the front also stops a run. Stop All still stops everything. Needs input access (Linux setup).";
         if (runtime is not null) runtime.EmergencyStop = ChosenEmergencyStop;
         if (initialized) { RefreshStatus(); PersistPreferences(); }

@@ -540,8 +540,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
 
     public void StopForShutdown() => StopPlayback("Stopped for automatic shutdown. Cancel shutdown to keep working.");
     /// <summary>
-    /// How your own input stops a run. BothMouseButtons (default): only the left and right mouse buttons pressed together
-    /// stop the Action List. AnyInput: pressing a key or button the clicker is using, or moving the mouse while it moves
+    /// How your own input stops a run. BothMouseButtons (default; on Linux it means "only Stop All"): nothing you press or
+    /// move stops a run, so Stop All (F9) is the one stop for the Action List and every toggle. AnyInput: pressing a key or button the clicker is using, or moving the mouse while it moves
     /// it, stops everything (the original safety stop). Stop All (F9) always works.
     /// </summary>
     public EmergencyStopMode EmergencyStop { get; set; } = EmergencyStopMode.BothMouseButtons;
@@ -740,15 +740,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         // A physical press can interrupt an owned hold. Retry its deferred up after
         // release, off the input thread; a helper call must never block that callback.
         if (!down) QueueCleanupRetry();
-        if (EmergencyStop == EmergencyStopMode.BothMouseButtons)
-        {
-            // Left and right together stop the Action List (toggles carry on); nothing else you press stops anything.
-            if (down && input.Kind == InputKind.MouseButton && input.Code is (int)PointerButton.Left or (int)PointerButton.Right
-                && Control.IsPhysicalDown(InputControl.Mouse(input.Code == (int)PointerButton.Left ? PointerButton.Right : PointerButton.Left))
-                && Snapshot.ActionsActive)
-                ThreadPool.QueueUserWorkItem(_ => StopActions("Stopped: left and right mouse buttons pressed together."));
-            return;
-        }
+        // Only Stop All (F9) stops a run; nothing else you press stops anything, so you can click into your game.
+        if (EmergencyStop == EmergencyStopMode.BothMouseButtons) return;
         if (countingDown || observingWindowActive || CursorFreeActive) return;
         var controls = actionToggleSession?.ActiveControls ?? Volatile.Read(ref activeControls);
         if (controls.Length == 0) return;
