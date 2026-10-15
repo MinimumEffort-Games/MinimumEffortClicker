@@ -305,7 +305,7 @@ public partial class MainWindow : Window
             if (runtime.IsDesktopMode)
             {
                 var frame = runtime.GetTargetFrame(); plan!.ValidateDesktopMode(frame.Width, frame.Height, frame.Dpi);
-                minimizedFrom = WindowState; WindowState = WindowState.Minimized;
+                if (MinimizeOnStartBox.IsChecked == true) { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
             }
             if (!plan!.LeaveCursorFree && !runtime.BringTargetForward()) { ReasonLabel.Text = runtime.Snapshot.Reason; return; }
             // Allow the initiating mouse/key release and foreground handoff to settle BEFORE

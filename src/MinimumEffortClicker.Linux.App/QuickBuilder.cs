@@ -109,7 +109,7 @@ public partial class MainWindow
         Navigation.IsEnabled = !quickOperation;
         // Keep the ScrollViewer enabled while its editing controls are locked.
         QuickFields.IsEnabled = QuickEditorTools.IsEnabled = QuickListTools.IsEnabled = QuickActionList.IsEnabled = idle;
-        LoopBox.IsEnabled = idle;
+        LoopBox.IsEnabled = MinimizeOnStartBox.IsEnabled = idle;
         bool stopping = snapshot.ActionsActive || actionsStartPending;
         RunButton.Content = $"{(stopping ? "Stop" : "Start")} {MacroBindings.KeyLabel(appliedToggleKey)}";
         RunButton.SetButtonStyle(stopping ? "RedButton" : "GreenButton");

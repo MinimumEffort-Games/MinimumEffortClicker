@@ -40,7 +40,10 @@
                     <WrapPanel Grid.Row="1" Margin="0,0,0,12" VerticalAlignment="Bottom">
                         <Button x:Name="RunButton" Content="Start F8" Click="Run_Click" Classes="green" MinWidth="100" Margin="0,0,8,0" AutomationProperties.Name="Start Actions" />
                         <Button x:Name="PausePlaybackButton" Content="Pause" Click="PausePlayback_Click" Classes="blue" Margin="0" AutomationProperties.Name="Pause playback" />
-                        <CheckBox x:Name="LoopBox" Content="Loop" IsCheckedChanged="Loop_Changed" VerticalAlignment="Bottom" Margin="14,0,0,2" />
+                        <StackPanel VerticalAlignment="Bottom" Margin="14,0,0,2">
+                            <CheckBox x:Name="LoopBox" Content="Loop" IsCheckedChanged="Loop_Changed" Margin="0,0,0,4" />
+                            <CheckBox x:Name="MinimizeOnStartBox" Content="Minimize on Start" IsChecked="True" ToolTip.Tip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front." />
+                        </StackPanel>
                         <Button x:Name="CleanupButton" Content="Release stuck input" Click="Cleanup_Click" IsVisible="False" Classes="red" HorizontalAlignment="Left" ToolTip.Tip="Release physical buttons and keys first. This retries only inputs owned by ME Clicker and never starts playback." />
                     </WrapPanel>
                     <StackPanel Grid.Column="2" Grid.Row="1" Margin="0,0,0,12">

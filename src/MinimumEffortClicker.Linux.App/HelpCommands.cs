@@ -35,7 +35,7 @@ public partial class MainWindow
             "- Wait until a colour or image: the run waits there until the colour shows up, however long that takes. F9 stops it. With Desktop as the target, Pick colour shows a Monitor list, so the wait can watch any monitor.",
             "- Add Action: pick a click, key press, pause, wait for a colour, screenshot or scroll. Fill in its settings and press Add Action.",
             "- Scroll: turns the mouse wheel up, down, left or right, a number of notches, at your cursor or a saved location. Every notch is sent on its own, so games count each one.",
-            "- Start (F8): runs the list once. Tick Loop to repeat it until you stop it.",
+            "- Start (F8): runs the list once. Tick Loop to repeat it until you stop it. With Desktop as the Click target, Start minimises the clicker; untick Minimize on Start to keep it up.",
             "- Test Selected Action (above the list, on the right): the clicker minimises and runs only the selected action. A click shows a ring where it landed. A colour wait is checked once: the button turns green when the colour is there right now and red when it is not. It also turns red when an action could not run.",
             "- Repeating or Once (on each row): with Loop on, Repeating actions run in every loop and Once actions only in the first loop, for example a click that opens a level before the loop starts. Without Loop, every action runs once.",
             "",
