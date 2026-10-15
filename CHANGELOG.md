@@ -38,6 +38,9 @@
   your other PCs, and the Workshop shares macros. Share on Workshop uploads the saved macro and updates the same item
   next time; Browse Workshop opens the Workshop in Steam; subscribed macros appear in Load Macro's Workshop folder.
   The portable ZIP is unchanged and stays offline. See `docs/STEAM.md`.
+- Workshop safety: a Workshop macro that presses a system shortcut (Ctrl+Esc, Ctrl+Shift+Esc, Alt+F4, Ctrl+Alt+T,
+  Alt+F2, Alt+Space, Ctrl+Alt+Delete, Ctrl+Alt+F-keys, Alt+Print Screen) is refused, sharing one is refused, and key
+  presses from Workshop actions only run with a window as Click target. Your own macros are not limited.
 - A Help button in the header explains each page.
 - Safety: an unexpected error now stops playback and releases every held key before it is reported, the Stop All
   hooks can no longer be lost while input is being sent, and the app no longer mistakes its own held key for the

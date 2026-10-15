@@ -44,6 +44,7 @@ public partial class MainWindow
         if (!operations.Idle || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending)
         { ReasonLabel.Text = "Finish or stop the current run before testing an action."; return; }
         var step = row.Step with { Enabled = true };
+        if (WorkshopKeysBlocked(new([row.Step]))) return;
         operations.Begin(Operation.Quick);
         WindowState? minimizedFrom = null;
         bool? passed = null; string detail;

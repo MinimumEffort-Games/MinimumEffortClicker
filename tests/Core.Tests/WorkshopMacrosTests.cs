@@ -18,6 +18,8 @@ public sealed class WorkshopMacrosTests
         return path;
     }
 
+    private static (int, int, int, int, int) Counts(WorkshopSyncResult r) => (r.Added, r.Updated, r.Removed, r.Skipped, r.Refused.Count);
+
     [TestMethod]
     public void SubscribedMacrosAreCopiedUpdatedAndRemovedWithoutTouchingTheUsersFiles()
     {
@@ -31,15 +33,16 @@ public sealed class WorkshopMacrosTests
             string own = Write(WorkshopMacros.Folder(macros), "My own - notes.mecprofile", Macro("Mine", Click()));
             WorkshopInstalledItem Item(ulong id) => new(id, Path.Combine(steam, id.ToString()));
 
-            var first = WorkshopMacros.Sync([Item(11), Item(22), Item(33)], macros);
-            Assert.AreEqual(new WorkshopSyncResult(2, 0, 0, 1), first);
+            var ledger = new WorkshopLedger(root);
+            var first = WorkshopMacros.Sync([Item(11), Item(22), Item(33)], macros, ledger);
+            Assert.AreEqual((2, 0, 0, 1, 0), Counts(first));
             Assert.IsTrue(File.Exists(Path.Combine(WorkshopMacros.Folder(macros), "Next level - 11.mecprofile")));
-            Assert.AreEqual(new WorkshopSyncResult(0, 0, 0, 1), WorkshopMacros.Sync([Item(11), Item(22), Item(33)], macros), "Nothing changed, nothing copied.");
+            Assert.AreEqual((0, 0, 0, 1, 0), Counts(WorkshopMacros.Sync([Item(11), Item(22), Item(33)], macros, ledger)), "Nothing changed, nothing copied.");
 
             // The author renames and updates item 11; the user unsubscribes from 22.
             Write(Path.Combine(steam, "11"), "macro.mecprofile", Macro("Next level v2", Click(), Click()));
-            var second = WorkshopMacros.Sync([Item(11)], macros);
-            Assert.AreEqual(new WorkshopSyncResult(0, 1, 1, 0), second);
+            var second = WorkshopMacros.Sync([Item(11)], macros, ledger);
+            Assert.AreEqual((0, 1, 1, 0, 0), Counts(second));
             var left = Directory.GetFiles(WorkshopMacros.Folder(macros)).Select(Path.GetFileName).Order().ToArray();
             CollectionAssert.AreEqual(new[] { "My own - notes.mecprofile", "Next level v2 - 11.mecprofile" }, left);
             Assert.IsTrue(File.Exists(own));
@@ -70,19 +73,19 @@ public sealed class WorkshopMacrosTests
         string root = NewFolder();
         try
         {
-            var shares = new WorkshopShares(root);
+            var shares = new WorkshopLedger(root);
             var macro = Guid.NewGuid();
             Assert.IsNull(shares.Find(macro));
             var share = new WorkshopShare(3_141_592_653UL, "Farm", "Loops the farm.", WorkshopVisibility.FriendsOnly);
             shares.Set(macro, share);
-            Assert.AreEqual(share, new WorkshopShares(root).Find(macro));
+            Assert.AreEqual(share, new WorkshopLedger(root).Find(macro));
             shares.Set(macro, null);
             Assert.IsNull(shares.Find(macro));
             // A file from a newer app version is not misread, and a broken file reads as empty.
             File.WriteAllText(Path.Combine(root, "workshop.json"), """{"Version":9,"Items":[{"MacroId":"5f1c7c43-08d1-4ad6-9d43-0d0f2b1c2a10","Share":{"ItemId":5,"Title":"A","Description":"","Visibility":0}}]}""");
-            Assert.AreEqual(0, shares.Load().Count);
+            Assert.IsNull(shares.Find(Guid.Parse("5f1c7c43-08d1-4ad6-9d43-0d0f2b1c2a10"))); Assert.AreEqual(0, shares.OriginSteps().Count);
             File.WriteAllText(Path.Combine(root, "workshop.json"), "nonsense");
-            Assert.AreEqual(0, shares.Load().Count);
+            Assert.IsNull(shares.Find(Guid.Parse("5f1c7c43-08d1-4ad6-9d43-0d0f2b1c2a10"))); Assert.AreEqual(0, shares.OriginSteps().Count);
         }
         finally { Directory.Delete(root, true); }
     }

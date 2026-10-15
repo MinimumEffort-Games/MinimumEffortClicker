@@ -276,6 +276,7 @@ public partial class MainWindow : Window
         if (runtime is null || !operations.Idle) return;
         if (runtime.CanResume) { await ResumeActionsAsync(); return; }
         if (!TryQuickSequence(out var definition, out var plan, out var error)) { ReasonLabel.Text = error; return; }
+        if (WorkshopKeysBlocked(definition!)) return;
         TestResultLabel.Text = "";
         WindowState? minimizedFrom = null;
         using var startCancellation = new CancellationTokenSource();

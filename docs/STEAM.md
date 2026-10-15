@@ -22,6 +22,21 @@ macros the user subscribed to (User, 2026-10-15).
   - Workshop files go through the normal importer. It refuses anything the app cannot build itself, for example a
     Windows-key press.
 
+## Safety rules for Workshop macros (User, 2026-10-15: "I want a safe app")
+
+1. A Workshop macro that presses a **system shortcut** (`Core/SystemShortcuts`) is never copied into
+   `Macros\Workshop`. If it was copied earlier, that copy is removed. The user gets a notice once per session; the log
+   records every refusal. The shortcuts are Ctrl+Esc, Ctrl+Shift+Esc, Alt+F4, Ctrl+Alt+T, Alt+F2, Alt+Space,
+   Ctrl+Alt+Delete, Ctrl+Alt+F-keys and Alt+Print Screen. The check follows the key timeline, so a combination spread
+   over separate actions is caught too.
+2. Sharing a macro with a system shortcut is refused before anything is uploaded.
+3. `workshop.json` records the id of every action that came from the Workshop. An action keeps that mark when it is
+   edited, saved into the user's own macro or duplicated. A list whose Workshop actions press keys does not start, and
+   Test Selected Action does not run, while Desktop is the Click target. With a window target, keys reach only that
+   window, and the run pauses when anything else comes to the front, so a Workshop macro cannot type into a command
+   line it opened.
+4. The user's own macros are not limited.
+
 Code: `src/MinimumEffortClicker.Steam` (Steamworks.NET 2024.8.0, the only project that talks to Steam). Behind it,
 `IWorkshopClient`, `WorkshopPublisher`, `WorkshopMacros` and `WorkshopShares` live in Storage, with tests.
 `src/MinimumEffortClicker.App/SteamMode.cs` loads the Steam project only when `steam.mode` is present.

@@ -443,7 +443,12 @@ public partial class MainWindow
     private void QuickDuplicate_Click(object sender, RoutedEventArgs e)
     {
         if (QuickActionList.SelectedItem is not QuickRow row) return;
-        try { quickHistory.Commit(SequenceEdits.Replace(quickHistory.Current, row.Index + 1, 0, SequenceEdits.CopyWithNewIds([row.Step]), quickPoints)); RefreshQuickList(row.Index + 1); }
+        try
+        {
+            var copies = SequenceEdits.CopyWithNewIds([row.Step]);
+            quickHistory.Commit(SequenceEdits.Replace(quickHistory.Current, row.Index + 1, 0, copies, quickPoints)); RefreshQuickList(row.Index + 1);
+            MarkWorkshopCopies([row.Step], copies);
+        }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
     }
     private void QuickRemove_Click(object sender, RoutedEventArgs e)

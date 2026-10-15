@@ -5,14 +5,21 @@ namespace MinimumEffortClicker.Storage;
 /// share again as a new item when the old one was deleted on Steam, and remember the item for next time. The temporary
 /// upload folder is always removed.
 /// </summary>
-public sealed class WorkshopPublisher(IWorkshopClient client, WorkshopShares shares, string workFolder)
+public sealed class WorkshopPublisher(IWorkshopClient client, WorkshopLedger ledger, string workFolder)
 {
     /// <param name="previewImage">The chosen picture, or null to keep the item's current one.</param>
     /// <param name="defaultPreview">Makes the picture a new item gets when none was chosen (the app logo).</param>
     public async Task<WorkshopPublishResult> ShareAsync(Guid macroId, string macroFile, string title, string description,
         WorkshopVisibility visibility, string? previewImage, Func<string> defaultPreview, IProgress<double>? progress = null)
     {
-        var previous = shares.Find(macroId);
+        var shortcuts = await Task.Run(() =>
+        {
+            var profile = HelperProfiles.Open(macroFile);
+            return profile.Macros.Where(m => !m.IsToggle).SelectMany(m => WorkshopMacros.ShortcutsIn(profile, m)).Distinct().ToList();
+        });
+        if (shortcuts.Count > 0)
+            return new(false, 0, $"Not shared: this macro presses {string.Join(", ", shortcuts)}. The clicker refuses Workshop macros with system shortcuts, so take those actions out first.");
+        var previous = ledger.Find(macroId);
         string content = await Task.Run(() => WorkshopMacros.PrepareUpload(macroFile, workFolder));
         try
         {
@@ -21,10 +28,10 @@ public sealed class WorkshopPublisher(IWorkshopClient client, WorkshopShares sha
             var result = await client.PublishAsync(upload, progress);
             if (result.ItemGone)
             {
-                shares.Set(macroId, null);
+                ledger.Set(macroId, null);
                 result = await client.PublishAsync(upload with { ExistingItem = null, PreviewImage = previewImage ?? defaultPreview(), ChangeNote = "First version." }, progress);
             }
-            if (result.Success) shares.Set(macroId, new(result.ItemId, title, description, visibility));
+            if (result.Success) ledger.Set(macroId, new(result.ItemId, title, description, visibility));
             return result;
         }
         finally { try { Directory.Delete(content, true); } catch (IOException) { /* Windows clears the temp folder. */ } }

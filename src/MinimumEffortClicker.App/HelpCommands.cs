@@ -15,6 +15,7 @@ public partial class MainWindow
         "- Captured image areas in a macro are pictures of your screen. Everyone who can see the item can see them; the share window warns you.",
         "- Browse Workshop opens the clicker's Workshop in Steam. Macros you subscribe to are copied into the Workshop folder that Load Macro opens, and they update when their author updates them.",
         "- A Workshop macro was made by someone else: read every action before you press Start. Save Macro keeps your own copy.",
+        "- For your safety, a Workshop macro that presses a system shortcut (Ctrl+Esc, Ctrl+Shift+Esc, Alt+F4, Ctrl+Alt+T, Alt+F2, Alt+Space, Ctrl+Alt+Delete, Ctrl+Alt+F-keys, Alt+Print Screen) is never added, and key presses from a Workshop macro only run with a window selected as Click target, never with Desktop. Your own macros are not limited.",
         "",
         "The clicker only goes online through Steam: when you share, and when Steam downloads macros you subscribed to.",
     ]);

@@ -42,7 +42,7 @@ public sealed class WorkshopPublisherTests
     [TestMethod]
     public async Task AFirstShareCreatesTheItemAndTheNextOneUpdatesIt()
     {
-        var steam = new FakeWorkshop(); var shares = new WorkshopShares(root); var macro = Guid.NewGuid(); string file = MacroFile();
+        var steam = new FakeWorkshop(); var shares = new WorkshopLedger(root); var macro = Guid.NewGuid(); string file = MacroFile();
         var publisher = new WorkshopPublisher(steam, shares, Path.Combine(root, "work"));
         steam.Answers.Enqueue(_ => new(true, 77, "Shared on the Workshop."));
         var first = await publisher.ShareAsync(macro, file, "Farm", "Loops the farm.", WorkshopVisibility.Public, null, () => "logo.png");
@@ -61,7 +61,7 @@ public sealed class WorkshopPublisherTests
     [TestMethod]
     public async Task AnItemDeletedOnSteamIsSharedAgainAsANewItem()
     {
-        var steam = new FakeWorkshop(); var shares = new WorkshopShares(root); var macro = Guid.NewGuid();
+        var steam = new FakeWorkshop(); var shares = new WorkshopLedger(root); var macro = Guid.NewGuid();
         shares.Set(macro, new(55, "Old", "", WorkshopVisibility.Public));
         steam.Answers.Enqueue(_ => new(false, 55, "deleted", ItemGone: true));
         steam.Answers.Enqueue(_ => new(true, 88, "Shared on the Workshop."));
@@ -72,9 +72,22 @@ public sealed class WorkshopPublisherTests
     }
 
     [TestMethod]
+    public async Task AMacroWithASystemShortcutIsNotShared()
+    {
+        var steam = new FakeWorkshop(); var macro = Guid.NewGuid();
+        var keys = QuickActions.Keys([SequenceKeys.Supported["Left Alt"], SequenceKeys.Supported["F4"]], TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(50), hold: false);
+        string file = Path.Combine(root, "Close.mecprofile");
+        HelperProfiles.Export(file, new(ProfileDefinition.CurrentVersion, Guid.NewGuid(), "Close", [new(macro, "Close", null, Sequence: new([keys]))]));
+        var result = await new WorkshopPublisher(steam, new WorkshopLedger(root), Path.Combine(root, "work")).ShareAsync(macro, file, "Close", "", WorkshopVisibility.Public, null, () => "logo.png");
+        Assert.IsFalse(result.Success);
+        StringAssert.Contains(result.Message, "Alt+F4");
+        Assert.AreEqual(0, steam.Uploads.Count, "Nothing went to Steam.");
+    }
+
+    [TestMethod]
     public async Task AFailedShareRemembersNothingNew()
     {
-        var steam = new FakeWorkshop(); var shares = new WorkshopShares(root); var macro = Guid.NewGuid();
+        var steam = new FakeWorkshop(); var shares = new WorkshopLedger(root); var macro = Guid.NewGuid();
         steam.Answers.Enqueue(_ => new(false, 0, "Steam is busy."));
         var result = await new WorkshopPublisher(steam, shares, Path.Combine(root, "work")).ShareAsync(macro, MacroFile(), "Farm", "", WorkshopVisibility.Private, null, () => "logo.png");
         Assert.IsFalse(result.Success);
