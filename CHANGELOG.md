@@ -16,6 +16,8 @@
 - Windows: Ping click location shows a quick red ring three times instead of a 5-second overlay, so the clicker stays
   usable; the tested-click ring sits on the saved spot; the clicker comes back after any run it minimised for; colour
   tests wait until the clicker is out of the picture. Save Macro is a plain button on both platforms.
+- A "Minimize on record" choice next to Record/Stop: untick it to record without minimising the clicker.
+- Windows: the overlay has the Linux buttons to bring the clicker back and to quit; the rest stays click-through.
 - A Help button in the header explains each page.
 - Safety: an unexpected error now stops playback and releases every held key before it is reported, the Stop All
   hooks can no longer be lost while input is being sent, and the app no longer mistakes its own held key for the

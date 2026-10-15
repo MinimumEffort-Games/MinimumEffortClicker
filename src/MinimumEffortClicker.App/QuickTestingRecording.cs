@@ -167,7 +167,8 @@ public partial class MainWindow
     });
     private async void QuickRecord_Click(object sender, RoutedEventArgs e) => await RecordQuick(fromHotkey: false);
     /// <summary>
-    /// The Record button always minimises the clicker, so the first click lands in the target. The hotkey leaves it
+    /// With Minimize on record ticked, the Record button minimises the clicker so the first click lands in the target; unticked,
+    /// it stays where it is. The hotkey leaves it
     /// where it is with a window target, and keeps the time from the key press to the first input as a pause.
     /// </summary>
     private async Task RecordQuick(bool fromHotkey)
@@ -176,6 +177,7 @@ public partial class MainWindow
         if (quickCancellation is not null) { quickCancellation.Cancel(); runtime?.Stop("Current operation cancelled."); return; }
         if (runtime is null || !operations.Idle || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) return;
         bool includePauses = RecordDelaysBox.IsChecked == true;
+        bool minimize = MinimizeOnRecordBox.IsChecked == true;
         bool movement = RecordMovementBox.IsChecked == true;
         operations.Begin(Operation.Quick);
         WindowState? minimizedFrom = null;
@@ -184,7 +186,7 @@ public partial class MainWindow
         runtime.Control.StopRequested += Cancel; RefreshStatus();
         try
         {
-            if ((runtime.IsDesktopMode || !fromHotkey) && WindowState != WindowState.Minimized)
+            if (minimize && (runtime.IsDesktopMode || !fromHotkey) && WindowState != WindowState.Minimized)
             { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             // Recording starts the moment the key or button is pressed. The target was just brought forward, so give the

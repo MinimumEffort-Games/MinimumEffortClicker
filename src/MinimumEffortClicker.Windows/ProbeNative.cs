@@ -33,6 +33,8 @@ public static class ProbeNative
     [DllImport("user32.dll", SetLastError = true)] public static extern bool AllowSetForegroundWindow(uint processId);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out Point point);
+    /// <summary>The extra-info value of the input message being handled: <see cref="InputTag"/> for the clicker's own input.</summary>
+    [DllImport("user32.dll")] public static extern nint GetMessageExtraInfo();
     [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int key);
     [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint count, Input[] inputs, int size);
     [DllImport("user32.dll", SetLastError = true)] internal static extern bool RegisterHotKey(nint window, int id, uint modifiers, uint key);

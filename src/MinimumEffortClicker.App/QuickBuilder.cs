@@ -112,7 +112,7 @@ public partial class MainWindow
         QuickRecordButton.IsEnabled = quickRecorder is not null || quickCancellation is not null || idle;
         QuickRecordButton.Content = $"{ShortcutKeys.Label(appliedRecordKey)} Record/Stop";
         LoadMacroButton.IsEnabled = idle;
-        RecordDelaysBox.IsEnabled = RecordMovementBox.IsEnabled = idle;
+        MinimizeOnRecordBox.IsEnabled = RecordDelaysBox.IsEnabled = RecordMovementBox.IsEnabled = idle;
         QuickRecordKeyBox.IsEnabled = idle && !operations.Has(Operation.RecordKey);
         ClearActionListButton.IsEnabled = idle && quickHistory.Current.Steps.Count > 0;
         ShowTestSelectedButton();

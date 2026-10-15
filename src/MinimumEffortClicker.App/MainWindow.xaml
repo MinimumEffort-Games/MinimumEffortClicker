@@ -69,7 +69,10 @@
                     <TextBlock x:Name="QuickRecordStatus" Style="{StaticResource OptionalStatus}" FontSize="12" Margin="0,0,0,4"/>
                     <WrapPanel>
                       <Button x:Name="QuickRecordButton" Content="F10 Record/Stop" Click="QuickRecord_Click" Style="{StaticResource RedButton}" Margin="0,0,14,0" Padding="6,7" MinWidth="120"/>
-                      <CheckBox x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" VerticalAlignment="Bottom" Margin="0,0,0,2" ToolTip="Keep the time between inputs as editable Pause actions."/>
+                      <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,2">
+                        <CheckBox x:Name="MinimizeOnRecordBox" Content="Minimize on record" IsChecked="True" Margin="0,0,0,4" ToolTip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records."/>
+                        <CheckBox x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" ToolTip="Keep the time between inputs as editable Pause actions."/>
+                      </StackPanel>
                     </WrapPanel>
                   </StackPanel>
                   <ScrollViewer Padding="0,0,16,0" Grid.Row="2" x:Name="ActionsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
