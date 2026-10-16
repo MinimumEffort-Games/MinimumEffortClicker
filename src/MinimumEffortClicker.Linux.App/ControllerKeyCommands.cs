@@ -20,7 +20,6 @@ public partial class MainWindow
     private bool controllerBindsReadable = true;
     private Guid? editingControllerBind;
     private ControllerButton? selectedBindButton;
-    private volatile bool capturingBind;
     private bool refreshingControllerBinds;
 
     private sealed record ControllerBindRow(Guid Id, string Name, string Button, string Output, bool Active);
@@ -53,7 +52,9 @@ public partial class MainWindow
     private void SendControllerOutputs(IEnumerable<(InputControl Output, bool Down)> edges)
     {
         if (runtime is null) return;
-        foreach (var (output, down) in edges) runtime.SendControllerOutput(output, down);
+        foreach (var (output, down) in edges)
+            // The desktop repeats a held key itself (also for virtual keyboards), so nothing is repeated here.
+            runtime.SendControllerOutput(output, down);
     }
 
     /// <summary>On the controller thread: a bound button presses or releases its key.</summary>
@@ -112,38 +113,31 @@ public partial class MainWindow
         string? missing = ControllerBindMissing();
         SaveControllerBindButton.IsEnabled = missing is null;
         ToolTip.SetTip(SaveControllerBindButton, missing ?? (editingControllerBind is null ? "Add bind" : "Save changes"));
-        ControllerBindButtonBox.Content = capturingBind ? "Press a controller button…" : selectedBindButton is { } b ? ControllerButtons.Label(b) : "Press to choose a button…";
+        ControllerBindButtonBox.Content = selectedBindButton is { } b ? ControllerButtons.Label(b) : "Press to choose a button…";
         ControllerBindButtonBox.Classes.Set("needs-choice", selectedBindButton is null); ControllerBindButtonBox.Classes.Set("chosen", selectedBindButton is not null);
         ControllerBindControllerLabel.Text = gamepads is null ? "" : gamepads.Error ?? (gamepads.Connected.Count == 0
             ? "No controller is connected right now."
             : "Connected: " + string.Join(", ", gamepads.Connected) + ".");
     }
 
-    private async void CaptureBindButton_Click(object sender, RoutedEventArgs e)
+    private void CaptureBindButton_Click(object sender, RoutedEventArgs e)
     {
-        if (gamepads is null) return;
-        controllerCaptureTimeout?.Cancel();
-        capturingController = false; capturingBind = true; ShowControllerBindReady();
-        ControllerBindStatusLabel.Text = gamepads.Connected.Count == 0 ? "No controller is connected yet; connect one and press a button." : "Press a controller button.";
-        using var timeout = new CancellationTokenSource(); controllerCaptureTimeout = timeout;
-        try { await Task.Delay(TimeSpan.FromSeconds(10), timeout.Token); }
-        catch (OperationCanceledException) { return; }
-        capturingBind = false; ShowControllerBindReady();
-        ControllerBindStatusLabel.Text = "No button pressed; nothing changed.";
-    }
-
-    private void FinishBindCapture(ControllerButton button)
-    {
-        if (!capturingBind) return;
-        capturingBind = false; controllerCaptureTimeout?.Cancel();
-        selectedBindButton = button;
-        ControllerBindStatusLabel.Text = ControllerBindMissing() ?? $"Controller binding: {ControllerButtons.Label(button)}.";
+        // A button a global control or another bind already uses is refused in the window itself, with the reason.
+        var button = CaptureControllerButton("Controller button for this bind", pressed =>
+            controllerControls.CommandFor(pressed) is { } command
+                ? $"{ControllerButtons.Label(pressed)} is {ControlName(command)} under Settings → Controller. Press another button, or clear it there first."
+            : controllerBinds.FirstOrDefault(b => b.Button == pressed && b.Id != editingControllerBind) is { } other
+                ? $"{ControllerButtons.Label(pressed)} already presses \"{other.Name}\". Press another button."
+            : null);
+        if (button is not { } chosen) return;
+        selectedBindButton = chosen;
+        ControllerBindStatusLabel.Text = ControllerBindMissing() ?? $"Controller binding: {ControllerButtons.Label(chosen)}.";
         ShowControllerBindReady();
     }
 
     private void NewControllerBind_Click(object sender, RoutedEventArgs e)
     {
-        editingControllerBind = null; selectedBindButton = null; capturingBind = false;
+        editingControllerBind = null; selectedBindButton = null;
         refreshingControllerBinds = true;
         ControllerBindList.SelectedIndex = -1; ControllerBindNameBox.Text = "";
         ControllerKeyBox.SelectedIndex = 0; ControllerMouseBox.SelectedIndex = 0;
@@ -156,7 +150,7 @@ public partial class MainWindow
     {
         if (refreshingControllerBinds || ControllerBindList.SelectedItem is not ControllerBindRow row) return;
         var bind = controllerBinds.First(b => b.Id == row.Id);
-        editingControllerBind = bind.Id; selectedBindButton = bind.Button; capturingBind = false;
+        editingControllerBind = bind.Id; selectedBindButton = bind.Button;
         refreshingControllerBinds = true;
         ControllerBindNameBox.Text = bind.Name;
         if (bind.Output.Kind == InputKind.MouseButton) { ControllerKeyBox.SelectedIndex = 0; ControllerMouseBox.SelectedIndex = Array.IndexOf(BindMouseButtons, (PointerButton)bind.Output.Code) + 1; }

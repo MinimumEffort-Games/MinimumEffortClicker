@@ -13,10 +13,9 @@ public partial class MainWindow
     // The hints show the controller's buttons after controller input and the keyboard's after keyboard input. The
     // mouse never switches them: on a Steam Deck the mouse and the controller are used together.
     private volatile bool controllerHints;
-    // Set while Settings waits for the button of one control; controller presses then choose instead of act.
-    private volatile bool capturingController;
-    private ControllerCommand capturingCommand;
-    private CancellationTokenSource? controllerCaptureTimeout;
+    // Open while a button is being chosen; controller presses then choose instead of act.
+    private ControllerCaptureWindow? controllerCapture;
+    private volatile bool capturingButton;
     private string? loggedControllerState;
 
     private string StartHint => controllerHints && controllerControls.StartStop is { } b ? ControllerButtons.Label(b) : MacroBindings.KeyLabel(appliedToggleKey);
@@ -40,11 +39,7 @@ public partial class MainWindow
     {
         if (down && !controllerHints) { controllerHints = true; RefreshHints(); }
         // While a button is being chosen, the press chooses and does nothing else.
-        if (down && (capturingController || capturingBind))
-        {
-            Dispatcher.BeginInvoke(() => { if (capturingBind) FinishBindCapture(button); else FinishControllerCapture(button); });
-            return;
-        }
+        if (down && capturingButton) { Dispatcher.BeginInvoke(() => controllerCapture?.Press(button)); return; }
         if (down && controllerControls.CommandFor(button) is { } command) runtime?.Control.RunControllerCommand(command);
         RouteControllerButton(button, down);
     }
@@ -80,30 +75,40 @@ public partial class MainWindow
 
     private static ControllerCommand CommandOf(object sender) => Enum.Parse<ControllerCommand>((string)((Button)sender).Tag!);
 
-    private async void CaptureControllerButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>Everything bound now, for the capture window: the four controls, then the Controller to Key binds.</summary>
+    private IReadOnlyList<(string What, string Button)> BoundControllerButtons()
     {
-        if (gamepads is null) return;
-        controllerCaptureTimeout?.Cancel();
-        ShowControllerButtons();
-        capturingBind = false; capturingCommand = CommandOf(sender); capturingController = true;
-        ((Button)sender).Content = "Press a button…";
-        ControllerBindStatus.Text = gamepads.Connected.Count == 0 ? "No controller is connected yet; connect one and press a button." : "Press a controller button.";
-        using var timeout = new CancellationTokenSource(); controllerCaptureTimeout = timeout;
-        try { await Task.Delay(TimeSpan.FromSeconds(10), timeout.Token); }
-        catch (OperationCanceledException) { return; }
-        capturingController = false; ShowControllerButtons();
-        ControllerBindStatus.Text = "No button pressed; nothing changed.";
+        var bound = new List<(string, string)>();
+        foreach (var command in Enum.GetValues<ControllerCommand>())
+            bound.Add((ControlName(command), controllerControls.ButtonFor(command) is { } b ? ControllerButtons.Label(b) : "None"));
+        foreach (var bind in controllerBinds) bound.Add(($"{bind.Name} (presses {OutputLabel(bind.Output)})", ControllerButtons.Label(bind.Button)));
+        return bound;
     }
 
-    private void FinishControllerCapture(ControllerButton button)
+    /// <summary>Shows the capture window and returns the button pressed, or null when cancelled.</summary>
+    private ControllerButton? CaptureControllerButton(string purpose, Func<ControllerButton, string?> taken)
     {
-        if (!capturingController) return;
-        capturingController = false; controllerCaptureTimeout?.Cancel();
+        if (gamepads is null || controllerCapture is not null) return null;
+        var window = new ControllerCaptureWindow(this, purpose, BoundControllerButtons(), taken, gamepads.Connected.Count > 0);
+        controllerCapture = window; capturingButton = true;
+        try { return window.ShowDialog() == true ? window.SelectedButton : null; }
+        finally { capturingButton = false; controllerCapture = null; }
+    }
+
+    private void CaptureControllerButton_Click(object sender, RoutedEventArgs e)
+    {
+        var command = CommandOf(sender);
+        // The four controls may swap buttons among themselves; a button a Controller to Key bind uses stays with it.
+        var button = CaptureControllerButton($"Controller button for {ControlName(command)}", pressed =>
+            controllerBinds.FirstOrDefault(b => b.Button == pressed) is { } bind
+                ? $"{ControllerButtons.Label(pressed)} presses \"{bind.Name}\" under Controller to Key. Press another button, or remove that bind first."
+                : null);
+        if (button is not { } chosen) return;
         var previous = controllerControls;
-        controllerControls = controllerControls.With(capturingCommand, button);
-        var moved = previous.CommandFor(button) is { } other && other != capturingCommand ? $" {ControlName(other)} now uses {Label(previous.ButtonFor(capturingCommand))}." : "";
-        ControllerBindStatus.Text = $"{ControlName(capturingCommand)}: {ControllerButtons.Label(button)}.{moved}";
-        ShowControllerButtons(); PersistPreferences(); RefreshStatus();
+        controllerControls = controllerControls.With(command, chosen);
+        var moved = previous.CommandFor(chosen) is { } other && other != command ? $" {ControlName(other)} now uses {Label(previous.ButtonFor(command))}." : "";
+        ControllerBindStatus.Text = $"{ControlName(command)}: {ControllerButtons.Label(chosen)}.{moved}";
+        ShowControllerButtons(); PersistPreferences(); RefreshStatus(); ShowControllerBindReady();
         static string Label(ControllerButton? b) => b is { } x ? ControllerButtons.Label(x) : "no button";
     }
 
@@ -117,18 +122,22 @@ public partial class MainWindow
     {
         if (e.InitialPressMouseButton != MouseButton.Right || sender is null) return;
         var command = CommandOf(sender);
-        capturingController = false; controllerCaptureTimeout?.Cancel();
         controllerControls = controllerControls.With(command, null);
         ControllerBindStatus.Text = $"{ControlName(command)} has no controller button now.";
-        ShowControllerButtons(); PersistPreferences(); RefreshStatus();
+        ShowControllerButtons(); PersistPreferences(); RefreshStatus(); ShowControllerBindReady();
         e.Handled = true;
     }
 
     private void ResetControllerButtons_Click(object sender, RoutedEventArgs e)
     {
-        capturingController = false; controllerCaptureTimeout?.Cancel();
-        controllerControls = ControllerControls.Default;
-        ControllerBindStatus.Text = "Controller buttons reset: A Start / toggle, B Stop all, Y Record, X Screenshot.";
-        ShowControllerButtons(); PersistPreferences(); RefreshStatus();
+        // A default button that a Controller to Key bind uses stays with that bind; its control is left without one.
+        var reset = ControllerControls.Default;
+        var kept = new List<string>();
+        foreach (var command in Enum.GetValues<ControllerCommand>())
+            if (reset.ButtonFor(command) is { } b && controllerBinds.Any(bind => bind.Button == b))
+            { reset = reset.With(command, null); kept.Add($"{ControllerButtons.Label(b)} stays with Controller to Key, so {ControlName(command)} has none"); }
+        controllerControls = reset;
+        ControllerBindStatus.Text = "Controller buttons reset: A Start / toggle, B Stop all, Y Record, X Screenshot." + (kept.Count > 0 ? " " + string.Join("; ", kept) + "." : "");
+        ShowControllerButtons(); PersistPreferences(); RefreshStatus(); ShowControllerBindReady();
     }
 }
