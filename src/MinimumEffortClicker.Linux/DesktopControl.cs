@@ -340,7 +340,7 @@ public sealed class DesktopControl : IDisposable
         return command;
     }
     /// <summary>
-    /// A controller button bound to a global control (User, 2026-10-16) does what that control's F-key does, through
+    /// A controller button bound to a global control does what that control's F-key does, through
     /// the same latch. Stop All works even while shortcuts are being chosen.
     /// </summary>
     public void RunControllerCommand(ControllerCommand command)

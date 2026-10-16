@@ -11,7 +11,7 @@ public partial class MainWindow
     private GamepadListener? gamepads;
     private ControllerControls controllerControls = ControllerControls.Default;
     // The hints show the controller's buttons after controller input and the keyboard's after keyboard input. The
-    // mouse never switches them (User, 2026-10-16): on a Steam Deck the mouse and the controller are used together.
+    // mouse never switches them: on a Steam Deck the mouse and the controller are used together.
     private volatile bool controllerHints;
     // Set while Settings waits for the button of one control; controller presses then choose instead of act.
     private volatile bool capturingController;

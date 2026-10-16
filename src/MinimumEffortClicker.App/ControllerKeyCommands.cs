@@ -7,7 +7,7 @@ using MinimumEffortClicker.Storage;
 namespace MinimumEffortClicker.App;
 
 /// <summary>
-/// The Controller to Key page (User, 2026-10-16): a simple controller-to-keyboard mapper. While a bound controller
+/// The Controller to Key page: a simple controller-to-keyboard mapper. While a bound controller
 /// button is held its key or mouse button is held, in whichever window is in front.
 /// </summary>
 public partial class MainWindow

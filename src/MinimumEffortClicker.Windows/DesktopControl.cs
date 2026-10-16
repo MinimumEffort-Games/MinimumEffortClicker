@@ -409,7 +409,7 @@ public sealed class DesktopControl : IDisposable
                         MacroTriggered?.Invoke(item.Binding.MacroId, ShortcutEdge(item.Latch, key, down, item.Binding.HoldTrigger), item.Binding.HoldTrigger);
     }
     /// <summary>
-    /// A controller button bound to a global control (User, 2026-10-16) does what that control's F-key does, through
+    /// A controller button bound to a global control does what that control's F-key does, through
     /// the same latch on the control thread. Stop All works even while shortcuts are being chosen, like F9.
     /// </summary>
     public void RunControllerCommand(ControllerCommand command)

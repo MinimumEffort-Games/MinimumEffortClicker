@@ -1,7 +1,7 @@
 namespace MinimumEffortClicker.Core;
 
 /// <summary>
-/// One Controller to Key bind (User, 2026-10-16): while the controller button is held, the key or mouse button is held,
+/// One Controller to Key bind: while the controller button is held, the key or mouse button is held,
 /// and releasing the controller button releases it. It works in whichever window is in front, so it needs no target.
 /// </summary>
 public sealed record ControllerKeyBind(Guid Id, string Name, ControllerButton Button, InputControl Output, bool Active = true)

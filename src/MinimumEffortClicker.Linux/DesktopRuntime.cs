@@ -810,7 +810,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         return true;
     }
     /// <summary>
-    /// Controller to Key (User, 2026-10-16): presses or releases one key or mouse button in whichever window is in
+    /// Controller to Key: presses or releases one key or mouse button in whichever window is in
     /// front, at the current pointer, through the desktop helper's virtual devices like playback, so it never counts
     /// as the user's own input.
     /// </summary>
