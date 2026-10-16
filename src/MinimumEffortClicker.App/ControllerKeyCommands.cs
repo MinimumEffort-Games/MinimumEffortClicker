@@ -12,7 +12,6 @@ namespace MinimumEffortClicker.App;
 /// </summary>
 public partial class MainWindow
 {
-    private static readonly PointerButton[] BindMouseButtons = [PointerButton.Left, PointerButton.Right, PointerButton.Middle, PointerButton.XButton1, PointerButton.XButton2];
     private readonly ControllerKeyRouter controllerKeys = new();
     private List<ControllerKeyBind> controllerBinds = [];
     private ControllerKeyBinds? controllerBindStore;
@@ -20,9 +19,16 @@ public partial class MainWindow
     private bool controllerBindsReadable = true;
     private Guid? editingControllerBind;
     private ControllerButton? selectedBindButton;
+    // The key or mouse button the bind presses; null until one is chosen.
+    private InputControl? selectedBindOutput;
     private bool refreshingControllerBinds;
 
-    private sealed record ControllerBindRow(Guid Id, string Name, string Button, string Output, bool Active);
+    private sealed record ControllerBindRow(Guid Id, string Name, ControllerButton Button, InputControl Output, bool Active)
+    {
+        /// <summary>The controller button's picture, and the key's keycap or the mouse with its button outlined.</summary>
+        public FrameworkElement ButtonPicture => UiArt.ControllerGlyph(Button, 26);
+        public FrameworkElement OutputPicture => UiArt.InputPicture(Output, OutputLabel(Output), 30);
+    }
 
     private static string OutputLabel(InputControl output) => output.Kind == InputKind.MouseButton
         ? (PointerButton)output.Code switch { PointerButton.Left => "Left mouse", PointerButton.Right => "Right mouse", PointerButton.Middle => "Middle mouse", PointerButton.XButton1 => "Back mouse", _ => "Forward mouse" }
@@ -31,12 +37,6 @@ public partial class MainWindow
     /// <summary>At startup: fills the key list, loads the saved binds and arms the active ones. Arming presses nothing.</summary>
     private async Task LoadControllerBinds()
     {
-        refreshingControllerBinds = true;
-        ControllerKeyBox.Items.Clear();
-        ControllerKeyBox.Items.Add("Select a key…");
-        foreach (var name in SequenceKeys.Supported.Keys) ControllerKeyBox.Items.Add(name);
-        ControllerKeyBox.SelectedIndex = 0;
-        refreshingControllerBinds = false;
         ReadKeyRepeatSettings();
         controllerBindStore = new ControllerKeyBinds(store.DirectoryPath);
         var loaded = await Task.Run(controllerBindStore.Load);
@@ -89,7 +89,7 @@ public partial class MainWindow
         refreshingControllerBinds = true;
         try
         {
-            var rows = controllerBinds.Select(b => new ControllerBindRow(b.Id, b.Name, ControllerButtons.Label(b.Button), OutputLabel(b.Output), b.Active)).ToArray();
+            var rows = controllerBinds.Select(b => new ControllerBindRow(b.Id, b.Name, b.Button, b.Output, b.Active)).ToArray();
             ControllerBindList.ItemsSource = rows;
             ControllerBindList.SelectedItem = rows.FirstOrDefault(r => r.Id == editingControllerBind);
             ControllerBindEmptyLabel.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -98,24 +98,16 @@ public partial class MainWindow
         ShowControllerBindReady();
     }
 
-    private void ControllerKeyChoice_Changed(object sender, SelectionChangedEventArgs e)
+    /// <summary>Chooses the key or mouse button to press on the keyboard-and-mouse picker.</summary>
+    private void ChooseBindOutput_Click(object sender, RoutedEventArgs e)
     {
-        // One output per bind: choosing a key clears the mouse button, and the other way round.
-        if (refreshingControllerBinds || ControllerMouseBox is null) return;
-        if (ControllerKeyBox.SelectedIndex > 0) ControllerMouseBox.SelectedIndex = 0;
+        var picker = new KeyPickerWindow(this, "Key or mouse button to press", "Click the key or mouse button the controller button holds.", selectedBindOutput, _ => null, withMouse: true);
+        if (picker.ShowDialog() != true || picker.Selected is not { } output) return;
+        selectedBindOutput = output;
         ShowControllerBindReady();
     }
 
-    private void ControllerMouseChoice_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        if (refreshingControllerBinds || ControllerKeyBox is null) return;
-        if (ControllerMouseBox.SelectedIndex > 0) ControllerKeyBox.SelectedIndex = 0;
-        ShowControllerBindReady();
-    }
-
-    private InputControl? ChosenOutput() =>
-        ControllerKeyBox.SelectedIndex > 0 && ControllerKeyBox.SelectedItem is string name && SequenceKeys.Supported.TryGetValue(name, out int code) ? InputControl.Key(code)
-        : ControllerMouseBox.SelectedIndex > 0 ? InputControl.Mouse(BindMouseButtons[ControllerMouseBox.SelectedIndex - 1]) : null;
+    private InputControl? ChosenOutput() => selectedBindOutput;
 
     /// <summary>What still stops the bind from being saved, or null; Save stays grey until it is complete.</summary>
     private string? ControllerBindMissing()
@@ -137,7 +129,9 @@ public partial class MainWindow
         string? missing = ControllerBindMissing();
         SaveControllerBindButton.IsEnabled = missing is null;
         SaveControllerBindButton.ToolTip = missing ?? (editingControllerBind is null ? "Add bind" : "Save changes");
-        ControllerBindButtonBox.Content = selectedBindButton is { } b ? ControllerButtons.Label(b) : "Press to choose a button…";
+        ControllerBindButtonBox.Content = selectedBindButton is { } b ? UiArt.ControllerGlyph(b, 24) : "Press to choose a button…";
+        ControllerOutputBox.Content = selectedBindOutput is { } o ? UiArt.InputContent(o, OutputLabel(o)) : "Choose a key or mouse button…";
+        ControllerOutputBox.SetResourceReference(StyleProperty, selectedBindOutput is null ? "NeedsChoiceButton" : "ChosenButton");
         ControllerBindButtonBox.SetResourceReference(StyleProperty, selectedBindButton is null ? "NeedsChoiceButton" : "ChosenButton");
         ControllerBindControllerLabel.Text = gamepads is null ? "" : gamepads.Error ?? (gamepads.Connected.Count == 0
             ? "No controller is connected right now."
@@ -152,7 +146,7 @@ public partial class MainWindow
                 ? $"{ControllerButtons.Label(pressed)} is {ControlName(command)} under Settings → Controller. Press another button, or clear it there first."
             : controllerBinds.FirstOrDefault(b => b.Button == pressed && b.Id != editingControllerBind) is { } other
                 ? $"{ControllerButtons.Label(pressed)} already presses \"{other.Name}\". Press another button."
-            : null);
+            : null, selectedBindButton);
         if (button is not { } chosen) return;
         selectedBindButton = chosen;
         ControllerBindStatusLabel.Text = ControllerBindMissing() ?? $"Controller binding: {ControllerButtons.Label(chosen)}.";
@@ -161,10 +155,9 @@ public partial class MainWindow
 
     private void NewControllerBind_Click(object sender, RoutedEventArgs e)
     {
-        editingControllerBind = null; selectedBindButton = null;
+        editingControllerBind = null; selectedBindButton = null; selectedBindOutput = null;
         refreshingControllerBinds = true;
         ControllerBindList.SelectedIndex = -1; ControllerBindNameBox.Text = "";
-        ControllerKeyBox.SelectedIndex = 0; ControllerMouseBox.SelectedIndex = 0;
         refreshingControllerBinds = false;
         DeleteControllerBindButton.IsEnabled = false;
         ShowControllerBindReady();
@@ -174,11 +167,9 @@ public partial class MainWindow
     {
         if (refreshingControllerBinds || ControllerBindList.SelectedItem is not ControllerBindRow row) return;
         var bind = controllerBinds.First(b => b.Id == row.Id);
-        editingControllerBind = bind.Id; selectedBindButton = bind.Button;
+        editingControllerBind = bind.Id; selectedBindButton = bind.Button; selectedBindOutput = bind.Output;
         refreshingControllerBinds = true;
         ControllerBindNameBox.Text = bind.Name;
-        if (bind.Output.Kind == InputKind.MouseButton) { ControllerKeyBox.SelectedIndex = 0; ControllerMouseBox.SelectedIndex = Array.IndexOf(BindMouseButtons, (PointerButton)bind.Output.Code) + 1; }
-        else { ControllerMouseBox.SelectedIndex = 0; ControllerKeyBox.SelectedItem = OutputLabel(bind.Output); }
         refreshingControllerBinds = false;
         DeleteControllerBindButton.IsEnabled = true;
         ShowControllerBindReady();

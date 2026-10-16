@@ -29,7 +29,7 @@ internal static class UiArt
     /// A controller button as a picture of the given height: its own icon, or for a stick direction the stick with an
     /// arrow keycap. Buttons without a picture (the Steam Deck back buttons and the touchpad) are their name as text.
     /// </summary>
-    public static FrameworkElement ControllerPicture(ControllerButton button, double height)
+    public static FrameworkElement ControllerGlyph(ControllerButton button, double height)
     {
         string? icon = button switch
         {
@@ -76,18 +76,39 @@ internal static class UiArt
         return content;
     }
 
-    /// <summary>The labelled mouse (LMB, MMB, RMB, 4, 5) used to choose a mouse button.</summary>
-    public static ImageSource? MouseButtons => Load("devices/mouse-buttons");
-    /// <summary>One button's traced outline on the labelled mouse, white on transparent: left, middle, right, side1, side2.</summary>
-    public static ImageSource? MouseButtonOutline(string button) => Load("devices/mouse-buttons-" + button);
-    /// <summary>The labelled mouse's button map as BGRA pixels; null when the picture is missing.</summary>
-    public static (byte[] Pixels, int Width, int Height)? MouseButtonMap()
+    /// <summary>A key or mouse button as a small picture for a list: its keycap, the labelled mouse with that button
+    /// outlined, or its name as text when there is no picture. The name is the tooltip.</summary>
+    public static FrameworkElement InputPicture(InputControl? input, string label, double height)
     {
-        if (Load("devices/mouse-buttons-map") is not BitmapSource source) return null;
-        var bgra = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
-        var pixels = new byte[bgra.PixelWidth * bgra.PixelHeight * 4];
-        bgra.CopyPixels(pixels, bgra.PixelWidth * 4, 0);
-        return (pixels, bgra.PixelWidth, bgra.PixelHeight);
+        FrameworkElement picture;
+        if (input is { Kind: InputKind.MouseButton } mouse)
+            picture = new MouseButtonPicker { Selected = (PointerButton)mouse.Code, Height = height, IsHitTestVisible = false };
+        else if (input is { } key && KeyPickerWindow.KeyName(key) is { } name && Key(name) is { } art)
+            picture = new Image { Source = art, Height = height, Stretch = Stretch.Uniform };
+        else return new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        RenderOptions.SetBitmapScalingMode(picture, BitmapScalingMode.HighQuality);
+        picture.ToolTip = label; picture.HorizontalAlignment = HorizontalAlignment.Center; picture.VerticalAlignment = VerticalAlignment.Center;
+        System.Windows.Automation.AutomationProperties.SetName(picture, label);
+        return picture;
+    }
+
+    /// <summary>A picture to click buttons on, or one of its traced button outlines (white on transparent), from
+    /// devices/: for example "mouse-buttons" or "controller-layout-a".</summary>
+    public static ImageSource? Device(string name) => Load("devices/" + name);
+    private static readonly Dictionary<string, (byte[] Pixels, int Width, int Height)?> Maps = [];
+    /// <summary>A picture's button map as BGRA pixels (red channel = button value); null when it is missing.</summary>
+    public static (byte[] Pixels, int Width, int Height)? DeviceMap(string name)
+    {
+        if (Maps.TryGetValue(name, out var cached)) return cached;
+        (byte[], int, int)? map = null;
+        if (Device(name) is BitmapSource source)
+        {
+            var bgra = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+            var pixels = new byte[bgra.PixelWidth * bgra.PixelHeight * 4];
+            bgra.CopyPixels(pixels, bgra.PixelWidth * 4, 0);
+            map = (pixels, bgra.PixelWidth, bgra.PixelHeight);
+        }
+        return Maps[name] = map;
     }
 
     public static ImageSource? Mouse => Load("devices/mouse");

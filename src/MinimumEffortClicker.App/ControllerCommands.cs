@@ -86,10 +86,10 @@ public partial class MainWindow
     }
 
     /// <summary>Shows the capture window and returns the button pressed, or null when cancelled.</summary>
-    private ControllerButton? CaptureControllerButton(string purpose, Func<ControllerButton, string?> taken)
+    private ControllerButton? CaptureControllerButton(string purpose, Func<ControllerButton, string?> taken, ControllerButton? current)
     {
         if (gamepads is null || controllerCapture is not null) return null;
-        var window = new ControllerCaptureWindow(this, purpose, BoundControllerButtons(), taken, gamepads.Connected.Count > 0);
+        var window = new ControllerCaptureWindow(this, purpose, BoundControllerButtons(), taken, gamepads.Connected.Count > 0, current);
         controllerCapture = window; capturingButton = true;
         try { return window.ShowDialog() == true ? window.SelectedButton : null; }
         finally { capturingButton = false; controllerCapture = null; }
@@ -102,7 +102,7 @@ public partial class MainWindow
         var button = CaptureControllerButton($"Controller button for {ControlName(command)}", pressed =>
             controllerBinds.FirstOrDefault(b => b.Button == pressed) is { } bind
                 ? $"{ControllerButtons.Label(pressed)} presses \"{bind.Name}\" under Controller to Key. Press another button, or remove that bind first."
-                : null);
+                : null, controllerControls.ButtonFor(command));
         if (button is not { } chosen) return;
         var previous = controllerControls;
         controllerControls = controllerControls.With(command, chosen);

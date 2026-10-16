@@ -15,7 +15,11 @@ public partial class MainWindow
     private Guid? editingToggle;
     private bool refreshingToggles;
 
-    private sealed record ToggleRow(Guid Id, string Name, string Shortcut, bool Enabled);
+    private sealed record ToggleRow(Guid Id, string Name, string Shortcut, bool Enabled, int Key)
+    {
+        /// <summary>The shortcut as its keycap or the mouse with its button outlined.</summary>
+        public System.Windows.FrameworkElement ShortcutPicture => UiArt.InputPicture(Key == 0 ? null : ShortcutInput(Key), Shortcut, 30);
+    }
     private IEnumerable<MacroDefinition> SavedToggles => profiles.SelectMany(p => p.Macros).Where(m => m.IsToggle);
     private void ToggleMode_Changed(object sender, SelectionChangedEventArgs e)
     {
@@ -35,7 +39,8 @@ public partial class MainWindow
         try
         {
             toggleRows = SavedToggles.Select(m => new ToggleRow(m.Id, m.Name,
-                macroBindings.TryGetValue(m.Id, out var binding) ? MacroBindings.KeyLabel(binding.Key) : "Choose shortcut", enabledToggles.Contains(m.Id))).ToArray();
+                macroBindings.TryGetValue(m.Id, out var binding) ? MacroBindings.KeyLabel(binding.Key) : "Choose shortcut", enabledToggles.Contains(m.Id),
+                macroBindings.TryGetValue(m.Id, out var bound) ? bound.Key : 0)).ToArray();
             ToggleList.ItemsSource = toggleRows;
             ToggleList.SelectedItem = toggleRows.FirstOrDefault(r => r.Id == editingToggle);
             ToggleEmptyLabel.Visibility = toggleRows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;

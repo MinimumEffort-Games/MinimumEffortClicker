@@ -243,8 +243,8 @@ public partial class MainWindow
     private void Location_Changed(object sender, RoutedEventArgs e)
     {
         if (CursorLocationButton is null || SetLocationButton is null) return;
-        CursorLocationButton.SetResourceReference(StyleProperty, useCursorLocation ? "GreenButton" : "StandardButton");
-        SetLocationButton.SetResourceReference(StyleProperty, useCursorLocation ? "StandardButton" : "GreenButton");
+        CursorLocationButton.SetResourceReference(StyleProperty, useCursorLocation ? "ChosenButton" : "StandardButton");
+        SetLocationButton.SetResourceReference(StyleProperty, useCursorLocation ? "StandardButton" : "ChosenButton");
         QuickXBox.IsEnabled = QuickYBox.IsEnabled = !useCursorLocation;
         MotionFields.Visibility = ModeBox.SelectedIndex == 0 && !useCursorLocation ? Visibility.Visible : Visibility.Collapsed;
         RefreshAddAction();

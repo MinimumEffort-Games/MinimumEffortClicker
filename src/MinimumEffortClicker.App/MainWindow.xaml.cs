@@ -373,7 +373,8 @@ public partial class MainWindow : Window
     }
     /// <summary>
     /// For --render-preview: sets up each editing panel in turn (each action type, Toggles, Controller to Key) and yields
-    /// a name for its picture. The Action List gets a click, a key press and a pause so its rows show too.
+    /// a name for its picture. The Action List gets a click, a key press and a pause, and Controller to Key two binds, so
+    /// their rows show too (nothing is saved).
     /// </summary>
     internal IEnumerable<string> PreviewStates()
     {
@@ -388,7 +389,11 @@ public partial class MainWindow : Window
         for (int i = 0; i < actions.Length; i++) { ModeBox.SelectedIndex = i; yield return "action-" + actions[i]; }
         ModeBox.SelectedIndex = -1;
         Navigate("TogglePage"); yield return "toggles";
+        controllerBinds = [new(Guid.NewGuid(), "Jump", ControllerButton.A, InputControl.Key(SequenceKeys.Supported["Space"]), true),
+            new(Guid.NewGuid(), "Shoot", ControllerButton.RightTrigger, InputControl.Mouse(PointerButton.Left), false)];
+        RefreshControllerBindList();
         Navigate("ControllerPage"); yield return "controller-to-key";
+        Navigate("SettingsPage"); yield return "settings";
         Navigate("QuickPage");
     }
     private void Navigate(string page)

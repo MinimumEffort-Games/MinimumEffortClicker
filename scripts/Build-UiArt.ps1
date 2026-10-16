@@ -52,14 +52,16 @@ public static class UiArtShapes
     }
 
     /// <summary>
-    /// One button of the labelled mouse: the dark face around a point (with the label and ridges inside it) and the
-    /// cream outline around that face, up to ring pixels deep. Returns 0 outside, 1 face, 2 outline.
+    /// One button of a picture (the labelled mouse, the controller): the face around a point (with its label inside it)
+    /// and the cream outline around that face, up to ring pixels deep. Returns 0 outside, 1 face, 2 outline.
     /// </summary>
     public static byte[] Button(byte[] bgra, int w, int h, int seedX, int seedY, int ring)
     {
         Func<int, bool> opaque = p => bgra[p * 4 + 3] >= 128;
         Func<int, int> light = p => (bgra[p * 4] + bgra[p * 4 + 1] * 2 + bgra[p * 4 + 2]) / 4;
-        Func<int, bool> dark = p => opaque(p) && light(p) < 110;
+        Func<int, int> chroma = p => Math.Max(bgra[p * 4], Math.Max(bgra[p * 4 + 1], bgra[p * 4 + 2])) - Math.Min(bgra[p * 4], Math.Min(bgra[p * 4 + 1], bgra[p * 4 + 2]));
+        // A face is anything but the cream outline: charcoal, or a coloured face such as the yellow Y.
+        Func<int, bool> dark = p => opaque(p) && !(light(p) >= 130 && chroma(p) < 80);
         // The nearest dark pixel to the given point, so the point does not have to avoid the label.
         int seed = -1;
         for (int r = 0; r < 60 && seed < 0; r++)
@@ -126,6 +128,31 @@ public static class UiArtShapes
                 if (m == 2) { ring[o] = ring[o + 1] = ring[o + 2] = ring[o + 3] = 255; }
                 if (m > 0) { map[o + 2] = index; map[o + 3] = 255; }
             }
+    }
+    /// <summary>One quarter of a traced cross or stick ring, by direction from its centre (the middle of its face):
+    /// 0 up, 1 down, 2 left, 3 right. Pixels in the other quarters are cleared.</summary>
+    public static byte[] Sector(byte[] traced, int w, int h, int sector)
+    {
+        long sx = 0, sy = 0, n = 0;
+        for (int p = 0; p < w * h; p++) if (traced[p] == 1) { sx += p % w; sy += p / w; n++; }
+        double cx = (double)sx / n, cy = (double)sy / n;
+        var part = new byte[w * h];
+        for (int p = 0; p < w * h; p++)
+        {
+            if (traced[p] == 0) continue;
+            double dx = p % w - cx, dy = p / w - cy;
+            int s = Math.Abs(dy) >= Math.Abs(dx) ? (dy < 0 ? 0 : 1) : (dx < 0 ? 2 : 3);
+            if (s == sector) part[p] = traced[p];
+        }
+        return part;
+    }
+
+    /// <summary>One rectangle around every shape of at least fraction of the largest one's area, so loose specks do
+    /// not widen it (layout as a shape, label -1).</summary>
+    public static int[] BoundsOfLarge(List<int[]> shapes, double fraction)
+    {
+        int largest = Largest(shapes)[4];
+        return Bounds(shapes.FindAll(s => s[4] >= largest * fraction));
     }
     /// <summary>One rectangle around every shape, in the same layout as a shape (label -1).</summary>
     public static int[] Bounds(List<int[]> shapes)
@@ -274,26 +301,46 @@ Trim-Image 'mouse.png' 'devices/mouse.png' 192 -LargestShape
 Trim-Image 'keyboard.png' 'devices/keyboard.png' 384 -LargestShape
 foreach ($icon in Get-ChildItem (Join-Path $source 'actions') -Filter *.png) { Trim-Image "actions/$($icon.Name)" "actions/$($icon.Name)" 128 }
 
-# The labelled mouse for choosing a mouse button: the picture, a mask per button that the app colours green when that
-# button is chosen, and a map of which button each pixel belongs to (red channel 40 Left, 80 Middle, 120 Right,
-# 160 Side 1 = the "4", 200 Side 2 = the "5"), which the app reads to know which button was clicked. Each button is
-# traced from a point on its face; the points are in the source picture's pixels.
-$pixels = Read-Pixels (Join-Path $source 'mouse-buttons.png')
-$labels = [int[]]::new($pixels.Width * $pixels.Height)
-$body = [UiArtShapes]::Largest([UiArtShapes]::Shapes($pixels.Bytes, $pixels.Width, $pixels.Height, 24, $labels))
-$x0 = [Math]::Max(0, $body[0] - 2); $y0 = [Math]::Max(0, $body[1] - 2)
-$cw = [Math]::Min($pixels.Width - 1, $body[2] + 2) - $x0 + 1; $ch = [Math]::Min($pixels.Height - 1, $body[3] + 2) - $y0 + 1
-$picture = [byte[]]::new($cw * $ch * 4)
-for ($y = 0; $y -lt $ch; $y++) { [Array]::Copy($pixels.Bytes, (($y0 + $y) * $pixels.Width + $x0) * 4, $picture, $y * $cw * 4, $cw * 4) }
-Write-Png $picture $cw $ch (Join-Path $output 'devices/mouse-buttons.png') 512
-$map = [byte[]]::new($cw * $ch * 4)
-$index = 0
-foreach ($button in @(@('left', 440, 200), @('middle', 612, 262), @('right', 850, 200), @('side1', 245, 730), @('side2', 245, 520))) {
-    $index += 40
-    $traced = [UiArtShapes]::Button($pixels.Bytes, $pixels.Width, $pixels.Height, $button[1], $button[2], 30)
-    $ring = [byte[]]::new($cw * $ch * 4)
-    [UiArtShapes]::Paint($traced, $pixels.Width, $x0, $y0, $cw, $ch, $ring, $map, [byte]$index)
-    Write-Png $ring $cw $ch (Join-Path $output "devices/mouse-buttons-$($button[0]).png") 512
+# Pictures to choose a button on (the labelled mouse, the controller): the picture, a mask per button that the app
+# colours (green when chosen, red when taken), and a map of which button each pixel belongs to, read by the app to
+# know which button was clicked (red channel = the button's map value). Each button is traced from a point on its
+# face, in the source picture's pixels. An entry with four names and values is a cross or stick split into
+# up, down, left and right; on a stick it is the outer ring, and the stick's own press is a separate entry after it.
+function Trace-Picture([string]$file, [string]$prefix, [object[]]$buttons, [int]$ring) {
+    $pixels = Read-Pixels (Join-Path $source $file)
+    $labels = [int[]]::new($pixels.Width * $pixels.Height)
+    # The whole picture, triggers included, which are separate shapes on the controller.
+    $body = [UiArtShapes]::BoundsOfLarge([UiArtShapes]::Shapes($pixels.Bytes, $pixels.Width, $pixels.Height, 24, $labels), 0.01)
+    $x0 = [Math]::Max(0, $body[0] - 2); $y0 = [Math]::Max(0, $body[1] - 2)
+    $cw = [Math]::Min($pixels.Width - 1, $body[2] + 2) - $x0 + 1; $ch = [Math]::Min($pixels.Height - 1, $body[3] + 2) - $y0 + 1
+    $picture = [byte[]]::new($cw * $ch * 4)
+    for ($y = 0; $y -lt $ch; $y++) { [Array]::Copy($pixels.Bytes, (($y0 + $y) * $pixels.Width + $x0) * 4, $picture, $y * $cw * 4, $cw * 4) }
+    Write-Png $picture $cw $ch (Join-Path $output "devices/$prefix.png") 512
+    $map = [byte[]]::new($cw * $ch * 4)
+    foreach ($button in $buttons) {
+        $traced = [UiArtShapes]::Button($pixels.Bytes, $pixels.Width, $pixels.Height, $button[2], $button[3], $ring)
+        $parts = [Collections.Generic.List[object[]]]::new()
+        if ($button[0] -is [array]) { foreach ($s in 0..3) { $parts.Add(@($button[0][$s], $button[1][$s], [UiArtShapes]::Sector($traced, $pixels.Width, $pixels.Height, $s))) } }
+        else { $parts.Add(@($button[0], $button[1], $traced)) }
+        foreach ($part in $parts) {
+            $mask = [byte[]]::new($cw * $ch * 4)
+            [UiArtShapes]::Paint($part[2], $pixels.Width, $x0, $y0, $cw, $ch, $mask, $map, [byte]$part[1])
+            Write-Png $mask $cw $ch (Join-Path $output "devices/$prefix-$($part[0]).png") 512
+        }
+    }
+    Write-Png $map $cw $ch (Join-Path $output "devices/$prefix-map.png") 512 -Nearest
 }
-Write-Png $map $cw $ch (Join-Path $output 'devices/mouse-buttons-map.png') 512 -Nearest
+# Mouse map values: 40 Left, 80 Middle, 120 Right, 160 Side 1 (the "4"), 200 Side 2 (the "5"); see MouseButtonPicker.
+Trace-Picture 'mouse-buttons.png' 'mouse-buttons' @(
+    @('left', 40, 440, 200), @('middle', 80, 612, 262), @('right', 120, 850, 200), @('side1', 160, 245, 730), @('side2', 200, 245, 520)) 30
+# Controller map values: the ControllerButton number times 8; names are the ControllerButton names in lower case.
+Trace-Picture 'controller-layout.png' 'controller-layout' @(
+    @('lefttrigger', 56, 180, 110), @('righttrigger', 64, 800, 110), @('leftbumper', 40, 180, 255), @('rightbumper', 48, 800, 255),
+    @('y', 32, 925, 575), @('x', 24, 840, 672), @('b', 16, 1030, 640), @('a', 8, 940, 770),
+    @('view', 72, 510, 650), @('menu', 80, 718, 705), @('share', 168, 600, 785),
+    @(@('leftstickup', 'leftstickdown', 'leftstickleft', 'leftstickright'), @(184, 192, 200, 208), 215, 662),
+    @('leftstickpress', 88, 265, 640),
+    @(@('rightstickup', 'rightstickdown', 'rightstickleft', 'rightstickright'), @(216, 224, 232, 240), 702, 880),
+    @('rightstickpress', 96, 750, 860),
+    @(@('dpadup', 'dpaddown', 'dpadleft', 'dpadright'), @(104, 112, 120, 128), 440, 860)) 18
 "Written to $output"
