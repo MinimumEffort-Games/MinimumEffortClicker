@@ -18,6 +18,9 @@ internal sealed class ClickPingWindow : Window
     private readonly int desktopX, desktopY;
     private readonly TranslateTransform shift = new();
 
+    /// <summary>How long one grow-and-fade of the ring takes; Ping click location waits for its pulses before the clicker comes back.</summary>
+    public static readonly TimeSpan Pulse = TimeSpan.FromSeconds(1);
+
     public ClickPingWindow(int desktopX, int desktopY, Color colour, int times = 1)
     {
         this.desktopX = desktopX; this.desktopY = desktopY;
@@ -44,7 +47,7 @@ internal sealed class ClickPingWindow : Window
             timer.Tick += (_, _) =>
             {
                 FollowPoint();
-                double elapsed = (DateTime.UtcNow - started).TotalSeconds;
+                double elapsed = (DateTime.UtcNow - started) / Pulse; // in pulses
                 double t = Math.Min(1, elapsed - Math.Floor(Math.Min(elapsed, times - 0.001)));
                 // Grows with an ease-out and fades with an ease-in over one second.
                 double grow = 0.15 + 0.85 * (1 - Math.Pow(1 - t, 3));

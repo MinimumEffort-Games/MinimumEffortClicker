@@ -19,27 +19,27 @@ public partial class MainWindow
     private async Task ResumeActionsAsync()
     {
         if (runtime is null) return;
-        WindowState? previous = null;
+        StepAside? away = null;
         bool accepted = false;
         using var stop = new CancellationTokenSource();
         long intent = runtime.StopVersion;
         quickOperation = true; quickCancellation = stop;
         try
         {
-            if (runtime.IsDesktopMode && MinimizeOnStartBox.IsChecked == true) { previous = WindowState; WindowState = WindowState.Minimized; }
+            away = StepAsideForTarget(runtime.IsDesktopMode && MinimizeOnStartBox.IsChecked == true);
             if (!runtime.BringTargetForward(resume: true)) return;
             RefreshStatus();
             // Let the initiating press release and foreground handoff settle, with no countdown.
             await Task.Delay(200, stop.Token);
             if (intent != runtime.StopVersion || closing || allowClose) return;
             accepted = runtime.TryResume();
-            if (accepted) desktopPlaybackFrom = previous;
+            if (accepted && playbackAway is null) { playbackAway = away; playbackSeenActive = false; }
         }
         catch (OperationCanceledException) { }
         finally
         {
             quickOperation = false; quickCancellation = null;
-            if (!accepted) RestoreDesktopOperationWindow(previous);
+            if (!accepted) ComeBack(away);
             RefreshStatus();
         }
     }

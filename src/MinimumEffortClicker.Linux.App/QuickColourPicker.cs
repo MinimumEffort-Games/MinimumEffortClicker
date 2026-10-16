@@ -35,7 +35,9 @@ public partial class MainWindow
                 await Task.Delay(350, cancellation.Token);
                 var frame = runtime.GetTargetFrame();
                 var snapshot = await Task.Run(() => runtime.CaptureAuthoringPreview(cancellation.Token), cancellation.Token);
-                cancellation.Token.ThrowIfCancellationRequested(); Activate();
+                cancellation.Token.ThrowIfCancellationRequested();
+                // The picture is taken; the clicker comes back in front for the picker (GNOME needs the helper for it).
+                ComeBack(new StepAside(null));
                 picker = new RegionPicker(this, snapshot, frame, 1);
             }
             using var abortPicker = cancellation.Token.Register(() => Dispatcher.BeginInvoke(() => picker.Close()));

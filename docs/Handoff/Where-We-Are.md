@@ -76,7 +76,7 @@ Struck items are done. Never resurrect them.
 
 ### Next (User, 2026-10-15: "dont do it yet, tomorrow another day")
 
-- ~~The clicker does not come back to the front after a run without Loop, Ping click location or recording (User, 2026-10-15).~~ Done 2026-10-15 for Windows, PR #39 (User: "do it tonight after all, i cant record a trailer without this"): one shared step (`StepAsideForTarget` / `ComeBack` in `FocusCommands.cs`, `WindowFocus.BringToFront`) for the list ending or being stopped, Ping, Test Selected Action, Set location and recording, with any target; toggles never change focus. Linux still to do the same way.
+- ~~The clicker does not come back to the front after a run without Loop, Ping click location or recording (User, 2026-10-15).~~ Done 2026-10-15 for Windows, PR #39 (User: "do it tonight after all, i cant record a trailer without this"): one shared step (`StepAsideForTarget` / `ComeBack` in `FocusCommands.cs`, `WindowFocus.BringToFront`) for the list ending or being stopped, Ping, Test Selected Action, Set location and recording, with any target; toggles never change focus. Linux done the same way 2026-10-16 (helper-based `ActivateOwnWindow`; the Linux colour picker, which brings a window target forward, comes back too).
 - Remember every checkbox the user chose last (Loop, Minimize on Start, Minimize on record, Record pauses, Simulate mouse movement, Prevent sleep, and the rest) between starts, on both platforms; loading them never starts anything.
 
 ### B. Bugs worth fixing (by area)
