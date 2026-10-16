@@ -13,6 +13,9 @@ namespace MinimumEffortClicker.App;
 public partial class MainWindow
 {
     private readonly HashSet<Guid> enabledToggles = [];
+    // The active toggles saved for the next start. Changed only by the user's own toggle edits, so a toggle that
+    // cannot be armed at startup (its key taken by another app) is tried again next time instead of forgotten.
+    private Guid[] rememberedToggles = [];
     private ToggleRow[] toggleRows = [];
     private Guid? editingToggle;
     private bool refreshingToggles;
@@ -94,6 +97,7 @@ public partial class MainWindow
             enabledToggles.Add(id);
             editingToggle = id;
             await ApplyAvailability();
+            RememberActiveToggles();
             RefreshToggleList(); SaveToggleButton.ToolTip = "Save changes"; DeleteToggleButton.IsEnabled = true;
             ReasonLabel.Text = enabledToggles.Contains(id)
                 ? $"Saved. Tap {MacroBindings.KeyLabel(key)} in your Click target to {(macro.Plan!.Mode == HelperMode.Repeat ? "spam" : "hold")} {held}, then again to stop."
@@ -107,6 +111,7 @@ public partial class MainWindow
         if (!initialized || refreshingToggles || bindingBusy || ioBusy || sender is not CheckBox { DataContext: ToggleRow row } box) return;
         if (box.IsChecked == true) enabledToggles.Add(row.Id); else enabledToggles.Remove(row.Id);
         await ApplyAvailability();
+        RememberActiveToggles();
     }
     private async void DeleteToggle_Click(object sender, RoutedEventArgs e)
     {
@@ -123,11 +128,26 @@ public partial class MainWindow
             await SaveProfiles(remaining.Length == 0 ? profiles.Where(p => p.Id != owner.Id).ToList()
                 : profiles.Select(p => p.Id == owner.Id ? p with { Macros = remaining } : p).ToList());
             macroBindings.Remove(id); await Task.Run(() => bindingsStore.Save(macroBindings.Values.ToArray()));
+            RememberActiveToggles();
             NewToggle_Click(sender, e); RefreshToggleList(); ReasonLabel.Text = "Toggle removed.";
         }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
         finally { Pages.IsEnabled = true; }
     }
+    /// <summary>Saves which toggles are active now, so the next start arms the same ones (User, 2026-10-16).</summary>
+    private void RememberActiveToggles() { rememberedToggles = [.. enabledToggles]; PersistPreferences(); }
+
+    /// <summary>
+    /// At startup: arms the toggles that were active when the app closed. Arming only listens for their shortcuts; nothing
+    /// is held or pressed until the user taps one, so the app still starts stopped.
+    /// </summary>
+    private async Task RestoreActiveToggles()
+    {
+        var saved = SavedToggles.Select(m => m.Id).Where(macroBindings.ContainsKey).ToHashSet();
+        foreach (var id in rememberedToggles.Where(saved.Contains)) enabledToggles.Add(id);
+        if (enabledToggles.Count > 0) await ApplyAvailability();
+    }
+
     /// <summary>Arm the checked toggles' shortcuts in the runtime. Arming never starts anything; a shortcut press does.</summary>
     private async Task ApplyAvailability()
     {

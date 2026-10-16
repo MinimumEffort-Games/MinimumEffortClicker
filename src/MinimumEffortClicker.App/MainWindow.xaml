@@ -64,7 +64,7 @@
                     <Button x:Name="PausePlaybackButton" Content="Pause" Click="PausePlayback_Click" Style="{StaticResource BlueButton}" Margin="0,0,0,0" AutomationProperties.Name="Pause playback"/>
                     <StackPanel VerticalAlignment="Bottom" Margin="14,0,0,2">
                       <CheckBox x:Name="LoopBox" Content="Loop" Checked="Loop_Changed" Unchecked="Loop_Changed" Margin="0,0,0,4"/>
-                      <CheckBox x:Name="MinimizeOnStartBox" Content="Minimize on Start" IsChecked="True" ToolTip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front."/>
+                      <CheckBox Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="MinimizeOnStartBox" Content="Minimize on Start" IsChecked="True" ToolTip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front."/>
                     </StackPanel>
                     <Button x:Name="CleanupButton" Content="Release stuck input" Click="Cleanup_Click" Visibility="Collapsed" Style="{StaticResource RedButton}" HorizontalAlignment="Left" ToolTip="Release physical buttons and keys first. This retries only inputs owned by ME Clicker and never starts playback."/>
                   </WrapPanel>
@@ -73,8 +73,8 @@
                     <WrapPanel>
                       <Button x:Name="QuickRecordButton" Content="F10 Record/Stop" Click="QuickRecord_Click" Style="{StaticResource RedButton}" Margin="0,0,14,0" Padding="6,7" MinWidth="120"/>
                       <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,2">
-                        <CheckBox x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" Margin="0,0,0,4" ToolTip="Keep the time between inputs as editable Pause actions."/>
-                        <CheckBox x:Name="MinimizeOnRecordBox" Content="Minimize on record" IsChecked="True" ToolTip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records."/>
+                        <CheckBox Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" Margin="0,0,0,4" ToolTip="Keep the time between inputs as editable Pause actions."/>
+                        <CheckBox Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="MinimizeOnRecordBox" Content="Minimize on record" IsChecked="True" ToolTip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records."/>
                       </StackPanel>
                     </WrapPanel>
                   </StackPanel>
@@ -102,10 +102,10 @@
                             <WrapPanel>
                               <Button x:Name="CursorLocationButton" Width="{Binding ActualWidth, ElementName=PingLocationButton}" Margin="0,0,6,0" Content="Cursor location" Click="CursorLocation_Click" Style="{StaticResource GreenButton}"/>
                               <Button x:Name="SetLocationButton" Content="Set Location…" Click="PickQuickPoint_Click"/>
-                              <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,4,0"/><TextBox x:Name="QuickXBox" Width="48" VerticalContentAlignment="Center" AutomationProperties.Name="Click X coordinate" ToolTip="Desktop pixels, or pixels from the selected window's top-left client corner."/>
-                              <TextBlock Text="Y" VerticalAlignment="Center" Margin="4,0,4,0"/><TextBox x:Name="QuickYBox" Width="48" VerticalContentAlignment="Center" AutomationProperties.Name="Click Y coordinate"/>
+                              <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,4,0"/><TextBox x:Name="QuickXBox" Width="64" VerticalContentAlignment="Center" AutomationProperties.Name="Click X coordinate" ToolTip="Desktop pixels, or pixels from the selected window's top-left client corner."/>
+                              <TextBlock Text="Y" VerticalAlignment="Center" Margin="4,0,4,0"/><TextBox x:Name="QuickYBox" Width="64" VerticalContentAlignment="Center" AutomationProperties.Name="Click Y coordinate"/>
                             </WrapPanel>
-                            <Button x:Name="PingLocationButton" Margin="0,6,0,0" Content="Ping click location" Click="PingLocation_Click" HorizontalAlignment="Left"/>
+                            <Button x:Name="PingLocationButton" Margin="0,6,0,0" Content="Ping location" Click="PingLocation_Click" HorizontalAlignment="Left"/>
                           </StackPanel>
 <StackPanel x:Name="MotionFields" Visibility="Collapsed"><CheckBox x:Name="VaryPositionBox" Content="Randomize click location offset"/><TextBlock Text="Maximum offset (pixels, 0–25)"/><TextBox x:Name="PositionOffsetBox" Text="3" AutomationProperties.Name="Click position variation"/></StackPanel>
                           <StackPanel x:Name="KeyFields" Visibility="Collapsed">
@@ -121,7 +121,7 @@
                             <TextBlock Text="Minimum 1,000 ms. Each image finishes saving before this pause begins. Uses the folder and clipboard option in Screenshot." Style="{StaticResource Secondary}" TextWrapping="Wrap"/>
                           </StackPanel>
                           <StackPanel x:Name="PauseFields" Visibility="Collapsed"><TextBlock Text="Pause for"/><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><TextBox x:Name="PauseDurationBox" Text="1" AutomationProperties.Name="Pause duration"/><ComboBox Grid.Column="1" x:Name="PauseUnitBox" SelectedIndex="1" AutomationProperties.Name="Pause unit"><ComboBoxItem Content="Milliseconds"/><ComboBoxItem Content="Seconds"/></ComboBox></Grid></StackPanel>
-                          <StackPanel x:Name="ConditionFields" Visibility="Collapsed"><TextBlock Text="Wait until"/><ComboBox x:Name="ConditionKindBox" SelectedIndex="0" SelectionChanged="ConditionKind_Changed" AutomationProperties.Name="Wait until"><ComboBoxItem Content="A Colour appears"/><ComboBoxItem Content="A Colour disappears"/></ComboBox><WrapPanel><Button Content="Choose area and colour…" Click="QuickCondition_Click"/><Button x:Name="QuickEyedropper" Content="Pick colour…" Click="QuickEyedropper_Click"/></WrapPanel><Border x:Name="ConditionSwatch" Height="24" Margin="0,3,0,5" Visibility="Collapsed"><TextBlock x:Name="ConditionColourLabel" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="ConditionLabel" Text="Select the area to scan and what to look for." Style="{StaticResource Secondary}"/></StackPanel>
+                          <StackPanel x:Name="ConditionFields" Visibility="Collapsed"><TextBlock Text="Wait until"/><ComboBox x:Name="ConditionKindBox" SelectedIndex="0" SelectionChanged="ConditionKind_Changed" AutomationProperties.Name="Wait until"><ComboBoxItem Content="A Colour appears"/><ComboBoxItem Content="A Colour disappears"/></ComboBox><WrapPanel><Button Content="Choose area and colour…" Click="QuickCondition_Click"/><Button x:Name="PingScanAreaButton" Content="Ping scan area" Click="PingScanArea_Click" ToolTip="Outlines the area this wait watches on the target, three times." AutomationProperties.Name="Ping scan area"/></WrapPanel><Border x:Name="ConditionSwatch" Height="24" Margin="0,3,0,5" Visibility="Collapsed"><TextBlock x:Name="ConditionColourLabel" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="ConditionLabel" Text="Select the area to scan and what to look for." Style="{StaticResource Secondary}"/></StackPanel>
                           <StackPanel x:Name="ComplexFields" Visibility="Collapsed">
                             <TextBlock Text="Recorded inputs — timing in milliseconds" FontWeight="SemiBold" TextWrapping="Wrap"/>
                             <TextBlock Text="Each row is one held input. Offset is when it starts within this action." Style="{StaticResource Secondary}"/>
@@ -185,7 +185,7 @@
                       </StackPanel>
 
 <StackPanel Grid.Row="4" x:Name="QuickAdvanced" Margin="0,12,0,0">
-  <CheckBox x:Name="RecordMovementBox" Content="Simulate mouse movement between click points" Checked="Config_Changed" Unchecked="Config_Changed"/>
+  <CheckBox x:Name="RecordMovementBox" Content="Simulate mouse movement between click points" Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed"/>
   <CheckBox x:Name="KeepAwakeBox" Content="Prevent sleep while running" Checked="KeepAwake_Changed" Unchecked="KeepAwake_Changed"/>
   <StackPanel x:Name="ShutdownSettings" Margin="0,8,0,0">
     <ComboBox x:Name="ShutdownModeBox" SelectedIndex="0" SelectionChanged="ShutdownMode_Changed" AutomationProperties.Name="Shutdown PC after">

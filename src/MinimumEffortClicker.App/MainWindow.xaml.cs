@@ -127,6 +127,11 @@ public partial class MainWindow : Window
             EmergencyStopBox.SelectedIndex = (int)settings.EmergencyStop; runtime.EmergencyStop = settings.EmergencyStop; EmergencyStop_Changed(this, null!);
             appliedClickLimit = 20; appliedKeepAwake = settings.KeepAwake;
             KeepAwakeBox.IsChecked = appliedKeepAwake;
+            var choices = settings.Actions ?? new();
+            LoopBox.IsChecked = choices.Loop; MinimizeOnStartBox.IsChecked = choices.MinimizeOnStart; RecordDelaysBox.IsChecked = choices.RecordPauses;
+            MinimizeOnRecordBox.IsChecked = choices.MinimizeOnRecord; RecordMovementBox.IsChecked = choices.SimulateMovement;
+            // Set before anything can save preferences again, so an early save keeps the remembered toggles.
+            rememberedToggles = settings.ActiveToggles ?? [];
             runtime.SetClickRateLimit(appliedClickLimit); runtime.KeepAwakeWhileRunning = appliedKeepAwake;
             await runtime.Control.ConfigureAsync(settings.ToggleKey, settings.StopKey);
             if (allowClose || closing) return;
@@ -138,6 +143,7 @@ public partial class MainWindow : Window
             RefreshTargetChoices();
             await SetQuickRecordKey();
             await MakeSavedMacrosAvailable();
+            await RestoreActiveToggles();
             SyncWorkshopMacros();
             await ConfigureScreenshotHotkey();
             settingsLoaded = true;
@@ -317,7 +323,7 @@ public partial class MainWindow : Window
                     return false;
                 }
                 for (int retry = 0; retry < 50 && Covered(); retry++) await Task.Delay(20, startCancellation.Token);
-                if (Covered()) throw new InvalidOperationException("The first click location is still covered by ME Clicker. Move the clicker away or use Ping click location to check it.");
+                if (Covered()) throw new InvalidOperationException("The first click location is still covered by ME Clicker. Move the clicker away or use Ping location to check it.");
             }
             if (startIntent != runtime.StopVersion || allowClose || closing) return;
             accepted = runtime.TryStartQuick(plan!, definition!.Steps.Count, TimeSpan.Zero, ResizeClicksBox.SelectedIndex == 0);
@@ -393,7 +399,7 @@ public partial class MainWindow : Window
         operations.Begin(Operation.Binding); Pages.IsEnabled = false;
         try
         {
-            enabledToggles.Clear(); RefreshToggleList();
+            enabledToggles.Clear(); rememberedToggles = []; RefreshToggleList();
             await runtime.ConfigureHelpersAsync([]);
             bool success = await runtime.Control.ConfigureAsync(selectedStartKey, selectedStopKey);
             runtime.Control.HoldTrigger = false;
@@ -435,7 +441,10 @@ public partial class MainWindow : Window
         if (!initialized) return;
         pendingPreferences = new(1, ThemeBox.SelectedIndex, appliedToggleKey,
             appliedStopKey, appliedHoldTrigger, OverlayBox.IsChecked == true, overlayOptions, false, appliedClickLimit, appliedKeepAwake, ResizeClicksBox.SelectedIndex == 0,
-            CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop);
+            CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop,
+            Actions: new(LoopBox.IsChecked == true, MinimizeOnStartBox.IsChecked == true, RecordDelaysBox.IsChecked == true,
+                MinimizeOnRecordBox.IsChecked == true, RecordMovementBox.IsChecked == true),
+            ActiveToggles: rememberedToggles);
         if (operations.Has(Operation.Preferences)) return;
         operations.Begin(Operation.Preferences);
         try

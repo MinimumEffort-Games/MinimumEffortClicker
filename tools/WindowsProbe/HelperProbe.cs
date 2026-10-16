@@ -183,7 +183,7 @@ internal static class HelperProbe
 
             report.Stage = "Click ring and intercepting picker";
             Require(ProbeNative.AreDpiAwarenessContextsEqual(ProbeNative.GetWindowDpiAwarenessContext(targetHandle), -4), "Receiver is not per-monitor-v2 aware.");
-            // Ping click location's red ring (three pulses) over the receiver: it must not take focus or block clicks.
+            // Ping location's red ring (three pulses) over the receiver: it must not take focus or block clicks.
             var beforeRing = await Request(pipe, "state");
             var ringFrame = runtime.GetTargetFrame();
             var ringAt = anchor.Resolve(ringFrame.X, ringFrame.Y, ringFrame.Width, ringFrame.Height, ringFrame.Dpi);

@@ -38,9 +38,9 @@ public partial class MainWindow
     }
     private void ShowConditionColour()
     {
-        QuickEyedropper.Visibility = ConditionKindBox.SelectedIndex is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
+        PingScanAreaButton.IsEnabled = quickCondition?.Region is not null;
         if (ModeBox.SelectedIndex == 3)
-            ActionHint.Text = ConditionKindBox.SelectedIndex == 1 ? "Pick one background pixel to detect when it is covered. In a larger area, all matching pixels must disappear." : "Continue when a colour appears or disappears.";
+            ActionHint.Text = ConditionKindBox.SelectedIndex == 1 ? "Choose an area and its colour: the wait continues once no pixel in that area has the colour any more." : "Continue when a colour appears or disappears.";
         if (quickCondition is not null)
         {
             try { ConditionLabel.Text = ConditionSummary(ReadQuickCondition()); }
@@ -120,8 +120,12 @@ public partial class MainWindow
         ShowTestSelectedButton();
         if (quickRecorder?.Paused == true) QuickRecordStatus.Text = "Recording paused after focus changed. Finish to keep the captured actions.";
     }
+    /// <summary>Minimize on Start, Record pauses, Minimize on record, mouse movement: remembered for the next start.</summary>
+    private void ActionsChoice_Changed(object sender, RoutedEventArgs e) { Config_Changed(sender, e); PersistPreferences(); }
     private void Loop_Changed(object sender, RoutedEventArgs e)
     {
+        // Remembered for the next start, also when a loaded macro sets it (User, 2026-10-16: the last choice wins).
+        PersistPreferences();
         if (loadingQuick || !initialized) return;
         // Explicit repetition edits replace an older active-time limit.
         if (quickHistory.Current.Repetition?.ActiveDuration is not null)
@@ -198,7 +202,7 @@ public partial class MainWindow
             quickCondition = quickCondition with { Kind = ConditionKindBox.SelectedIndex == 1 ? ConditionKind.ColorDisappears : ConditionKind.RegionColor };
         else quickCondition = null;
         ConditionLabel.Text = quickCondition is null ? "Choose the area and what to look for." : ConditionSummary(quickCondition);
-        if (QuickEyedropper is not null) ShowConditionColour();
+        if (PingScanAreaButton is not null) ShowConditionColour();
     }
     private ConditionDefinition ReadQuickCondition()
     {

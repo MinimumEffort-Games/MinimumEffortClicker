@@ -8,7 +8,7 @@ using MinimumEffortClicker.Linux;
 namespace MinimumEffortClicker.App;
 
 /// <summary>
-/// A growing ring at a desktop point: green once where a tested click landed, red a few times for Ping click location.
+/// A growing ring at a desktop point: green once where a tested click landed, red a few times for Ping location.
 /// Click-through and never focused (empty X11 input region, no-input hint), so it cannot receive or redirect input.
 /// </summary>
 internal sealed class ClickPingWindow : Window
@@ -18,7 +18,7 @@ internal sealed class ClickPingWindow : Window
     private readonly int desktopX, desktopY;
     private readonly TranslateTransform shift = new();
 
-    /// <summary>How long one grow-and-fade of the ring takes; Ping click location waits for its pulses before the clicker comes back.</summary>
+    /// <summary>How long one grow-and-fade of the ring takes; Ping location waits for its pulses before the clicker comes back.</summary>
     public static readonly TimeSpan Pulse = TimeSpan.FromSeconds(1);
 
     public ClickPingWindow(int desktopX, int desktopY, Color colour, int times = 1)

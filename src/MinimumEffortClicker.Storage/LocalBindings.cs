@@ -3,7 +3,7 @@ using MinimumEffortClicker.Core;
 
 namespace MinimumEffortClicker.Storage;
 
-/// <summary>Machine-local assignments only. Restoring assignments never enables a profile or macro.</summary>
+/// <summary>Machine-local assignments only. Restoring assignments never enables a toggle; which toggles were active is kept in preferences.</summary>
 public sealed class LocalBindings(string directory)
 {
     public IReadOnlyList<MacroBinding> Load()
