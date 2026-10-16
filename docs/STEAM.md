@@ -4,7 +4,7 @@ The Steam build is the Windows app with two extra files beside the exe: `steam.m
 and Valve's `steam_api64.dll`. The portable ZIP from GitHub has neither, never loads Steam code and stays offline.
 
 The Steam build goes online only through the Steam client: when the user shares a macro, and when Steam downloads
-macros the user subscribed to (User, 2026-10-15).
+macros the user subscribed to.
 
 ## What it adds
 
@@ -22,7 +22,7 @@ macros the user subscribed to (User, 2026-10-15).
   - Workshop files go through the normal importer. It refuses anything the app cannot build itself, for example a
     Windows-key press.
 
-## Safety rules for Workshop macros (User, 2026-10-15: "I want a safe app")
+## Safety rules for Workshop macros
 
 1. A Workshop macro that presses a **system shortcut** (`Core/SystemShortcuts`) is never copied into
    `Macros\Workshop`. If it was copied earlier, that copy is removed. The user gets a notice once per session; the log

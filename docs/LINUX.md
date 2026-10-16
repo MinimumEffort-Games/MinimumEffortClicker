@@ -88,7 +88,7 @@ window goes behind another one and continues by itself once it has been back in 
 - Fractional display scaling: KWin's answers were checked at 1.5× in a private test session (click position and
   screen capture), not yet with the app on a real screen, and not under GNOME.
 - Keyboard layouts: common xkb layouts map to the same identity as on Windows, so recordings move
-  between systems. "Logical" keys follow US key positions on Linux.
+  between systems.
 - No shutdown happens without the visible 30-second countdown. Linux uses logind's power-off.
 
 ## Build from source

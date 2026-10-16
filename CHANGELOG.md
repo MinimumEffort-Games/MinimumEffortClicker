@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0-preview.35 (2026-10-16)
+
 - Linux is no longer a separate preview: it has the same version and status as the Windows build.
 
 - The code now matches the four pages. The hidden macro-library page, the step editor, the setup wizard and the

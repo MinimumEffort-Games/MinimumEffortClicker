@@ -1,49 +1,38 @@
 # Release status
 
-Version: **0.5.0-preview.34.16**, portable Windows 11 x64 and Linux x64 (GNOME, KDE Plasma), macro file schema **17**
-(the published preview ZIP still writes schema 15; the next release upgrades it on load).
-The owner authorized public source under MIT and a free unsigned preview on
-13 October 2026. Signing is a later step. No paid provider, certificate,
-installer, Store/Steam submission, or application runtime service was purchased
-or configured.
+Version: **0.5.0-preview.35**, a public preview for Windows 11 x64 (portable ZIP) and Linux x64 (`tar.gz`, GNOME and
+KDE Plasma on Wayland), macro file schema **17**. Older macro files open and are upgraded on load; nothing is reset.
 
-## Verification
+Both builds come from the same source and the same version. They stay previews until more people have used them on
+more hardware, displays and desktops; a 1.0 follows after that and a few updates.
 
-The R34.16 private baseline recorded 297 fake-only passing tests and bounded
-Windows regression, recovery, capture and spam checks in the isolated VM. After
-the October 2026 cleanup the suite is 266 tests (9 TestTarget, 118 Engine, 139 Core); the removed tests covered
-features that no longer exist and new regression tests cover the bug fixes.
-The public snapshot must independently pass `scripts/Test.ps1`, locked restore
-and Release build. Its release manifest records the actual source commit,
-runtime and per-file hashes. Do not infer full hardware acceptance from these
-checks. See the accompanying local release report for the public build's results.
+## What is checked for every release
 
-Remaining acceptance: eight-hour full WPF application endurance; controlled
-physical recording/overlap; additional monitor/DPI, suspend/session and
-accessibility scenarios. A previous VM freeze's cause is unresolved. No real OS
-shutdown was executed as a test. Native playback tests are not run in CI.
+- The GitHub Actions workflow builds and tests both builds from the tagged commit: `scripts/Build-Public.ps1` on
+  Windows and `scripts/linux/package.sh` on Linux, with locked package restore. Every default test uses fake input,
+  time and windows; none sends real input.
+- Each package carries `build-manifest.json` with the source commit, the runtime and a SHA-256 for every file, and
+  the archive's SHA-256 is published next to it.
+- Real input is checked separately and by hand: on Windows in an isolated virtual machine
+  (`scripts/Run-M0Local.ps1 -IsolatedVm`), on Linux in a private headless GNOME or KDE session
+  (`scripts/linux/run-headless-probe.sh`, `scripts/linux/run-headless-kwin-probe.sh`), and in the app itself.
+
+Not yet covered: long sessions of many hours, more monitor and display-scaling combinations, suspend and session
+switches during runs, accessibility tools, and fractional scaling on a real Linux desktop. No real shutdown is run as
+a test.
+
+## Steam
+
+A Steam version with Steam Cloud and Workshop sharing is prepared (see [STEAM.md](STEAM.md)). The store page is not
+public yet. On Steam Deck the app runs in Desktop Mode; Game Mode is not supported.
 
 ## Signing
 
-This preview is unsigned. No self-signed certificate is presented as publicly
-trusted, and checksums are not signatures. Microsoft explains the trusted
-provider requirement for Smart App Control:
+The preview is not code-signed, so Windows SmartScreen or Smart App Control may warn. Checksums show that the files
+are unchanged; they are not a signature. Microsoft explains the trusted provider requirement for Smart App Control:
 https://learn.microsoft.com/windows/apps/develop/smart-app-control/code-signing-for-smart-app-control
 
-SignPath Foundation offers free signing for eligible open-source projects,
-subject to their review and terms. Eligibility/approval is not established for
-this project. A future application should use the public repository and build
-provenance; it is not part of this release:
-https://signpath.org/ and https://signpath.org/terms.html
-
-If trusted signing is introduced, sign app assemblies/executables through the
-approved provider, timestamp and verify their signatures, then regenerate the
-manifest and ZIP checksums. Keep all signing credentials outside the repository.
-
-## Source publication
-
-The public repository begins with a clean snapshot, preserving the full private
-development repository locally. It excludes owner Data, old history/evidence,
-VM handoff receipts, host credential helpers, unlicensed historical pixel assets,
-download caches and generated binaries. Required approved brand assets and
-dependency notices are included. No owner data is copied into the portable ZIP.
+SignPath Foundation offers free signing for eligible open-source projects, subject to their review and terms
+(https://signpath.org/). If trusted signing is added, the app's assemblies and executables are signed and
+timestamped through that provider, the signatures verified, and the manifest and checksums regenerated. Signing
+credentials never go into the repository.

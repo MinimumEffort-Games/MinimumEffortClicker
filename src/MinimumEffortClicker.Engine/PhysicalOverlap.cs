@@ -18,7 +18,7 @@ public enum OverlapAction
 
 /// <summary>
 /// The rule for the user and the clicker using the same key or button at once, shared by the Windows and Linux runtimes.
-/// With "Only Stop All" chosen, the user's own clicks never end a run (User, 2026-10-15); with "Stop on my input" they do.
+/// With "Only Stop All" chosen, the user's own clicks never end a run; with "Stop on my input" they do.
 /// </summary>
 public static class PhysicalOverlap
 {
