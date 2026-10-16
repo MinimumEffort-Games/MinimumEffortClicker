@@ -1,7 +1,7 @@
 # Minimum Effort Clicker
 
-A free, open-source mouse and keyboard automation app for **Windows 11 x64**, with a
-**Linux preview** for GNOME and KDE Plasma (see [Linux](docs/LINUX.md)).
+A free, open-source mouse and keyboard automation app for **Windows 11 x64** and
+**Linux** (GNOME and KDE Plasma, see [Linux](docs/LINUX.md)), with the same pages and version on both.
 Repeat clicks and keys, create hold/spam toggles, record editable action lists,
 and save screenshots. Runs locally and offline; no account or subscription is
 needed to use the app.
@@ -44,10 +44,10 @@ Portable settings and macros live in `Data` beside the app. Do not run from insi
 the ZIP. Keep the full runtime folder together. For upgrades, extract the new
 version into a fresh folder and copy the old `Data` folder next to it: saved
 macros are upgraded on load and never reset. The current macro file schema is
-**16**; older app versions cannot read newer files. The **Help** button in the
+**17**; older app versions cannot read newer files. The **Help** button in the
 app describes each page.
 
-## Linux preview
+## Linux
 
 The Linux build (`MinimumEffortClicker-<version>-linux-x64.tar.gz`) has the same pages and controls,
 reads the same macro files and needs GNOME (tested on Ubuntu 26.04) or KDE Plasma 6 (checked on CachyOS), on

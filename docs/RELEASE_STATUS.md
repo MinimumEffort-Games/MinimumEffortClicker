@@ -1,6 +1,6 @@
 # Release status
 
-Version: **0.5.0-preview.34.16**, portable Windows 11 x64, macro file schema **17**
+Version: **0.5.0-preview.34.16**, portable Windows 11 x64 and Linux x64 (GNOME, KDE Plasma), macro file schema **17**
 (the published preview ZIP still writes schema 15; the next release upgrades it on load).
 The owner authorized public source under MIT and a free unsigned preview on
 13 October 2026. Signing is a later step. No paid provider, certificate,

@@ -1,6 +1,6 @@
 # Minimum Effort Clicker for Linux
 
-**Preview.** The Linux build has the same Actions, Toggles, Screenshot and Settings pages as the
+The Linux build has the same Actions, Toggles, Screenshot and Settings pages and the same version as the
 Windows build and reads the same macro files. It is tested on Ubuntu 26.04 with GNOME 50 on Wayland. KDE Plasma 6.7
 on Wayland (CachyOS) is checked in a private KWin test session; a test on a real Plasma desktop is still to come. Other desktops are not supported yet; see "Limits" below.
 
