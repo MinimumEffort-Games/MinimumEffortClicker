@@ -15,8 +15,10 @@ public partial class MainWindow
     private Guid? editingToggle;
     private bool refreshingToggles;
 
-    private sealed record ToggleRow(Guid Id, string Name, string Shortcut, bool Enabled, int Key)
+    private sealed record ToggleRow(Guid Id, string Name, string Shortcut, bool Enabled, int Key, InputControl Held, string HeldLabel)
     {
+        /// <summary>The key or mouse button the toggle holds or taps, as its keycap or the mouse with its button outlined.</summary>
+        public System.Windows.FrameworkElement HeldPicture => UiArt.InputPicture(Held, HeldLabel, 30);
         /// <summary>The shortcut as its keycap or the mouse with its button outlined.</summary>
         public System.Windows.FrameworkElement ShortcutPicture => UiArt.InputPicture(Key == 0 ? null : ShortcutInput(Key), Shortcut, 30);
     }
@@ -40,7 +42,8 @@ public partial class MainWindow
         {
             toggleRows = SavedToggles.Select(m => new ToggleRow(m.Id, m.Name,
                 macroBindings.TryGetValue(m.Id, out var binding) ? MacroBindings.KeyLabel(binding.Key) : "Choose shortcut", enabledToggles.Contains(m.Id),
-                macroBindings.TryGetValue(m.Id, out var bound) ? bound.Key : 0)).ToArray();
+                macroBindings.TryGetValue(m.Id, out var bound) ? bound.Key : 0, m.Plan!.Control,
+                $"{(m.Plan.Mode == HelperMode.Repeat ? "Taps" : "Holds")} {InputLabel(m.Plan.Control)}")).ToArray();
             ToggleList.ItemsSource = toggleRows;
             ToggleList.SelectedItem = toggleRows.FirstOrDefault(r => r.Id == editingToggle);
             ToggleEmptyLabel.Visibility = toggleRows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
