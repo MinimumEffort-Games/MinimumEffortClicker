@@ -36,7 +36,17 @@ public partial class MainWindow
         ? ShortcutKeys.MouseLabel((PointerButton)output.Code)
         : SequenceKeys.Supported.FirstOrDefault(k => k.Value == output.Code).Key ?? "Key";
 
-    /// <summary>At startup: fills the key list, loads the saved binds and arms the active ones. Arming presses nothing.</summary>
+    /// <summary>
+    /// A bind's name. Binds saved without a name were called "Menu → Left mouse" (or Right, Middle, Back, Forward
+    /// mouse); those show the short mouse name (Menu → LMB), and saving the bind keeps it. Typed names stay as they are.
+    /// </summary>
+    private static string BindName(ControllerKeyBind bind)
+    {
+        if (bind.Output.Kind != InputKind.MouseButton) return bind.Name;
+        string old = (PointerButton)bind.Output.Code switch { PointerButton.Left => "Left", PointerButton.Right => "Right", PointerButton.Middle => "Middle", PointerButton.XButton1 => "Back", _ => "Forward" };
+        return bind.Name == $"{ControllerButtons.Label(bind.Button)} → {old} mouse" ? $"{ControllerButtons.Label(bind.Button)} → {OutputLabel(bind.Output)}" : bind.Name;
+    }
+    /// <summary>At startup: loads the saved binds and arms the active ones. Arming presses nothing.</summary>
     private async Task LoadControllerBinds()
     {
         ReadKeyRepeatSettings();
@@ -91,7 +101,7 @@ public partial class MainWindow
         refreshingControllerBinds = true;
         try
         {
-            var rows = controllerBinds.Select(b => new ControllerBindRow(b.Id, b.Name, b.Button, b.Output, b.Active)).ToArray();
+            var rows = controllerBinds.Select(b => new ControllerBindRow(b.Id, BindName(b), b.Button, b.Output, b.Active)).ToArray();
             ControllerBindList.ItemsSource = rows;
             ControllerBindList.SelectedItem = rows.FirstOrDefault(r => r.Id == editingControllerBind);
             ControllerBindEmptyLabel.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -171,7 +181,7 @@ public partial class MainWindow
         var bind = controllerBinds.First(b => b.Id == row.Id);
         editingControllerBind = bind.Id; selectedBindButton = bind.Button; selectedBindOutput = bind.Output;
         refreshingControllerBinds = true;
-        ControllerBindNameBox.Text = bind.Name;
+        ControllerBindNameBox.Text = BindName(bind);
         refreshingControllerBinds = false;
         DeleteControllerBindButton.IsEnabled = true;
         ShowControllerBindReady();
