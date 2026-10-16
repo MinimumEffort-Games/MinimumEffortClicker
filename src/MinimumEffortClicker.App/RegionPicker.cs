@@ -41,7 +41,7 @@ internal sealed class RegionPicker : Window
         this.frame = frame; this.maximumSide = maximumSide; snapshot = pictures[0];
         Owner = owner; Title = maximumSide == 1 ? "Pick a colour — click a pixel" : "Select an area — drag on the picture";
         Width = Math.Min(980, SystemParameters.WorkArea.Width - 40); Height = Math.Min(720, SystemParameters.WorkArea.Height - 40);
-        // User (2026-10-16): opens maximised, on the monitor the clicker is on, so the picture is big enough to drag on.
+        // Opens maximised, on the monitor the clicker is on, so the picture is big enough to drag on.
         // Windows maximises a window on the monitor its restore position lies on, and CenterOwner is only applied after
         // that, so the restore position is put in the middle of the clicker by hand first.
         var ownerBounds = owner.WindowState == WindowState.Normal ? new Rect(owner.Left, owner.Top, owner.ActualWidth, owner.ActualHeight) : owner.RestoreBounds;

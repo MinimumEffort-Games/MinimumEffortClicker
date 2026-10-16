@@ -20,3 +20,6 @@ TestResults/
 *.key
 .env
 .env.*
+
+# Working notes for this PC only; the other machines work through remote sessions.
+docs/Handoff/

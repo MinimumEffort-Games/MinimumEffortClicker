@@ -42,15 +42,15 @@ jobs:
         shell: bash
         run: |
           version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)"
-          destination="$HOME/Desktop/Clicker/MinimumEffortClicker-$version-linux-x64"
+          destination="$PWD/artifacts/package/MinimumEffortClicker-$version-linux-x64"
           mkdir -p "$(dirname "$destination")"
           scripts/linux/package.sh "$destination"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Linux-x64-unsigned-preview
           path: |
-            ~/Desktop/Clicker/*.tar.gz
-            ~/Desktop/Clicker/*.tar.gz.sha256
+            artifacts/package/*.tar.gz
+            artifacts/package/*.tar.gz.sha256
           if-no-files-found: error
 
   release:

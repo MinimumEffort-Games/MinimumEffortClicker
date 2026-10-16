@@ -1,6 +1,6 @@
 # Minimum Effort Clicker for Linux
 
-**Preview.** The Linux build has the same Actions, Toggles, Screenshot and Settings pages as the
+The Linux build has the same Actions, Toggles, Screenshot and Settings pages and the same version as the
 Windows build and reads the same macro files. It is tested on Ubuntu 26.04 with GNOME 50 on Wayland. KDE Plasma 6.7
 on Wayland (CachyOS) is checked in a private KWin test session; a test on a real Plasma desktop is still to come. Other desktops are not supported yet; see "Limits" below.
 
@@ -98,7 +98,7 @@ How to switch that off for the buttons you bind here will be written down after 
 - Fractional display scaling: KWin's answers were checked at 1.5× in a private test session (click position and
   screen capture), not yet with the app on a real screen, and not under GNOME.
 - Keyboard layouts: common xkb layouts map to the same identity as on Windows, so recordings move
-  between systems. "Logical" keys follow US key positions on Linux.
+  between systems.
 - No shutdown happens without the visible 30-second countdown. Linux uses logind's power-off.
 
 ## Build from source

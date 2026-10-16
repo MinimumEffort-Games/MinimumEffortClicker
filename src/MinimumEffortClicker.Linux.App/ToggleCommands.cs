@@ -134,7 +134,7 @@ public partial class MainWindow
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
         finally { Pages.IsEnabled = true; }
     }
-    /// <summary>Saves which toggles are active now, so the next start arms the same ones (User, 2026-10-16).</summary>
+    /// <summary>Saves which toggles are active now, so the next start arms the same ones.</summary>
     private void RememberActiveToggles() { rememberedToggles = [.. enabledToggles]; PersistPreferences(); }
 
     /// <summary>

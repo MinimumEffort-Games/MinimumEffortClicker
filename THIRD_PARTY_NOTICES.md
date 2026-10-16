@@ -28,7 +28,7 @@ not in this repository or in the portable ZIP. Without `steam.mode` and that DLL
 although the managed `Steamworks.NET.dll` and `MinimumEffortClicker.Steam.dll` are present in it. The Steam build goes
 online only through the Steam client: when the user shares a macro, and when Steam downloads macros the user subscribed to.
 
-## Linux app (preview)
+## Linux app
 
 | Component | Version | Licence | Use |
 |---|---|---|---|

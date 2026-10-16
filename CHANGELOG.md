@@ -10,6 +10,10 @@
   like the keys; change or clear them under Settings → Controller. After you use the controller the overlay and
   buttons show its button names, and the key names again after you type; moving the mouse changes nothing.
 
+## 0.5.0-preview.35 (2026-10-16)
+
+- Linux is no longer a separate preview: it has the same version and status as the Windows build.
+
 - The code now matches the four pages. The hidden macro-library page, the step editor, the setup wizard and the
   overlay drag mode are gone, together with the engine features only they used (typed text, reusable groups,
   if/repeat branches, "run helpers together", logical keys).

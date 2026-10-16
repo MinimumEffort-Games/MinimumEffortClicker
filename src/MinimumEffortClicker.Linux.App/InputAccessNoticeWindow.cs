@@ -6,7 +6,7 @@ using Avalonia.Media;
 namespace MinimumEffortClicker.App;
 
 /// <summary>
-/// Startup notice while physical input access is off (User, 2026-10-16): why Record and Stop on my input do not work
+/// Startup notice while physical input access is off: why Record and Stop on my input do not work
 /// yet, that everything else does, and a button that turns access on through the system password window.
 /// DialogResult true means "Turn on".
 /// </summary>

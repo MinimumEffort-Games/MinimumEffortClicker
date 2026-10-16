@@ -10,7 +10,7 @@ public partial class MainWindow
     private sealed record StepAside(WindowState? MinimizedFrom);
 
     /// <summary>
-    /// User (2026-10-15): every Action List feature that needs the target steps aside, and the clicker comes back when it
+    /// Every Action List feature that needs the target steps aside, and the clicker comes back when it
     /// is done. With Desktop as target the clicker minimises (when <paramref name="minimize"/>); with a window target that
     /// window is brought forward by the caller. Toggles never call this: they are used while playing.
     /// </summary>
