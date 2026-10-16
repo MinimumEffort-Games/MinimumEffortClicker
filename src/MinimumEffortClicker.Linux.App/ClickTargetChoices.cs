@@ -57,6 +57,9 @@ public partial class MainWindow
             quickPoint = null;
             useCursorLocation = true;
             ShowQuickCoordinates();
+            // Waits whose area was picked for the other kind of target turn red until their area is selected again.
+            RefreshQuickList(QuickActionList.SelectedIndex, preserveEditor: true);
+            ShowConditionColour();
         }
         catch (Exception ex) { ReasonLabel.Text = "Could not select window: " + ex.Message; }
         finally { RefreshTargetChoices(); RefreshStatus(); }

@@ -47,6 +47,9 @@
   The area picker opens maximised on the monitor the clicker is on. Cursor location is no longer cut off.
 - Add Action (and Save Changes) stays grey until the action can be added; hovering it says what is missing. Select
   area… is outlined red until an area is chosen, then green.
+- A colour wait picked with Desktop as the Click target belongs to the screen, one picked on a window moves with
+  that window. After switching between the two, those waits turn red in the Action List with a Reselect Area tag,
+  and the editor asks to select the area again before the wait can be saved.
 - Linux: the Ping scan area outline stays on the area near GNOME's top bar.
 - With "Only Stop All (F9)", your own clicks never end a run: if you hold the button the clicker is about to press, it
   waits until you let go; if you press a button the clicker is holding, your release finishes the click. Before, either

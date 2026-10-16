@@ -31,11 +31,18 @@ public partial class MainWindow
     private readonly ObservableCollection<QuickChildRow> quickChildren = [];
     private readonly ObservableCollection<string> quickInputNames = [];
     private readonly Dictionary<string, InputControl> quickInputs = SequenceKeys.Supported.ToDictionary(k => k.Key, k => InputControl.Key(k.Value));
-    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground)
+    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground, bool Reselect = false)
     {
         /// <summary>The row's Repeating (0) / Once (1) dropdown.</summary>
         public int RepeatIndex => Step.Once ? 1 : 0;
     }
+    /// <summary>
+    /// User (2026-10-16): an area picked with Desktop as the Click target is a spot on the screen, one picked on a window
+    /// moves with that window. After switching between the two the area belongs to the old target, so the wait is
+    /// marked and needs Select area again.
+    /// </summary>
+    private bool PickedForOtherTarget(CaptureRegion? region) =>
+        region is not null && runtime is not null && (region.Origin.Space == CoordinateSpace.Desktop) != runtime.IsDesktopMode;
     private static SolidColorBrush ColourBrush(int rgb) => new(Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
     private static IBrush ColourText(int rgb)
     {
@@ -56,7 +63,7 @@ public partial class MainWindow
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { ConditionLabel.Text = ex.Message; PingScanAreaButton.IsEnabled = false; }
         // User (2026-10-16): Select area is outlined red until there is an area, then green.
-        bool areaChosen = quickOtherCondition?.Region is not null;
+        bool areaChosen = quickOtherCondition?.Region is { } kept && !PickedForOtherTarget(kept);
         if (!areaChosen) try { ReadQuickArea(); areaChosen = true; } catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
         SelectAreaButton.Classes.Set("needs-choice", !areaChosen); SelectAreaButton.Classes.Set("chosen", areaChosen);
         RefreshAddAction();
@@ -252,7 +259,11 @@ public partial class MainWindow
     private ConditionDefinition ReadQuickCondition()
     {
         var policy = new ConditionPolicy(QuickScanInterval(), WholeNumber(ConditionStableBox, 1, 10, "Consecutive matching samples must be 1–10."));
-        if (quickOtherCondition is { } other) { var kept = other with { Policy = policy }; kept.Validate(); return kept; }
+        if (quickOtherCondition is { } other)
+        {
+            if (PickedForOtherTarget(other.Region)) throw new ArgumentException("This area was picked for another Click target. Select area again.");
+            var kept = other with { Policy = policy }; kept.Validate(); return kept;
+        }
         var region = ReadQuickArea();
         if (!TryConditionColour(out int rgb)) throw new ArgumentException("Enter the colour as six hexadecimal digits, for example DEAB48.");
         int tolerance = WholeNumber(ConditionToleranceBox, 0, 255, "Tolerance must be 0–255.");
@@ -277,6 +288,7 @@ public partial class MainWindow
         }
         else origin = quickAreaOrigin with { X = x, Y = y };
         var region = new CaptureRegion(origin, width, height); region.Validate();
+        if (PickedForOtherTarget(region)) throw new ArgumentException("This area was picked for another Click target. Select area again.");
         return region;
     }
     private TimeSpan QuickScanInterval()
@@ -455,7 +467,8 @@ public partial class MainWindow
     private QuickRow[] QuickRows(IEnumerable<SequenceStep> steps) => steps.Select((s, i) =>
         new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : QuickActions.ReadScroll(s) is { } scroll ? ScrollSummary(scroll) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
             s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } colour ? ColourBrush(colour.Color) : Brushes.Transparent,
-            s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (IBrush)this.FindResource("TextPrimary")!)).ToArray();
+            s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (IBrush)this.FindResource("TextPrimary")!,
+            PickedForOtherTarget(s.Condition?.Region))).ToArray();
     /// <summary>Shows actions captured so far below the existing list while recording runs.</summary>
     private void ShowRecordingPreview(IReadOnlyList<SequenceStep> recorded)
     {

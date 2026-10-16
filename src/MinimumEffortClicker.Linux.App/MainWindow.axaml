@@ -224,10 +224,17 @@
                                     <ListBox x:Name="QuickActionList" SelectionChanged="QuickSelection_Changed" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Action List" x:CompileBindings="False">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Background="{Binding Background}" Padding="6,4" CornerRadius="3">
-                                                    <Grid ColumnDefinitions="*,Auto">
+                                                <Border Background="{Binding Background}" CornerRadius="3">
+                                                    <Grid>
+                                                    <Border Background="{DynamicResource StopFill}" Opacity="0.45" CornerRadius="3" IsVisible="{Binding Reselect}" IsHitTestVisible="False" />
+                                                    <Grid ColumnDefinitions="*,Auto" Margin="6,4">
                                                         <StackPanel VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding Title}" Foreground="{Binding Foreground}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                            <WrapPanel>
+                                                                <TextBlock Text="{Binding Title}" Foreground="{Binding Foreground}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                                <Border Background="{DynamicResource StopFill}" BorderBrush="{DynamicResource StopBorder}" BorderThickness="1" CornerRadius="3" Padding="5,0" Margin="6,1,0,1" IsVisible="{Binding Reselect}" ToolTip.Tip="This area was picked for another Click target. Select the row, then Select area again.">
+                                                                    <TextBlock Text="Reselect Area" Foreground="{DynamicResource ColourButtonText}" FontWeight="SemiBold" FontSize="12" />
+                                                                </Border>
+                                                            </WrapPanel>
                                                             <TextBlock Text="{Binding Detail}" Foreground="{Binding Foreground}" FontSize="12" TextWrapping="Wrap" />
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
@@ -237,6 +244,7 @@
                                                                 <ComboBoxItem Content="Repeating" /><ComboBoxItem Content="Once" />
                                                             </ComboBox>
                                                         </StackPanel>
+                                                    </Grid>
                                                     </Grid>
                                                 </Border>
                                             </DataTemplate>
