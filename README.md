@@ -1,14 +1,12 @@
 # Minimum Effort Clicker
 
-A free, open-source mouse and keyboard automation app for **Windows 11 x64**, with a
-**Linux preview** for GNOME and KDE Plasma (see [Linux](docs/LINUX.md)).
-Repeat clicks and keys, create hold/spam toggles, record editable action lists,
-and save screenshots. Runs locally and offline; no account or subscription is
-needed to use the app.
+A free, open-source mouse and keyboard automation app for **Windows 11 x64** and
+**Linux** (GNOME and KDE Plasma, see [Linux](docs/LINUX.md)), with the same pages and version on both.
+Repeat clicks and keys, record editable action lists, wait for colours on screen, create hold/spam toggles
+and save screenshots. Runs locally and offline; no account or subscription is needed to use the app.
 
-**Preview 0.5.0-preview.34.16 unsigned.** Broader hardware/display testing and
-eight-hour full-app endurance acceptance remain unfinished. This is a preview,
-not a promise of universal compatibility or a warning-free Windows download.
+**Public preview, not code-signed.** The app is in early testing with more hardware, displays and desktops still
+to check, so expect rough edges and please report them. Windows may show a SmartScreen warning the first time.
 
 ## What it looks like
 
@@ -23,10 +21,9 @@ Dark and light mode, switched in Settings.
 
 ## Download and run
 
-Open this repository's **Releases** page and download the Windows x64 portable
-ZIP from the preview release. GitHub's automatic "Source code" archives contain
-source, not the runnable app. If no release is listed yet, the download is not
-published.
+Open this repository's **Releases** page and download the latest release: the Windows x64 portable ZIP
+(`MinimumEffortClicker-<version>-win-x64.zip`) or the Linux package (`MinimumEffortClicker-<version>-linux-x64.tar.gz`,
+see [Linux](#linux)). GitHub's automatic "Source code" archives contain source, not the runnable app.
 
 1. Extract the complete app ZIP into a new writable folder.
 2. Open `MinimumEffortClicker.App.exe`. The .NET runtime is included.
@@ -44,17 +41,18 @@ Portable settings and macros live in `Data` beside the app. Do not run from insi
 the ZIP. Keep the full runtime folder together. For upgrades, extract the new
 version into a fresh folder and copy the old `Data` folder next to it: saved
 macros are upgraded on load and never reset. The current macro file schema is
-**16**; older app versions cannot read newer files. The **Help** button in the
+**17**; older app versions cannot read newer files. The **Help** button in the
 app describes each page.
 
-## Linux preview
+## Linux
 
 The Linux build (`MinimumEffortClicker-<version>-linux-x64.tar.gz`) has the same pages and controls,
 reads the same macro files and needs GNOME (tested on Ubuntu 26.04) or KDE Plasma 6 (checked on CachyOS), on
 Wayland. Extract it and run `./install.sh`. On GNOME, log out and back in once so GNOME loads the small ME
 Clicker helper extension; on KDE Plasma it works straight away.
-Recording and hotkeys in every app also need a one-time `sudo` input-access rule. Full steps,
-what the helper can do and current limits are in [docs/LINUX.md](docs/LINUX.md).
+Recording, Stop on my input and hotkeys in every app also need input access: press **Turn on** in the app (it asks
+for your password in the system window once). Full steps, what the helper can do and current limits are in
+[docs/LINUX.md](docs/LINUX.md). On a Steam Deck the app runs in Desktop Mode.
 
 ## Trust and limitations
 

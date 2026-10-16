@@ -42,7 +42,7 @@ internal sealed class RegionPicker : DialogWindow
         var screen = owner.Screens.ScreenFromWindow(owner);
         var work = screen?.WorkingArea;
         Width = Math.Min(980, (work?.Width ?? 1020) - 40); Height = Math.Min(720, (work?.Height ?? 760) - 40);
-        // User (2026-10-16): opens maximised, on the monitor the clicker is on, so the picture is big enough to drag on.
+        // Opens maximised, on the monitor the clicker is on, so the picture is big enough to drag on.
         // The window manager maximises a window on the monitor it is placed on, so it is placed on the clicker's monitor first.
         WindowStartupLocation = WindowStartupLocation.Manual;
         if (work is { } area) Position = new PixelPoint(area.X + 20, area.Y + 20);

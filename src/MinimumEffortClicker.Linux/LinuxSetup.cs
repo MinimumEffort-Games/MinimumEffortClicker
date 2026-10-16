@@ -135,7 +135,7 @@ public static class LinuxSetup
 
     /// <summary>
     /// Turns physical input access on or off by running the same script as the terminal command, as administrator through
-    /// the system password window. Only ever called from a button the user pressed (User, 2026-10-16): elevation is never
+    /// the system password window. Only ever called from a button the user pressed: elevation is never
     /// automatic, and Linux itself asks for the password.
     /// </summary>
     public static async Task<(bool Done, string Message)> SetInputAccessAsync(bool on)

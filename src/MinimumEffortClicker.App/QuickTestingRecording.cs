@@ -192,7 +192,7 @@ public partial class MainWindow
         runtime.Control.StopRequested += Cancel; RefreshStatus();
         try
         {
-            // User (2026-10-15): the clicker comes back when the recording ends, also after F10 with a window target.
+            // The clicker comes back when the recording ends, also after F10 with a window target.
             away = StepAsideForTarget(minimize && (runtime.IsDesktopMode || !fromHotkey));
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             // Recording starts the moment the key or button is pressed. The target was just brought forward, so give the

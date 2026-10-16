@@ -37,7 +37,7 @@ public partial class MainWindow
         public int RepeatIndex => Step.Once ? 1 : 0;
     }
     /// <summary>
-    /// User (2026-10-16): an area picked with Desktop as the Click target is a spot on the screen, one picked on a window
+    /// An area picked with Desktop as the Click target is a spot on the screen, one picked on a window
     /// moves with that window. After switching between the two the area belongs to the old target, so the wait is
     /// marked and needs Select area again.
     /// </summary>
@@ -62,14 +62,14 @@ public partial class MainWindow
             ConditionLabel.Text = ConditionSummary(condition); PingScanAreaButton.IsEnabled = condition.Region is not null;
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { ConditionLabel.Text = ex.Message; PingScanAreaButton.IsEnabled = false; }
-        // User (2026-10-16): Select area is outlined red until there is an area, then green.
+        // Select area is outlined red until there is an area, then green.
         bool areaChosen = quickOtherCondition?.Region is { } kept && !PickedForOtherTarget(kept);
         if (!areaChosen) try { ReadQuickArea(); areaChosen = true; } catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
         SelectAreaButton.Classes.Set("needs-choice", !areaChosen); SelectAreaButton.Classes.Set("chosen", areaChosen);
         RefreshAddAction();
     }
     /// <summary>
-    /// User (2026-10-16): Add Action / Save Changes stays grey until the editor describes an action that can be added;
+    /// Add Action / Save Changes stays grey until the editor describes an action that can be added;
     /// hovering it then says what is missing.
     /// </summary>
     private void RefreshAddAction()
@@ -161,7 +161,7 @@ public partial class MainWindow
     private void ActionsChoice_Changed(object sender, RoutedEventArgs e) { Config_Changed(sender, e); PersistPreferences(); }
     private void Loop_Changed(object sender, RoutedEventArgs e)
     {
-        // Remembered for the next start, also when a loaded macro sets it (User, 2026-10-16: the last choice wins).
+        // Remembered for the next start, also when a loaded macro sets it (the last choice wins).
         PersistPreferences();
         if (loadingQuick || !initialized) return;
         // Explicit repetition edits replace an older active-time limit.

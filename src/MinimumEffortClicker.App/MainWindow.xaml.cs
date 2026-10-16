@@ -209,7 +209,7 @@ public partial class MainWindow : Window
         if (playbackAway is { } away)
         {
             if (snapshot.ActionsActive) playbackSeenActive = true;
-            // User (2026-10-14/15): the clicker comes back when the Action List ends, however it ended, with any target.
+            // The clicker comes back when the Action List ends, however it ended, with any target.
             // A list that ends while a toggle keeps running leaves the clicker out of the way: the user is playing.
             if (!snapshot.Busy) { playbackAway = null; ComeBack(away); }
             else if (playbackSeenActive && !snapshot.ActionsActive) playbackAway = null;
