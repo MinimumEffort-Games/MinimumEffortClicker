@@ -15,9 +15,9 @@ internal sealed class ControllerCaptureWindow : Window
     private readonly TextBlock hint;
     public ControllerButton? SelectedButton { get; private set; }
 
-    /// <param name="bound">What is bound now, as (what it does, button) pairs.</param>
+    /// <param name="bound">What is bound now, as (what it does, button) pairs; a control without a button has null.</param>
     /// <param name="taken">Why a button cannot be used for this, or null when it can.</param>
-    public ControllerCaptureWindow(Window owner, string purpose, IReadOnlyList<(string What, string Button)> bound,
+    public ControllerCaptureWindow(Window owner, string purpose, IReadOnlyList<(string What, ControllerButton? Button)> bound,
         Func<ControllerButton, string?> taken, bool connected)
     {
         this.taken = taken;
@@ -39,8 +39,10 @@ internal sealed class ControllerCaptureWindow : Window
         foreach (var (what, button) in bound)
         {
             list.RowDefinitions.Add(new() { Height = GridLength.Auto });
-            var name = new TextBlock { Text = what, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 12, 1) };
-            var key = new TextBlock { Text = button, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 1, 0, 1) };
+            var name = new TextBlock { Text = what, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 12, 1), VerticalAlignment = VerticalAlignment.Center };
+            // The button as its picture, about as tall as the text beside it.
+            var key = button is { } b ? UiArt.ControllerPicture(b, 22) : new TextBlock { Text = "None", FontWeight = FontWeights.SemiBold };
+            key.Margin = new Thickness(0, 1, 0, 1); key.HorizontalAlignment = HorizontalAlignment.Left;
             Grid.SetRow(name, list.RowDefinitions.Count - 1); Grid.SetRow(key, list.RowDefinitions.Count - 1); Grid.SetColumn(key, 1);
             list.Children.Add(name); list.Children.Add(key);
         }

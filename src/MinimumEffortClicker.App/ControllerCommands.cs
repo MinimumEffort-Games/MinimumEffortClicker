@@ -76,12 +76,12 @@ public partial class MainWindow
     private static ControllerCommand CommandOf(object sender) => Enum.Parse<ControllerCommand>((string)((Button)sender).Tag);
 
     /// <summary>Everything bound now, for the capture window: the four controls, then the Controller to Key binds.</summary>
-    private IReadOnlyList<(string What, string Button)> BoundControllerButtons()
+    private IReadOnlyList<(string What, ControllerButton? Button)> BoundControllerButtons()
     {
-        var bound = new List<(string, string)>();
+        var bound = new List<(string, ControllerButton?)>();
         foreach (var command in Enum.GetValues<ControllerCommand>())
-            bound.Add((ControlName(command), controllerControls.ButtonFor(command) is { } b ? ControllerButtons.Label(b) : "None"));
-        foreach (var bind in controllerBinds) bound.Add(($"{bind.Name} (presses {OutputLabel(bind.Output)})", ControllerButtons.Label(bind.Button)));
+            bound.Add((ControlName(command), controllerControls.ButtonFor(command)));
+        foreach (var bind in controllerBinds) bound.Add(($"{bind.Name} (presses {OutputLabel(bind.Output)})", bind.Button));
         return bound;
     }
 

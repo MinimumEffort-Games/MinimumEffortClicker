@@ -211,4 +211,100 @@
         <Setter Property="GridLinesVisibility" Value="None" />
         <Setter Property="RowHeight" Value="34" />
     </Style>
+    <!-- An on/off choice that looks like a standard button. A green outline means it is chosen (on). -->
+    <Style x:Key="ChoiceToggle" TargetType="ToggleButton" BasedOn="{StaticResource StandardControl}">
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Background" Value="{DynamicResource RaisedSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" CornerRadius="5" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRing}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <!-- After the hover trigger, so a chosen toggle stays green under the mouse. -->
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
+                            <Setter TargetName="Chrome" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <!-- A keycap picture as an on/off choice (Ctrl, Shift, Alt): no button face, only the green outline when chosen. -->
+    <Style x:Key="KeycapToggle" TargetType="ToggleButton" BasedOn="{StaticResource ChoiceToggle}">
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <!-- A keycap picture as a button (the key picker). -->
+    <Style x:Key="KeycapButton" TargetType="Button" BasedOn="{StaticResource StandardButton}">
+        <Setter Property="Padding" Value="1" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <!-- A row of picture choices (the action types): one is chosen at a time and gets the green outline. -->
+    <Style x:Key="IconChoiceItem" TargetType="ListBoxItem" BasedOn="{StaticResource StandardControl}">
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="Padding" Value="5" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Chrome" CornerRadius="6" Background="{DynamicResource RaisedSurface}" BorderBrush="{DynamicResource Border}"
+                            BorderThickness="1" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRing}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
+                            <Setter TargetName="Chrome" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="IconChoiceList" TargetType="ListBox" BasedOn="{StaticResource StandardControl}">
+        <Setter Property="ItemContainerStyle" Value="{StaticResource IconChoiceItem}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="ItemsPanel">
+            <Setter.Value><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox"><ItemsPresenter /></ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>
