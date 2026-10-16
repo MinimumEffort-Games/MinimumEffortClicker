@@ -39,11 +39,14 @@ internal sealed class RegionPicker : DialogWindow
     {
         this.frame = frame; this.maximumSide = maximumSide; snapshot = pictures[0];
         OwnerWindow = owner; Title = maximumSide == 1 ? "Pick a colour — click a pixel" : "Select an area — drag on the picture";
-        var work = owner.Screens.ScreenFromWindow(owner)?.WorkingArea;
+        var screen = owner.Screens.ScreenFromWindow(owner);
+        var work = screen?.WorkingArea;
         Width = Math.Min(980, (work?.Width ?? 1020) - 40); Height = Math.Min(720, (work?.Height ?? 760) - 40);
-        // User (2026-10-16): opens maximised so the picture is big enough to drag on; the size above is the restore size.
+        // User (2026-10-16): opens maximised, on the monitor the clicker is on, so the picture is big enough to drag on.
+        // The window manager maximises a window on the monitor it is placed on, so it is placed on the clicker's monitor first.
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        if (work is { } area) Position = new PixelPoint(area.X + 20, area.Y + 20);
         WindowState = WindowState.Maximized;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var grid = new Grid { Margin = new Thickness(12) }; Content = grid;
         grid.RowDefinitions.Add(new() { Height = GridLength.Auto }); grid.RowDefinitions.Add(new()); grid.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var header = new StackPanel(); grid.Children.Add(header);
@@ -103,15 +106,5 @@ internal sealed class RegionPicker : DialogWindow
         Canvas.SetLeft(rectangle, x); Canvas.SetTop(rectangle, y); rectangle.Width = width; rectangle.Height = height;
         string where = monitor is { } m ? $"Monitor {m.Number} at {x}, {y}" : $"{x}, {y}";
         hint.Text = $"Selected: {where} · {width} × {height} px · colour at top-left #{Color:X6}. Drag again to change it.";
-    }
-
-    public RasterSample SelectedPixels()
-    {
-        var region = Region ?? throw new InvalidOperationException("Select an area first.");
-        int left = monitor is { } m ? region.Origin.X - m.X : region.Origin.X, top = monitor is { } n ? region.Origin.Y - n.Y : region.Origin.Y;
-        byte[] pixels = new byte[region.Width * region.Height * 4];
-        for (int y = 0; y < region.Height; y++)
-            Array.Copy(snapshot.Pixels, ((top + y) * snapshot.Width + left) * 4, pixels, y * region.Width * 4, region.Width * 4);
-        return new(region.Width, region.Height, pixels);
     }
 }
