@@ -82,7 +82,13 @@ internal static class UiArt
     {
         FrameworkElement picture;
         if (input is { Kind: InputKind.MouseButton } mouse)
-            picture = new MouseButtonPicker { Selected = (PointerButton)mouse.Code, Height = height, IsHitTestVisible = false };
+        {
+            // The outline is too small to read at list size, so the short name (LMB, M4, ...) sits beside the mouse.
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            row.Children.Add(new MouseButtonPicker { Selected = (PointerButton)mouse.Code, Height = height, IsHitTestVisible = false });
+            row.Children.Add(new TextBlock { Text = ShortcutKeys.MouseLabel((PointerButton)mouse.Code), FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0) });
+            picture = row;
+        }
         else if (input is { } key && KeyPickerWindow.KeyName(key) is { } name && Key(name) is { } art)
             picture = new Image { Source = art, Height = height, Stretch = Stretch.Uniform };
         else return new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };

@@ -28,6 +28,8 @@ public partial class MainWindow
         /// <summary>The controller button's picture, and the key's keycap or the mouse with its button outlined.</summary>
         public FrameworkElement ButtonPicture => UiArt.ControllerGlyph(Button, 26);
         public FrameworkElement OutputPicture => UiArt.InputPicture(Output, OutputLabel(Output), 30);
+        /// <summary>What screen readers say for the row.</summary>
+        public override string ToString() => Name;
     }
 
     private static string OutputLabel(InputControl output) => output.Kind == InputKind.MouseButton

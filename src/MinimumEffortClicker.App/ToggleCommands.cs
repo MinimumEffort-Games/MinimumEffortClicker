@@ -19,6 +19,8 @@ public partial class MainWindow
     {
         /// <summary>The key or mouse button the toggle holds or taps, as its keycap or the mouse with its button outlined.</summary>
         public System.Windows.FrameworkElement HeldPicture => UiArt.InputPicture(Held, HeldLabel, 30);
+        /// <summary>What screen readers say for the row.</summary>
+        public override string ToString() => Name;
         /// <summary>The shortcut as its keycap or the mouse with its button outlined.</summary>
         public System.Windows.FrameworkElement ShortcutPicture => UiArt.InputPicture(Key == 0 ? null : ShortcutInput(Key), Shortcut, 30);
     }
