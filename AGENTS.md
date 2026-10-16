@@ -13,7 +13,7 @@ Native probes are opt-in inside an isolated virtual machine (MEC_ISOLATED_VM=1, 
 Keep runtime offline and stopped on startup (one exception, User 2026-10-15: the Steam build, with steam.mode, goes online through the Steam client only when the user shares a macro or Steam fetches macros they subscribed to; see docs/STEAM.md); loading a macro or restored focus never starts it. A running window-target run that pauses because its window left the front resumes by itself once the window is back in front for half a second (User, 2026-10-13); a pause the user asked for stays paused.
 Use scripts/Build.ps1 and scripts/Test.ps1; scripts/Build-Public.ps1 writes the ZIP under artifacts/package.
 Maintain pins, lock files and licence notices. Saved data migrates forward and is never reset.
-No drivers, injection, automatic elevation, background-game automation or services.
+No drivers, injection, automatic elevation, background-game automation or services. Admin rights only when the user presses a button that asks for them, through the system's own password window (Linux input access via pkexec; User, 2026-10-16).
 App-owned notices use AppDialog; keep Windows pickers native. Record unverified evidence honestly.
 End every session by updating docs/Handoff/Where-We-Are.md.
 This repository is public: in its files, commits and pull requests the owner is called User, never by name, and no personal data (e-mail, home folders, machine names, accounts) goes in.

@@ -19,10 +19,13 @@ public partial class MainWindow
         InstallHelperButton.Content = LinuxSetup.IsKde ? "Allow this copy of the app"
             : control?.Helper is not null ? "Reinstall GNOME helper" : control?.HelperAccessDenied == true ? "Allow this copy of the app" : "Install GNOME helper";
         InputAccessLabel.Text = control?.PhysicalInputAvailable == true
-            ? "Ready. Hotkeys work in every app, mouse-button shortcuts and recording are available, and touching your mouse or keyboard stops playback."
-            : "Off. Recording, mouse-button shortcuts and the physical-input safety stop need read access to your keyboard and mouse. Run this once in a terminal (it asks for your password):";
+            ? "Ready. Recording, Stop on my input, mouse-button shortcuts and hotkeys that work in every app are available."
+            : "Off. " + InputAccessNeeds + " Turn on asks for your password in the system's own window.";
         InputAccessCommand.Text = control?.PhysicalInputAvailable == true ? "" : LinuxSetup.InputAccessCommand;
-        InputAccessCommand.IsVisible = CopyInputCommandButton.IsVisible = control?.PhysicalInputAvailable != true;
+        InputAccessCommand.IsVisible = CopyInputCommandButton.IsVisible = InputAccessTerminalHint.IsVisible = control?.PhysicalInputAvailable != true;
+        // Without a system password window (pkexec) only the terminal command works.
+        InputAccessOnButton.IsVisible = control?.PhysicalInputAvailable != true && LinuxSetup.SystemPasswordPrompt is not null;
+        InputAccessOffButton.IsVisible = LinuxSetup.InputAccessRemoveCommand is not null && LinuxSetup.SystemPasswordPrompt is not null;
         // Green when input access is on, red when it is off.
         CheckInputAccessButton.Classes.Set("green", control?.PhysicalInputAvailable == true);
         CheckInputAccessButton.Classes.Set("red", control?.PhysicalInputAvailable != true);
@@ -57,6 +60,50 @@ public partial class MainWindow
         if (Clipboard is not { } clipboard || LinuxSetup.InputAccessRemoveCommand is not { } command) return;
         await Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(clipboard, command);
         ReasonLabel.Text = "Remove command copied. Paste it into a terminal to turn input access off, then choose Check again.";
+    }
+
+    /// <summary>What physical input access unlocks; the Settings card and the startup notice say the same.</summary>
+    private const string InputAccessNeeds = "Recording, Stop on my input, mouse-button shortcuts, hotkeys that work in every app and holding a hotkey to run need read access to your keyboard and mouse. Everything else works without it.";
+    private bool showInputAccessNotice = true;
+
+    private void InputAccessOn_Click(object? sender, RoutedEventArgs e) => _ = SetInputAccessAsync(on: true);
+    private void InputAccessOff_Click(object? sender, RoutedEventArgs e) => _ = SetInputAccessAsync(on: false);
+
+    /// <summary>Runs the input-access script through the system password window, then checks again by itself.</summary>
+    private async Task<bool> SetInputAccessAsync(bool on)
+    {
+        if (runtime is null) return false;
+        InputAccessOnButton.IsEnabled = InputAccessOffButton.IsEnabled = false;
+        ReasonLabel.Text = "Waiting for your password in the system window…";
+        try
+        {
+            var (done, message) = await LinuxSetup.SetInputAccessAsync(on);
+            ReasonLabel.Text = message;
+            if (!done) return false;
+            // udev hands out the new access right after the script; give it a moment, then reconnect.
+            await Task.Delay(TimeSpan.FromMilliseconds(800));
+            await runtime.Control.RefreshPlatformAsync();
+            RefreshStatus();
+            bool available = runtime.Control.PhysicalInputAvailable;
+            ReasonLabel.Text = on == available ? message : message + " The clicker has not picked it up yet; choose Check again, or restart the clicker.";
+            return on == available;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+        { ReasonLabel.Text = "Could not open the password window: " + ex.Message; return false; }
+        finally { InputAccessOnButton.IsEnabled = InputAccessOffButton.IsEnabled = true; RefreshLinuxSetup(); }
+    }
+
+    /// <summary>
+    /// At startup, while physical input access is off, explains why Record and Stop on my input do not work yet and that
+    /// the rest of the app does, with a way to turn it on. "Show at startup" turns the notice off for good.
+    /// </summary>
+    private async Task ShowInputAccessNoticeAsync()
+    {
+        if (!showInputAccessNotice || runtime is null || runtime.Control.PhysicalInputAvailable || allowClose || closing) return;
+        var notice = new InputAccessNoticeWindow(InputAccessNeeds, LinuxSetup.SystemPasswordPrompt is not null, LinuxSetup.InputAccessCommand) { OwnerWindow = this };
+        bool turnOn = notice.ShowDialog() == true;
+        if (notice.ShowAtStartup != showInputAccessNotice) { showInputAccessNotice = notice.ShowAtStartup; PersistPreferences(); }
+        if (turnOn) await SetInputAccessAsync(on: true);
     }
 
     private async void RefreshPlatform_Click(object? sender, RoutedEventArgs e)

@@ -13,8 +13,10 @@ on Wayland (CachyOS) is checked in a private KWin test session; a test on a real
    let KWin give the app screen capture and input.
 3. **GNOME: log out and back in once.** GNOME on Wayland only loads a newly installed extension at login.
    KDE Plasma needs no log-out.
-4. Optional, but needed for recording, mouse-button shortcuts, hotkeys that work in every app and
-   the safety stop when you touch your mouse or keyboard:
+4. Optional, but needed for recording, Stop on my input, mouse-button shortcuts and hotkeys that work in
+   every app. When the app starts without it, a notice explains this and offers **Turn on**, which asks for
+   your password in the system's own window (pkexec) and sets it up; **Settings → Linux setup** has **Turn on**
+   and **Turn off** too. Or run it yourself in a terminal:
 
    ```bash
    sudo bash ~/.local/share/minimum-effort-clicker/app/setup-input-access.sh
