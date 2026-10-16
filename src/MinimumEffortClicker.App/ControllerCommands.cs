@@ -17,6 +17,7 @@ public partial class MainWindow
     private volatile bool capturingController;
     private ControllerCommand capturingCommand;
     private CancellationTokenSource? controllerCaptureTimeout;
+    private string? loggedControllerState;
 
     private string StartHint => controllerHints && controllerControls.StartStop is { } b ? ControllerButtons.Label(b) : MacroBindings.KeyLabel(appliedToggleKey);
     private string StopHint => controllerHints && controllerControls.StopAll is { } b ? ControllerButtons.Label(b) : stopKey;
@@ -60,6 +61,9 @@ public partial class MainWindow
     {
         if (gamepads is null) return;
         var names = gamepads.Connected;
+        // Each change is written to log.txt once, so a controller that is not seen can be traced in a bug report.
+        string state = gamepads.Error ?? (names.Count == 0 ? "none connected" : "connected: " + string.Join(", ", names));
+        if (state != loggedControllerState) { loggedControllerState = state; AppLog.Note("Controllers", state); }
         ControllerStatus.Text = gamepads.Error ?? (names.Count == 0
             ? "No controller found. Connect one or turn it on; it is picked up straight away."
             : "Connected: " + string.Join(", ", names) + ". The buttons below work in any window, like the keys above.");
