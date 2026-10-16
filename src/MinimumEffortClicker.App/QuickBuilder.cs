@@ -120,8 +120,12 @@ public partial class MainWindow
         ShowTestSelectedButton();
         if (quickRecorder?.Paused == true) QuickRecordStatus.Text = "Recording paused after focus changed. Finish to keep the captured actions.";
     }
+    /// <summary>Minimize on Start, Record pauses, Minimize on record, mouse movement: remembered for the next start.</summary>
+    private void ActionsChoice_Changed(object sender, RoutedEventArgs e) { Config_Changed(sender, e); PersistPreferences(); }
     private void Loop_Changed(object sender, RoutedEventArgs e)
     {
+        // Remembered for the next start, also when a loaded macro sets it (User, 2026-10-16: the last choice wins).
+        PersistPreferences();
         if (loadingQuick || !initialized) return;
         // Explicit repetition edits replace an older active-time limit.
         if (quickHistory.Current.Repetition?.ActiveDuration is not null)

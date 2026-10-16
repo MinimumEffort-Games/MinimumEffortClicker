@@ -38,6 +38,9 @@
   button outlines the watched area three times on the target, and Test Selected Action on a wait outlines it once,
   green when the colour is there and red when it is not. The area picker opens maximised. "Ping click location" is
   now "Ping location", because scroll actions use it too.
+- The clicker remembers Loop, Minimize on Start, Record pauses, Minimize on record and Simulate mouse movement as you
+  last left them, and the toggles you left Active are armed again at the next start. Armed only: nothing is held or
+  pressed until you tap a toggle's shortcut, so the clicker still starts stopped.
 - With "Only Stop All (F9)", your own clicks never end a run: if you hold the button the clicker is about to press, it
   waits until you let go; if you press a button the clicker is holding, your release finishes the click. Before, either
   overlap ended the run ("physical input takes priority" or "cleanup pending"). "Stop on my input" is unchanged.

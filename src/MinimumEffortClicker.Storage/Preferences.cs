@@ -7,12 +7,16 @@ namespace MinimumEffortClicker.Storage;
 public sealed record UserPreferences(int SchemaVersion, int Appearance, int ToggleKey, int StopKey, bool HoldTrigger, bool Overlay,
     OverlayOptions? OverlayOptions = null, bool MainTopmost = false, int ClicksPerSecond = 20, bool KeepAwake = false, bool ScaleClickPositions = true,
     bool CloseToTray = true, bool TrayNoticeShown = false, ScreenshotSettings? Screenshots = null, int RecordKey = ShortcutKeys.DefaultRecordKey,
-    EmergencyStopMode EmergencyStop = EmergencyStopMode.OnlyStopAll, bool InputAccessNotice = true)
+    EmergencyStopMode EmergencyStop = EmergencyStopMode.OnlyStopAll, bool InputAccessNotice = true,
+    ActionsChoices? Actions = null, Guid[]? ActiveToggles = null)
 {
+    /// <summary>The most toggles that can be remembered as active; far more than the Toggles page is made for.</summary>
+    public const int MaxActiveToggles = 200;
     public static UserPreferences Default => new(1, 0, ShortcutKeys.DefaultStartKey, ShortcutKeys.DefaultStopKey, false, true);
     public bool Valid => SchemaVersion == 1 && Appearance is >= 0 and <= 2 && ShortcutKeys.Supported(ToggleKey)
         && ShortcutKeys.Supported(StopKey) && ToggleKey != StopKey && (OverlayOptions?.Valid ?? true)
-        && (Screenshots?.Valid ?? true) && ClicksPerSecond is >= 1 and <= 100 && ShortcutKeys.Supported(RecordKey) && Enum.IsDefined(EmergencyStop);
+        && (Screenshots?.Valid ?? true) && ClicksPerSecond is >= 1 and <= 100 && ShortcutKeys.Supported(RecordKey) && Enum.IsDefined(EmergencyStop)
+        && (ActiveToggles is null || ActiveToggles.Length <= MaxActiveToggles && !ActiveToggles.Contains(Guid.Empty));
 }
 
 public sealed class Preferences(string directory)

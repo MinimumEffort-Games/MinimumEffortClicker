@@ -64,7 +64,7 @@
                     <Button x:Name="PausePlaybackButton" Content="Pause" Click="PausePlayback_Click" Style="{StaticResource BlueButton}" Margin="0,0,0,0" AutomationProperties.Name="Pause playback"/>
                     <StackPanel VerticalAlignment="Bottom" Margin="14,0,0,2">
                       <CheckBox x:Name="LoopBox" Content="Loop" Checked="Loop_Changed" Unchecked="Loop_Changed" Margin="0,0,0,4"/>
-                      <CheckBox x:Name="MinimizeOnStartBox" Content="Minimize on Start" IsChecked="True" ToolTip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front."/>
+                      <CheckBox Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="MinimizeOnStartBox" Content="Minimize on Start" IsChecked="True" ToolTip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front."/>
                     </StackPanel>
                     <Button x:Name="CleanupButton" Content="Release stuck input" Click="Cleanup_Click" Visibility="Collapsed" Style="{StaticResource RedButton}" HorizontalAlignment="Left" ToolTip="Release physical buttons and keys first. This retries only inputs owned by ME Clicker and never starts playback."/>
                   </WrapPanel>
@@ -73,8 +73,8 @@
                     <WrapPanel>
                       <Button x:Name="QuickRecordButton" Content="F10 Record/Stop" Click="QuickRecord_Click" Style="{StaticResource RedButton}" Margin="0,0,14,0" Padding="6,7" MinWidth="120"/>
                       <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,2">
-                        <CheckBox x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" Margin="0,0,0,4" ToolTip="Keep the time between inputs as editable Pause actions."/>
-                        <CheckBox x:Name="MinimizeOnRecordBox" Content="Minimize on record" IsChecked="True" ToolTip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records."/>
+                        <CheckBox Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" Margin="0,0,0,4" ToolTip="Keep the time between inputs as editable Pause actions."/>
+                        <CheckBox Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="MinimizeOnRecordBox" Content="Minimize on record" IsChecked="True" ToolTip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records."/>
                       </StackPanel>
                     </WrapPanel>
                   </StackPanel>
@@ -185,7 +185,7 @@
                       </StackPanel>
 
 <StackPanel Grid.Row="4" x:Name="QuickAdvanced" Margin="0,12,0,0">
-  <CheckBox x:Name="RecordMovementBox" Content="Simulate mouse movement between click points" Checked="Config_Changed" Unchecked="Config_Changed"/>
+  <CheckBox x:Name="RecordMovementBox" Content="Simulate mouse movement between click points" Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed"/>
   <CheckBox x:Name="KeepAwakeBox" Content="Prevent sleep while running" Checked="KeepAwake_Changed" Unchecked="KeepAwake_Changed"/>
   <StackPanel x:Name="ShutdownSettings" Margin="0,8,0,0">
     <ComboBox x:Name="ShutdownModeBox" SelectedIndex="0" SelectionChanged="ShutdownMode_Changed" AutomationProperties.Name="Shutdown PC after">
