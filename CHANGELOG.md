@@ -45,6 +45,8 @@
   area… (drag on a snapshot) sits next to Ping scan area, with the RGB colour, the Eyedropper and a colour preview
   below; below Name, an Advanced section holds the exact coordinates, tolerance, scan interval and matching samples.
   The area picker opens maximised on the monitor the clicker is on. Cursor location is no longer cut off.
+- Add Action (and Save Changes) stays grey until the action can be added; hovering it says what is missing. Select
+  area… is outlined red until an area is chosen, then green.
 - Linux: the Ping scan area outline stays on the area near GNOME's top bar.
 - With "Only Stop All (F9)", your own clicks never end a run: if you hold the button the clicker is about to press, it
   waits until you let go; if you press a button the clicker is holding, your release finishes the click. Before, either

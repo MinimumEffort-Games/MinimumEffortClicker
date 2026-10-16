@@ -55,6 +55,25 @@ public partial class MainWindow
             ConditionLabel.Text = ConditionSummary(condition); PingScanAreaButton.IsEnabled = condition.Region is not null;
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { ConditionLabel.Text = ex.Message; PingScanAreaButton.IsEnabled = false; }
+        // User (2026-10-16): Select area is outlined red until there is an area, then green.
+        bool areaChosen = quickOtherCondition?.Region is not null;
+        if (!areaChosen) try { ReadQuickArea(); areaChosen = true; } catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
+        SelectAreaButton.Classes.Set("needs-choice", !areaChosen); SelectAreaButton.Classes.Set("chosen", areaChosen);
+        RefreshAddAction();
+    }
+    /// <summary>
+    /// User (2026-10-16): Add Action / Save Changes stays grey until the editor describes an action that can be added;
+    /// hovering it then says what is missing.
+    /// </summary>
+    private void RefreshAddAction()
+    {
+        if (AddActionButton is null || loadingQuick) return;
+        bool complex = editingQuick is not null && ModeBox.SelectedIndex < 0;
+        string? missing = null;
+        if (ModeBox.SelectedIndex < 0 && !complex) missing = "Choose an action first.";
+        else try { ReadQuickAction(); } catch (Exception ex) { missing = ex.Message; }
+        AddActionButton.IsEnabled = missing is null;
+        ToolTip.SetTip(AddActionButton, missing);
     }
     private sealed class QuickChildRow
     {
@@ -76,7 +95,10 @@ public partial class MainWindow
         foreach (var name in quickInputs.Keys) quickInputNames.Add(name);
         QuickChildrenGrid.ItemsSource = quickChildren;
         QuickUndoButton.IsEnabled = QuickRedoButton.IsEnabled = false;
-        QuickFields.AddHandler(TextBox.TextChangedEvent, (_, _) => { if (initialized && !loadingQuick) TestResultLabel.Text = ""; });
+        QuickFields.AddHandler(TextBox.TextChangedEvent, (_, _) => { if (initialized && !loadingQuick) { TestResultLabel.Text = ""; RefreshAddAction(); } });
+        // Any choice in the editor can make the action addable or not.
+        QuickFields.AddHandler(SelectingItemsControl.SelectionChangedEvent, (_, _) => { if (initialized) RefreshAddAction(); });
+        QuickFields.AddHandler(ToggleButton.IsCheckedChangedEvent, (_, _) => { if (initialized) RefreshAddAction(); });
     }
     private static string Ms(TimeSpan time) => time.TotalMilliseconds.ToString("0.###", CultureInfo.CurrentCulture);
     private static TimeSpan Milliseconds(TextBox box) => TimeSpan.FromMilliseconds(Number(box));
@@ -163,7 +185,6 @@ public partial class MainWindow
         ScreenshotActionFields.Visibility = ModeBox.SelectedIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
         ConditionAdvancedFields.Visibility = ConditionFields.Visibility = ModeBox.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         ComplexFields.Visibility = complex ? Visibility.Visible : Visibility.Collapsed;
-        AddActionButton.IsEnabled = ModeBox.SelectedIndex >= 0 || complex;
         // Blue Add Action adds a new action; green Save Changes changes the selected one, so it is always clear which.
         AddActionButton.Content = editingQuick is null ? "Add Action" : "Save Changes";
         AddActionButton.Classes.Set("blue", editingQuick is null); AddActionButton.Classes.Set("green", editingQuick is not null);
@@ -172,7 +193,7 @@ public partial class MainWindow
         Location_Changed(this, new RoutedEventArgs());
         ActionHint.Text = complex ? "Edit the recorded inputs below. Their overlap is preserved." : ModeBox.SelectedIndex switch
         { 0 => "Click at your cursor or a saved location.", 1 => "Press a key, with optional modifiers or a longer hold.", 2 => "Wait before the next action.", 3 => "Continue when a colour appears or disappears.", 4 => "Save a fullscreen PNG of all monitors.", 5 => "Turn the mouse wheel at your cursor or a saved location.", _ => "Choose an action to see its settings." };
-        if (ModeBox.SelectedIndex == 3) ShowConditionColour();
+        if (ModeBox.SelectedIndex == 3) ShowConditionColour(); else RefreshAddAction();
     }
     private void ClickKind_Changed(object sender, SelectionChangedEventArgs e)
     { if (!initialized || loadingQuick) return; PressBox.Text = ClickKindBox.SelectedIndex == 2 ? "1000" : "20"; ShowQuickFields(); }
@@ -185,6 +206,7 @@ public partial class MainWindow
         SetLocationButton.SetButtonStyle(useCursorLocation ? "StandardButton" : "GreenButton");
         QuickXBox.IsEnabled = QuickYBox.IsEnabled = !useCursorLocation;
         MotionFields.Visibility = ModeBox.SelectedIndex == 0 && !useCursorLocation ? Visibility.Visible : Visibility.Collapsed;
+        RefreshAddAction();
     }
     private void CursorLocation_Click(object sender, RoutedEventArgs e)
     { useCursorLocation = true; Location_Changed(sender, e); }
@@ -231,13 +253,21 @@ public partial class MainWindow
     {
         var policy = new ConditionPolicy(QuickScanInterval(), WholeNumber(ConditionStableBox, 1, 10, "Consecutive matching samples must be 1–10."));
         if (quickOtherCondition is { } other) { var kept = other with { Policy = policy }; kept.Validate(); return kept; }
+        var region = ReadQuickArea();
+        if (!TryConditionColour(out int rgb)) throw new ArgumentException("Enter the colour as six hexadecimal digits, for example DEAB48.");
+        int tolerance = WholeNumber(ConditionToleranceBox, 0, 255, "Tolerance must be 0–255.");
+        var condition = new ConditionDefinition(ConditionKindBox.SelectedIndex == 1 ? ConditionKind.ColorDisappears : ConditionKind.RegionColor,
+            policy, region, rgb, (byte)tolerance, 1);
+        condition.Validate(); return condition;
+    }
+    /// <summary>The watched area from X, Y, width and height (see ReadQuickCondition for how it is measured).</summary>
+    private CaptureRegion ReadQuickArea()
+    {
         if (AreaFieldsEmpty) throw new ArgumentException("Select an area first.");
         int x = WholeNumber(ConditionXBox, int.MinValue, int.MaxValue, "Enter whole-number X and Y coordinates.");
         int y = WholeNumber(ConditionYBox, int.MinValue, int.MaxValue, "Enter whole-number X and Y coordinates.");
         int width = WholeNumber(ConditionWidthBox, 1, 256, "Width and height must be 1–256 pixels.");
         int height = WholeNumber(ConditionHeightBox, 1, 256, "Width and height must be 1–256 pixels.");
-        if (!TryConditionColour(out int rgb)) throw new ArgumentException("Enter the colour as six hexadecimal digits, for example DEAB48.");
-        int tolerance = WholeNumber(ConditionToleranceBox, 0, 255, "Tolerance must be 0–255.");
         ClientPoint origin;
         if (ConditionCalibrateBox.IsChecked == true || quickAreaOrigin is null)
         {
@@ -247,9 +277,7 @@ public partial class MainWindow
         }
         else origin = quickAreaOrigin with { X = x, Y = y };
         var region = new CaptureRegion(origin, width, height); region.Validate();
-        var condition = new ConditionDefinition(ConditionKindBox.SelectedIndex == 1 ? ConditionKind.ColorDisappears : ConditionKind.RegionColor,
-            policy, region, rgb, (byte)tolerance, 1);
-        condition.Validate(); return condition;
+        return region;
     }
     private TimeSpan QuickScanInterval()
     {

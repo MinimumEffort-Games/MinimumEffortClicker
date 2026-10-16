@@ -142,7 +142,7 @@
                                                 <TextBlock Text="Wait until" />
                                                 <ComboBox x:Name="ConditionKindBox" SelectedIndex="0" SelectionChanged="ConditionKind_Changed" AutomationProperties.Name="Wait until"><ComboBoxItem Content="A Colour appears" /><ComboBoxItem Content="A Colour disappears" /></ComboBox>
                                                 <WrapPanel Margin="0,6,0,0">
-                                                    <Button x:Name="SelectAreaButton" Content="Select area… (drag on a snapshot)" Click="SelectConditionArea_Click" ToolTip.Tip="Takes a picture of the Click target (or the monitors on Desktop) and lets you drag the area to watch. The colour is taken from its top-left pixel." AutomationProperties.Name="Select area" />
+                                                    <Button x:Name="SelectAreaButton" Classes="needs-choice" Content="Select area… (drag on a snapshot)" Click="SelectConditionArea_Click" ToolTip.Tip="Takes a picture of the Click target (or the monitors on Desktop) and lets you drag the area to watch. The colour is taken from its top-left pixel." AutomationProperties.Name="Select area" />
                                                     <Button x:Name="PingScanAreaButton" IsEnabled="False" Content="Ping scan area" Click="PingScanArea_Click" ToolTip.Tip="Outlines the area this wait watches on the target, three times." AutomationProperties.Name="Ping scan area" />
                                                 </WrapPanel>
                                                 <TextBlock Text="RGB colour · six hexadecimal digits" Margin="0,6,0,0" />
@@ -206,7 +206,7 @@
                                 </Border>
                             </StackPanel>
                             <WrapPanel x:Name="QuickEditorTools" Margin="0,4,0,12">
-                                <Button x:Name="AddActionButton" Content="Add Action" Click="AddAction_Click" IsEnabled="False" Classes="blue" />
+                                <Button x:Name="AddActionButton" Content="Add Action" Click="AddAction_Click" IsEnabled="False" ToolTip.ShowOnDisabled="True" Classes="blue" />
                                 <Button Content="Clear editor" Click="NewAction_Click" ToolTip.Tip="Clear the settings to create another action. The Action List is kept." />
                             </WrapPanel>
                             <TextBlock x:Name="TestResultLabel" Classes="secondary optional" Margin="0,0,0,5" />
