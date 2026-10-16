@@ -160,7 +160,7 @@ public partial class MainWindow
                     : "The recording hotkey is unavailable. Choose another key.";
             }
             QuickRecordKeyBox.Content = ShortcutKeys.Label(appliedRecordKey);
-            QuickRecordButton.Content = $"{ShortcutKeys.Label(appliedRecordKey)} Record/Stop";
+            QuickRecordButton.Content = $"{RecordHint} Record/Stop";
             QuickRecordStatus.Text = ready ? "" : failure;
             if (!ready) ReasonLabel.Text = failure;
         }
@@ -205,7 +205,7 @@ public partial class MainWindow
             }
             using var recorder = started;
             quickRecorder = recorder; RefreshStatus();
-            QuickRecordStatus.Text = $"Recording clicks and keys… {ShortcutKeys.Label(appliedRecordKey)} or {stopKey} finishes.";
+            QuickRecordStatus.Text = $"Recording clicks and keys… {RecordHint} or {StopHint} finishes.";
             // Show captured actions as they happen; the list is rebuilt from the full draft on stop.
             int shown = recorder.LiveVersion;
             var liveTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(150), DispatcherPriority.Background, (_, _) =>
@@ -216,7 +216,7 @@ public partial class MainWindow
                 {
                     var live = RecordedSteps(recorder.LivePreview());
                     ShowRecordingPreview(live.Steps);
-                    QuickRecordStatus.Text = $"Recording… {live.Steps.Count(s => s.Kind != StepKind.Wait)} actions so far. {ShortcutKeys.Label(appliedRecordKey)} or {stopKey} finishes.";
+                    QuickRecordStatus.Text = $"Recording… {live.Steps.Count(s => s.Kind != StepKind.Wait)} actions so far. {RecordHint} or {StopHint} finishes.";
                 }
                 catch (Exception) { } // A preview that cannot be built yet is simply not shown.
             }, Dispatcher);

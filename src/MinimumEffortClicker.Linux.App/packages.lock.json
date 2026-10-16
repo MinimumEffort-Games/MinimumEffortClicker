@@ -193,6 +193,13 @@
         "resolved": "3.119.4",
         "contentHash": "XOpbx/4CReO2wYsq2s6rbvdauc6dntG4Zv499sHGTJ87bwZaFXszFkwql3+FIZMc8kUPeaj3Mx2ezIJmo8a1Kg=="
       },
+      "minimumeffortclicker.controllers": {
+        "type": "Project",
+        "dependencies": {
+          "MinimumEffortClicker.Core": "[0.5.0-preview.34.16, )",
+          "ppy.SDL3-CS": "[2026.1002.1, )"
+        }
+      },
       "minimumeffortclicker.core": {
         "type": "Project"
       },
@@ -214,6 +221,12 @@
         "dependencies": {
           "MinimumEffortClicker.Core": "[0.5.0-preview.34.16, )"
         }
+      },
+      "ppy.SDL3-CS": {
+        "type": "CentralTransitive",
+        "requested": "[2026.1002.1, )",
+        "resolved": "2026.1002.1",
+        "contentHash": "8E+A+xUJJCTcCQbSgFFYd90HfHoFUGzhx/QlXQ7wxLCkFjTPQZNjW8FvyGII0CgstvogNqFMaAy2plvqmob9mg=="
       },
       "Tmds.DBus.Protocol": {
         "type": "CentralTransitive",
@@ -265,6 +278,12 @@
         "type": "Transitive",
         "resolved": "3.119.4",
         "contentHash": "XOpbx/4CReO2wYsq2s6rbvdauc6dntG4Zv499sHGTJ87bwZaFXszFkwql3+FIZMc8kUPeaj3Mx2ezIJmo8a1Kg=="
+      },
+      "ppy.SDL3-CS": {
+        "type": "CentralTransitive",
+        "requested": "[2026.1002.1, )",
+        "resolved": "2026.1002.1",
+        "contentHash": "8E+A+xUJJCTcCQbSgFFYd90HfHoFUGzhx/QlXQ7wxLCkFjTPQZNjW8FvyGII0CgstvogNqFMaAy2plvqmob9mg=="
       }
     }
   }

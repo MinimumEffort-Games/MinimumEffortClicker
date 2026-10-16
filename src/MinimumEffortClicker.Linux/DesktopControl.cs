@@ -339,6 +339,24 @@ public sealed class DesktopControl : IDisposable
         }
         return command;
     }
+    /// <summary>
+    /// A controller button bound to a global control (User, 2026-10-16) does what that control's F-key does, through
+    /// the same latch. Stop All works even while shortcuts are being chosen.
+    /// </summary>
+    public void RunControllerCommand(ControllerCommand command)
+    {
+        if (command == ControllerCommand.StopAll) { RequestStop("Stopped with the controller."); return; }
+        TriggerCommand toggle = TriggerCommand.None;
+        lock (gate)
+        {
+            if (!Available || bindingsSuspended) return;
+            if (command == ControllerCommand.StartStop) toggle = trigger.RegisteredHotkey(HoldTrigger);
+        }
+        if (toggle == TriggerCommand.Toggle) ToggleRequested?.Invoke();
+        else if (toggle == TriggerCommand.Stop) ActionStopRequested?.Invoke();
+        if (command == ControllerCommand.Record) RecordingRequested?.Invoke();
+        if (command == ControllerCommand.Screenshot) ScreenshotRequested?.Invoke();
+    }
     private void ShortcutEdge(int key, bool down)
     {
         if (bindingsSuspended) return;

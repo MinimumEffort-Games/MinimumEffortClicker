@@ -77,6 +77,7 @@ public partial class MainWindow
             "- Overlay: a small status box beside the target shows what is running and which keys stop it. Toggles show Ready, or On in blue. Set its opacity and size here, or hide it.",
             "- The overlay's square brings the clicker window back to the front (GNOME shows no taskbar icon while it is hidden or minimised). Its X stops anything running and quits the clicker.",
             "- Keys: F8 starts and stops Actions, F9 stops everything, F10 records. Each needs its own key.",
+            "- Controller: A starts and stops Actions, B stops everything, Y records and X takes a screenshot, in any window, like the keys. Click a button under Controller and press another controller button to change it; right-click to leave a control without one. Xbox, PlayStation, Switch and Steam Deck controllers work, including the Deck's back buttons. The overlay and buttons show the controller's names after you use it and the keys again after you type.",
         ]),
         ("Linux setup",
         [

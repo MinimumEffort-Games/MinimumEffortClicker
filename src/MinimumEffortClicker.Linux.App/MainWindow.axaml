@@ -333,6 +333,17 @@
                             <TextBlock x:Name="HotkeyStatus" Classes="secondary optional" Margin="0,8,0,0" />
                             <TextBlock x:Name="ScreenshotHotkeyStatus" Classes="secondary optional" />
 
+                            <TextBlock Text="Controller" Classes="heading" Margin="0,18,0,8" />
+                            <TextBlock x:Name="ControllerStatus" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" Margin="0,0,0,6" />
+                            <WrapPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / toggle" /><Button x:Name="ControllerStartBox" Tag="StartStop" Content="A" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Start controller button" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Stop all" /><Button x:Name="ControllerStopBox" Tag="StopAll" Content="B" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Stop all controller button" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" /><Button x:Name="ControllerRecordBox" Tag="Record" Content="Y" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Record controller button" /></StackPanel>
+                                <StackPanel Width="170"><TextBlock Text="Screenshot" /><Button x:Name="ControllerScreenshotBox" Tag="Screenshot" Content="X" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Screenshot controller button" /></StackPanel>
+                            </WrapPanel>
+                            <Button Content="Reset controller buttons" Click="ResetControllerButtons_Click" HorizontalAlignment="Left" Width="170" Margin="0,12,0,0" />
+                            <TextBlock x:Name="ControllerBindStatus" Classes="secondary optional" Margin="0,8,0,0" />
+
                             <TextBlock Text="Emergency stop" Classes="heading" Margin="0,18,0,8" />
                             <ComboBox x:Name="EmergencyStopBox" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" Width="420" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop">
                                 <ComboBoxItem Content="Only Stop All (F9) stops the clicker (default)" /><ComboBoxItem Content="Stop on my input" />

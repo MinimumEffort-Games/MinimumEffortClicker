@@ -34,7 +34,7 @@ try {
     }
     $licenseDirectory = Join-Path $packagePath 'licenses'
     New-Item -ItemType Directory -Path $licenseDirectory | Out-Null
-    foreach ($item in @('dotnet','nuget','nuget-inventory.json')) {
+    foreach ($item in @('dotnet','nuget','native','nuget-inventory.json')) {
         Copy-Item -LiteralPath (Join-Path $ProjectRoot "licenses/$item") -Destination $licenseDirectory -Recurse
     }
     foreach ($item in @('LICENSE','THIRD_PARTY_NOTICES.md')) {

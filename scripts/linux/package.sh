@@ -15,7 +15,7 @@ cp -r "$ROOT/linux/gnome-extension/me-clicker-helper@minimumeffort-games.github.
 cp "$ROOT/linux/setup-input-access.sh" "$ROOT/linux/install.sh" "$ROOT/linux/uninstall.sh" "$DEST/"
 chmod +x "$DEST/MinimumEffortClicker" "$DEST/setup-input-access.sh" "$DEST/install.sh" "$DEST/uninstall.sh"
 cp "$ROOT/assets/brand/rounded-r26/shrug-rounded-r26.png" "$DEST/minimum-effort-clicker.png"
-cp -r "$ROOT/licenses/dotnet" "$ROOT/licenses/nuget" "$ROOT/licenses/nuget-inventory.json" "$DEST/licenses/"
+cp -r "$ROOT/licenses/dotnet" "$ROOT/licenses/nuget" "$ROOT/licenses/native" "$ROOT/licenses/nuget-inventory.json" "$DEST/licenses/"
 cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$DEST/"
 cp "$ROOT/docs/LINUX.md" "$DEST/START HERE.md"
 cp "$ROOT/docs/RELEASE_STATUS.md" "$DEST/docs/"

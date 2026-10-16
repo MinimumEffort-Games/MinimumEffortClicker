@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Controllers: Xbox, PlayStation, Switch and Steam Deck controllers (including the Deck's back buttons) work on
+  Windows and Linux. A starts and stops Actions, B stops everything, Y records, X takes a screenshot, in any window
+  like the keys; change or clear them under Settings → Controller. After you use the controller the overlay and
+  buttons show its button names, and the key names again after you type; moving the mouse changes nothing.
+
 - The code now matches the four pages. The hidden macro-library page, the step editor, the setup wizard and the
   overlay drag mode are gone, together with the engine features only they used (typed text, reusable groups,
   if/repeat branches, "run helpers together", logical keys).

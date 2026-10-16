@@ -408,6 +408,33 @@ public sealed class DesktopControl : IDisposable
                     if (key == item.Binding.Key)
                         MacroTriggered?.Invoke(item.Binding.MacroId, ShortcutEdge(item.Latch, key, down, item.Binding.HoldTrigger), item.Binding.HoldTrigger);
     }
+    /// <summary>
+    /// A controller button bound to a global control (User, 2026-10-16) does what that control's F-key does, through
+    /// the same latch on the control thread. Stop All works even while shortcuts are being chosen, like F9.
+    /// </summary>
+    public void RunControllerCommand(ControllerCommand command)
+    {
+        try
+        {
+            _ = QueueCommand(() =>
+            {
+                if (command == ControllerCommand.StopAll)
+                {
+                    trigger.CancelPending(); screenshotTrigger.CancelPending();
+                    foreach (var macro in macroTriggers.Values) macro.Latch.CancelPending();
+                    StopRequested?.Invoke("Stopped with the controller.");
+                    return true;
+                }
+                if (!Available || bindingsSuspended) return false;
+                if (command == ControllerCommand.StartStop) DispatchTrigger(trigger.RegisteredHotkey(HoldTrigger));
+                else if (command == ControllerCommand.Record) RecordingRequested?.Invoke();
+                else if (command == ControllerCommand.Screenshot) ScreenshotRequested?.Invoke();
+                return true;
+            });
+        }
+        // The control thread is gone or busy; the keyboard shortcuts report that themselves.
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException) { }
+    }
     private void DispatchTrigger(TriggerCommand command)
     {
         if (command == TriggerCommand.Toggle) ToggleRequested?.Invoke();
