@@ -390,7 +390,7 @@ public partial class MainWindow : Window
         ModeBox.SelectedIndex = -1;
         ToggleList.ItemsSource = new[] {
             new ToggleRow(Guid.NewGuid(), "Autorun", "1", true, 0x31, InputControl.Key(SequenceKeys.W), "Holds W"),
-            new ToggleRow(Guid.NewGuid(), "Spam click", "Mouse side 1", false, 5, InputControl.Mouse(PointerButton.Left), "Taps Left mouse") };
+            new ToggleRow(Guid.NewGuid(), "Spam click", "M4", false, 5, InputControl.Mouse(PointerButton.Left), "Taps Left mouse") };
         ToggleEmptyLabel.Visibility = Visibility.Collapsed;
         Navigate("TogglePage"); yield return "toggles";
         controllerBinds = [new(Guid.NewGuid(), "Jump", ControllerButton.A, InputControl.Key(SequenceKeys.Supported["Space"]), true),

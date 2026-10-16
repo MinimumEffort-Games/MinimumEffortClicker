@@ -31,7 +31,7 @@ public partial class MainWindow
     }
 
     private static string OutputLabel(InputControl output) => output.Kind == InputKind.MouseButton
-        ? (PointerButton)output.Code switch { PointerButton.Left => "Left mouse", PointerButton.Right => "Right mouse", PointerButton.Middle => "Middle mouse", PointerButton.XButton1 => "Back mouse", _ => "Forward mouse" }
+        ? ShortcutKeys.MouseLabel((PointerButton)output.Code)
         : SequenceKeys.Supported.FirstOrDefault(k => k.Value == output.Code).Key ?? "Key";
 
     /// <summary>At startup: fills the key list, loads the saved binds and arms the active ones. Arming presses nothing.</summary>

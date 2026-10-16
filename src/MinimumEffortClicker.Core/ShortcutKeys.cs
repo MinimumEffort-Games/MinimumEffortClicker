@@ -17,9 +17,12 @@ public static class ShortcutKeys
     { PointerButton.Left => 1, PointerButton.Right => 2, PointerButton.Middle => 4, PointerButton.XButton1 => 5, PointerButton.XButton2 => 6, _ => throw new ArgumentException("Unknown mouse button.") };
     public static InputControl MouseInput(int key) => InputControl.Mouse(key switch
     { 1 => PointerButton.Left, 2 => PointerButton.Right, 4 => PointerButton.Middle, 5 => PointerButton.XButton1, 6 => PointerButton.XButton2, _ => throw new ArgumentException("Choose a mouse button.") });
+    /// <summary>Short mouse button names, the same everywhere: LMB, RMB, MMB, M4 (back) and M5 (forward).</summary>
+    public static string MouseLabel(PointerButton button) => button switch
+    { PointerButton.Left => "LMB", PointerButton.Right => "RMB", PointerButton.Middle => "MMB", PointerButton.XButton1 => "M4", _ => "M5" };
     public static string Label(int key) => key switch
     {
-        0 => "Choose a key…", 1 => "Left mouse", 2 => "Right mouse", 4 => "Middle mouse", 5 => "Mouse side 1", 6 => "Mouse side 2",
+        0 => "Choose a key…", >= 1 and <= 6 when IsMouse(key) => MouseLabel((PointerButton)MouseInput(key).Code),
         >= 0x30 and <= 0x39 or >= 0x41 and <= 0x5A => ((char)key).ToString(),
         >= 0x70 and <= 0x87 => "F" + (key - 0x6F), >= 0x60 and <= 0x69 => "Numpad " + (key - 0x60),
         8 => "Backspace", 9 => "Tab", 12 => "Clear", 13 => "Enter", 19 => "Pause", 20 => "Caps Lock", 27 => "Escape", 32 => "Space",

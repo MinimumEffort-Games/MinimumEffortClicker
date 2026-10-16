@@ -8,9 +8,9 @@ internal sealed class MouseButtonPicker : PictureButtons
     // Map values as in the mouse entry of scripts/Build-UiArt.ps1.
     private static readonly (PointerButton Button, Part Part)[] Buttons =
     [
-        (PointerButton.Left, new(40, "left", "Left mouse button")), (PointerButton.Middle, new(80, "middle", "Middle mouse button")),
-        (PointerButton.Right, new(120, "right", "Right mouse button")), (PointerButton.XButton1, new(160, "side1", "Side button 4 (back)")),
-        (PointerButton.XButton2, new(200, "side2", "Side button 5 (forward)"))
+        (PointerButton.Left, new(40, "left", "LMB (left)")), (PointerButton.Middle, new(80, "middle", "MMB (middle)")),
+        (PointerButton.Right, new(120, "right", "RMB (right)")), (PointerButton.XButton1, new(160, "side1", "M4 (back)")),
+        (PointerButton.XButton2, new(200, "side2", "M5 (forward)"))
     ];
 
     public event EventHandler? SelectedChanged;

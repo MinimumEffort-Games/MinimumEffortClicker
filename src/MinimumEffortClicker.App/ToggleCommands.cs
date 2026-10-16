@@ -31,8 +31,19 @@ public partial class MainWindow
     {
         if (ToggleIntervalLabel is not null) ToggleIntervalLabel.Text = $"{e.NewValue:0} ms · {1000 / e.NewValue:0.#} taps/sec";
     }
-    private static string InputLabel(InputControl input)
-    { var label = RecordingNormalizer.Label(input); return label.StartsWith("Hold ", StringComparison.Ordinal) ? label[5..] : label; }
+    /// <summary>What a toggle holds or taps: a key's name, or the short mouse name (LMB, RMB, MMB, M4, M5) so a mouse
+    /// button is never mistaken for an arrow key.</summary>
+    private static string InputLabel(InputControl input) => input.Kind == InputKind.MouseButton
+        ? ShortcutKeys.MouseLabel((PointerButton)input.Code)
+        : SequenceKeys.Supported.FirstOrDefault(k => k.Value == input.Code).Key ?? "Key";
+    /// <summary>
+    /// A toggle's name. Toggles saved without a name were called "Toggle Left" for the left mouse button, the same as
+    /// the Left arrow key; those show the new name (Toggle LMB), and saving the toggle keeps it. Names the user typed
+    /// stay as they are.
+    /// </summary>
+    private static string ToggleName(MacroDefinition macro) =>
+        macro.Plan is { Control: { Kind: InputKind.MouseButton } held } && macro.Name == "Toggle " + (PointerButton)held.Code
+            ? "Toggle " + InputLabel(held) : macro.Name;
 
     private void RefreshToggleList()
     {
@@ -40,7 +51,7 @@ public partial class MainWindow
         refreshingToggles = true;
         try
         {
-            toggleRows = SavedToggles.Select(m => new ToggleRow(m.Id, m.Name,
+            toggleRows = SavedToggles.Select(m => new ToggleRow(m.Id, ToggleName(m),
                 macroBindings.TryGetValue(m.Id, out var binding) ? MacroBindings.KeyLabel(binding.Key) : "Choose shortcut", enabledToggles.Contains(m.Id),
                 macroBindings.TryGetValue(m.Id, out var bound) ? bound.Key : 0, m.Plan!.Control,
                 $"{(m.Plan.Mode == HelperMode.Repeat ? "Taps" : "Holds")} {InputLabel(m.Plan.Control)}")).ToArray();
@@ -55,7 +66,7 @@ public partial class MainWindow
         if (refreshingToggles || ToggleList.SelectedItem is not ToggleRow row) return;
         var macro = SavedToggles.First(m => m.Id == row.Id);
         editingToggle = row.Id; ToggleModeBox.SelectedIndex = macro.Plan!.Mode == HelperMode.Repeat ? 1 : 0; ToggleIntervalSlider.Value = Math.Clamp(macro.Plan.Interval.TotalMilliseconds, 10, 1000);
-        selectedHeldInput = macro.Plan!.Control; ShowHeldInput(); ToggleNameBox.Text = macro.Name;
+        selectedHeldInput = macro.Plan!.Control; ShowHeldInput(); ToggleNameBox.Text = ToggleName(macro);
         selectedToggleKey = macroBindings.TryGetValue(row.Id, out var binding) ? binding.Key : 0;
         ShowToggleShortcut();
         SaveToggleButton.ToolTip = "Save changes";
@@ -173,7 +184,7 @@ public partial class MainWindow
     {
         var ids = snapshot.ActiveHelperIds ?? [];
         return SavedToggles.Where(m => enabledToggles.Contains(m.Id)).Select(m =>
-            new OverlayToggle(m.Name, macroBindings.TryGetValue(m.Id, out var binding) ? MacroBindings.KeyLabel(binding.Key) : "Unassigned",
+            new OverlayToggle(ToggleName(m), macroBindings.TryGetValue(m.Id, out var binding) ? MacroBindings.KeyLabel(binding.Key) : "Unassigned",
                 OverlayToggle.StateFor(snapshot.CleanupPending, ids.Contains(m.Id), snapshot.PlaybackActive, snapshot.State), ids.Contains(m.Id))).ToArray();
     }
 }
