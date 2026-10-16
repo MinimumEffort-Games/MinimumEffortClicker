@@ -373,7 +373,7 @@ public partial class MainWindow : Window
     }
     /// <summary>
     /// For --render-preview: sets up each editing panel in turn (each action type, Toggles, Controller to Key) and yields
-    /// a name for its picture. The Action List gets a click, a key press and a pause, and Controller to Key two binds, so
+    /// a name for its picture. The Action List gets a click, a key press and a pause, Toggles and Controller to Key two each, so
     /// their rows show too (nothing is saved).
     /// </summary>
     internal IEnumerable<string> PreviewStates()
@@ -388,6 +388,10 @@ public partial class MainWindow : Window
         string[] actions = ["click", "key-press", "pause", "wait-until", "screenshot", "scroll"];
         for (int i = 0; i < actions.Length; i++) { ModeBox.SelectedIndex = i; yield return "action-" + actions[i]; }
         ModeBox.SelectedIndex = -1;
+        ToggleList.ItemsSource = new[] {
+            new ToggleRow(Guid.NewGuid(), "Autorun", "1", true, 0x31, InputControl.Key(SequenceKeys.W), "Holds W"),
+            new ToggleRow(Guid.NewGuid(), "Spam click", "Mouse side 1", false, 5, InputControl.Mouse(PointerButton.Left), "Taps Left mouse") };
+        ToggleEmptyLabel.Visibility = Visibility.Collapsed;
         Navigate("TogglePage"); yield return "toggles";
         controllerBinds = [new(Guid.NewGuid(), "Jump", ControllerButton.A, InputControl.Key(SequenceKeys.Supported["Space"]), true),
             new(Guid.NewGuid(), "Shoot", ControllerButton.RightTrigger, InputControl.Mouse(PointerButton.Left), false)];
