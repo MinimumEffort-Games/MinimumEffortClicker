@@ -62,6 +62,14 @@ public partial class MainWindow
             "Toggles only work when a click target is selected. Tick Active to arm a toggle; the toggles you leave active are armed again the next time the app starts. Nothing happens until you press its shortcut while your Click target is in front.",
             "Spam is built for fast tapping. The click limit on the Actions page does not apply to it.",
         ]),
+        ("Controller to Key",
+        [
+            "Turns controller buttons into keys and mouse buttons, in whichever window is in front; no Click target is needed.",
+            "- Name the bind, choose a key or a mouse button (choosing one clears the other), press Controller binding and then the controller button, and save.",
+            "- While the controller button is held, its key or mouse button is held. Two binds may press the same key; it stays down until both buttons are up.",
+            "- Untick Active to keep a bind without using it. Active binds come back when the clicker starts, and press nothing until you press their button.",
+            "- Buttons used under Settings → Controller (A, B, Y, X by default) cannot be bound here; clear them there first. Stop All lets go of everything.",
+        ]),
         ("Screenshot",
         [
             "Saves a PNG of the whole screen or of an area you drag. The clicker hides itself while it captures.",

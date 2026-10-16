@@ -28,7 +28,7 @@ public partial class MainWindow
         if (gamepads is not null || runtime is null) return;
         gamepads = new GamepadListener();
         gamepads.ButtonChanged += ControllerButtonChanged;
-        gamepads.DevicesChanged += () => { if (!Dispatcher.HasShutdownStarted) Dispatcher.BeginInvoke(ShowControllerStatus); };
+        gamepads.DevicesChanged += () => { if (!Dispatcher.HasShutdownStarted) Dispatcher.BeginInvoke(() => { ShowControllerStatus(); ShowControllerBindReady(); }); };
         runtime.Control.PhysicalChanged += (input, down) => { if (down && input.Kind == InputKind.ScanCode) KeyboardSeen(); };
         PreviewKeyDown += (_, _) => KeyboardSeen();
         ShowControllerStatus();
@@ -37,10 +37,15 @@ public partial class MainWindow
     /// <summary>On the controller thread.</summary>
     private void ControllerButtonChanged(ControllerButton button, bool down)
     {
-        if (!down) return;
-        if (!controllerHints) { controllerHints = true; RefreshHints(); }
-        if (capturingController) { Dispatcher.BeginInvoke(() => FinishControllerCapture(button)); return; }
-        if (controllerControls.CommandFor(button) is { } command) runtime?.Control.RunControllerCommand(command);
+        if (down && !controllerHints) { controllerHints = true; RefreshHints(); }
+        // While a button is being chosen, the press chooses and does nothing else.
+        if (down && (capturingController || capturingBind))
+        {
+            Dispatcher.BeginInvoke(() => { if (capturingBind) FinishBindCapture(button); else FinishControllerCapture(button); });
+            return;
+        }
+        if (down && controllerControls.CommandFor(button) is { } command) runtime?.Control.RunControllerCommand(command);
+        RouteControllerButton(button, down);
     }
 
     private void KeyboardSeen()
@@ -76,7 +81,7 @@ public partial class MainWindow
         if (gamepads is null) return;
         controllerCaptureTimeout?.Cancel();
         ShowControllerButtons();
-        capturingCommand = CommandOf(sender); capturingController = true;
+        capturingBind = false; capturingCommand = CommandOf(sender); capturingController = true;
         ((Button)sender).Content = "Press a button…";
         ControllerBindStatus.Text = gamepads.Connected.Count == 0 ? "No controller is connected yet; connect one and press a button." : "Press a controller button.";
         using var timeout = new CancellationTokenSource(); controllerCaptureTimeout = timeout;

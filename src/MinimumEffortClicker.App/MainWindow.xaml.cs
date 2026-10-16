@@ -146,6 +146,7 @@ public partial class MainWindow : Window
             await MakeSavedMacrosAvailable();
             await RestoreActiveToggles();
             StartControllers();
+            await LoadControllerBinds();
             SyncWorkshopMacros();
             await ConfigureScreenshotHotkey();
             settingsLoaded = true;
@@ -178,6 +179,7 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             trayIcon?.Dispose(); trayIcon = null;
+            SendControllerOutputs(controllerKeys.ReleaseAll().Select(o => (o, false)));
             gamepads?.Dispose(); gamepads = null;
             timer.Stop(); overlayFollowTimer.Stop(); SystemEvents.SessionSwitch -= SessionChanged; SystemEvents.PowerModeChanged -= PowerChanged;
             SystemEvents.DisplaySettingsChanged -= DisplaysChanged;

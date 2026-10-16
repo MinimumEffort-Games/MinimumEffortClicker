@@ -813,6 +813,18 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         }
         return true;
     }
+    /// <summary>
+    /// Controller to Key (User, 2026-10-16): presses or releases one key or mouse button in whichever window is in
+    /// front, at the current pointer. Marked as the clicker's own input like playback, so it never counts as the user's.
+    /// </summary>
+    public bool SendControllerOutput(InputControl output, bool down)
+    {
+        if (output.Kind is not (InputKind.ScanCode or InputKind.MouseButton)) return false;
+        bool sent = DesktopNative.Send(new InputTransition(output, down ? InputEdge.Down : InputEdge.Up));
+        if (sent) Interlocked.Increment(ref inputsSent);
+        return sent;
+    }
+
     public bool TrySend(InputTransition transition)
     {
         if (CursorFreeActive)
