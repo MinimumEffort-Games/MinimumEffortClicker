@@ -30,7 +30,7 @@ public partial class MainWindow
 
     /// <summary>
     /// Where a click action clicks on the screen, worked out the way playback does (the saved location adapted to the
-    /// Click target's current size). Null for a click at the cursor. Ping click location and the tested-click ring use it.
+    /// Click target's current size). Null for a click at the cursor. Ping location and the tested-click ring use it.
     /// </summary>
     private (int X, int Y)? ClickScreenPoint(SequenceStep step)
     {
@@ -38,6 +38,35 @@ public partial class MainWindow
         var plan = SequenceCompiler.Compile(new([step with { Enabled = true }]), quickPoints).AdaptClickPoints(frame.Width, frame.Height, frame.Dpi, ResizeClicksBox.SelectedIndex == 0);
         if (plan.Inputs.FirstOrDefault(i => i.Down && i.Control.Kind is InputKind.MouseButton or InputKind.Scroll or InputKind.HorizontalScroll)?.Position is not { } point) return null;
         return point.Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi);
+    }
+
+    /// <summary>The physical screen rectangle a colour wait watches, worked out against the Click target's current frame.</summary>
+    private (int Left, int Top, int Width, int Height) AreaScreenRect(CaptureRegion region)
+    {
+        var frame = runtime!.GetTargetFrame();
+        var topLeft = region.Origin.Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi);
+        var bottomRight = (region.Origin with { X = region.Origin.X + region.Width, Y = region.Origin.Y + region.Height })
+            .Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi);
+        return (topLeft.X, topLeft.Y, bottomRight.X - topLeft.X, bottomRight.Y - topLeft.Y);
+    }
+
+    /// <summary>Wait until a colour: outlines the watched area three times on the target, then the clicker comes back.</summary>
+    private async void PingScanArea_Click(object sender, RoutedEventArgs e)
+    {
+        if (runtime is null || runtime.Snapshot.Busy || operations.Has(Operation.Quick)) return;
+        const int pulses = 3;
+        StepAside? away = null;
+        try
+        {
+            if (quickCondition?.Region is not { } region) throw new ArgumentException("Choose the area and colour first.");
+            var area = AreaScreenRect(region);
+            away = StepAsideForTarget(runtime.IsDesktopMode);
+            if (!runtime.IsDesktopMode && !runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
+            AreaPingWindow.Around(area.Left, area.Top, area.Width, area.Height, ClickPingWindow.Location, times: pulses);
+            await Task.Delay(ClickPingWindow.Pulse * pulses);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { ReasonLabel.Text = ex.Message; }
+        finally { ComeBack(away); }
     }
 
     private async void PickQuickPoint_Click(object sender, RoutedEventArgs e)

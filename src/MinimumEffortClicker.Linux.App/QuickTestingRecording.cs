@@ -74,6 +74,10 @@ public partial class MainWindow
                 // Let the target settle in front so the picture shows it.
                 await Task.Delay(300, cancellation.Token);
                 (passed, detail) = await CheckConditionOnce(condition, cancellation.Token);
+                // Like the ring of a tested click: the watched area lights up, green when the colour is there, red when not.
+                if (condition.Region is { } region)
+                    try { var area = AreaScreenRect(region); AreaPingWindow.Around(area.Left, area.Top, area.Width, area.Height, passed == true ? ClickPingWindow.Landed : ClickPingWindow.Location); }
+                    catch (InvalidOperationException) { /* The outline is only a hint; the result above stands. */ }
                 // GNOME ignores a restore that arrives while the window is still minimising and only shows "is ready".
                 await Task.Delay(500, cancellation.Token);
             }

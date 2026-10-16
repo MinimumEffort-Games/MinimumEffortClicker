@@ -38,9 +38,9 @@ public partial class MainWindow
     }
     private void ShowConditionColour()
     {
-        QuickEyedropper.Visibility = ConditionKindBox.SelectedIndex is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
+        PingScanAreaButton.IsEnabled = quickCondition?.Region is not null;
         if (ModeBox.SelectedIndex == 3)
-            ActionHint.Text = ConditionKindBox.SelectedIndex == 1 ? "Pick one background pixel to detect when it is covered. In a larger area, all matching pixels must disappear." : "Continue when a colour appears or disappears.";
+            ActionHint.Text = ConditionKindBox.SelectedIndex == 1 ? "Choose an area and its colour: the wait continues once no pixel in that area has the colour any more." : "Continue when a colour appears or disappears.";
         if (quickCondition is not null)
         {
             try { ConditionLabel.Text = ConditionSummary(ReadQuickCondition()); }
@@ -198,7 +198,7 @@ public partial class MainWindow
             quickCondition = quickCondition with { Kind = ConditionKindBox.SelectedIndex == 1 ? ConditionKind.ColorDisappears : ConditionKind.RegionColor };
         else quickCondition = null;
         ConditionLabel.Text = quickCondition is null ? "Choose the area and what to look for." : ConditionSummary(quickCondition);
-        if (QuickEyedropper is not null) ShowConditionColour();
+        if (PingScanAreaButton is not null) ShowConditionColour();
     }
     private ConditionDefinition ReadQuickCondition()
     {

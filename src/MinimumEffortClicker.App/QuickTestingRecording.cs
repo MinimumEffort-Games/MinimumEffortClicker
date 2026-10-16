@@ -66,6 +66,10 @@ public partial class MainWindow
                 // A monitor area is read from the screen: let the minimise animation finish so the clicker is not in it.
                 if (away.MinimizedFrom is not null) await Task.Delay(400, cancellation.Token);
                 (passed, detail) = await CheckConditionOnce(condition, cancellation.Token);
+                // Like the ring of a tested click: the watched area lights up, green when the colour is there, red when not.
+                if (condition.Region is { } region)
+                    try { var area = AreaScreenRect(region); AreaPingWindow.Around(area.Left, area.Top, area.Width, area.Height, passed == true ? ClickPingWindow.Landed : ClickPingWindow.Location); }
+                    catch (InvalidOperationException) { /* The outline is only a hint; the result above stands. */ }
             }
             else
             {

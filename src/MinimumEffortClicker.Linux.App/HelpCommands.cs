@@ -32,7 +32,7 @@ public partial class MainWindow
             "",
             "- Click target: choose where the clicks go. Desktop uses screen positions on any monitor. A window uses positions inside that window and follows it when it moves.",
             "- The window must be in front while the list runs. If it goes behind another window, the run pauses and continues by itself once the window has been back in front for half a second.",
-            "- Wait until a colour or image: the run waits there until the colour shows up, however long that takes. F9 stops it. With Desktop as the target, Pick colour shows a Monitor list, so the wait can watch any monitor.",
+            "- Wait until a colour or image: the run waits there until the colour shows up, however long that takes. F9 stops it. Choose area and colour picks where it watches (with Desktop as the target, on any monitor). Ping scan area outlines that area on the target, and Test Selected Action outlines it green when the colour is there now, red when not.",
             "- Add Action: pick a click, key press, pause, wait for a colour, screenshot or scroll. Fill in its settings and press Add Action.",
             "- Scroll: turns the mouse wheel up, down, left or right, a number of notches, at your cursor or a saved location. Every notch is sent on its own, so games count each one.",
             "- Start (F8): runs the list once. Tick Loop to repeat it until you stop it. With Desktop as the Click target, Start minimises the clicker; untick Minimize on Start to keep it up.",

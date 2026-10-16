@@ -106,7 +106,7 @@
                                                     <TextBlock Text="Y" VerticalAlignment="Center" Margin="4,0,4,0" />
                                                     <TextBox x:Name="QuickYBox" Width="64" VerticalContentAlignment="Center" AutomationProperties.Name="Click Y coordinate" />
                                                 </WrapPanel>
-                                                <Button x:Name="PingLocationButton" Margin="0,6,0,0" Content="Ping click location" Click="PingLocation_Click" HorizontalAlignment="Left" />
+                                                <Button x:Name="PingLocationButton" Margin="0,6,0,0" Content="Ping location" Click="PingLocation_Click" HorizontalAlignment="Left" />
                                             </StackPanel>
                                             <StackPanel x:Name="MotionFields" IsVisible="False">
                                                 <CheckBox x:Name="VaryPositionBox" Content="Randomize click location offset" />
@@ -143,7 +143,7 @@
                                                 <ComboBox x:Name="ConditionKindBox" SelectedIndex="0" SelectionChanged="ConditionKind_Changed" AutomationProperties.Name="Wait until"><ComboBoxItem Content="A Colour appears" /><ComboBoxItem Content="A Colour disappears" /></ComboBox>
                                                 <WrapPanel>
                                                     <Button Content="Choose area and colour…" Click="QuickCondition_Click" />
-                                                    <Button x:Name="QuickEyedropper" Content="Pick colour…" Click="QuickEyedropper_Click" />
+                                                    <Button x:Name="PingScanAreaButton" Content="Ping scan area" Click="PingScanArea_Click" ToolTip.Tip="Outlines the area this wait watches on the target, three times." AutomationProperties.Name="Ping scan area" />
                                                 </WrapPanel>
                                                 <Border x:Name="ConditionSwatch" Height="24" Margin="0,3,0,5" IsVisible="False"><TextBlock x:Name="ConditionColourLabel" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
                                                 <TextBlock x:Name="ConditionLabel" Text="Select the area to scan and what to look for." Classes="secondary" />

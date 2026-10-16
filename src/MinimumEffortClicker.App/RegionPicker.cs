@@ -42,6 +42,8 @@ internal sealed class RegionPicker : Window
         Owner = owner; Title = maximumSide == 1 ? "Pick a colour — click a pixel" : "Select an area — drag on the picture";
         Width = Math.Min(980, SystemParameters.WorkArea.Width - 40); Height = Math.Min(720, SystemParameters.WorkArea.Height - 40);
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        // User (2026-10-16): opens maximised so the picture is big enough to drag on; the size above is the restore size.
+        WindowState = WindowState.Maximized;
         SetResourceReference(BackgroundProperty, "AppBackground"); SetResourceReference(ForegroundProperty, "TextPrimary");
         foreach (var type in new[] { typeof(Button), typeof(ComboBox) })
             if (owner.TryFindResource(type) is Style style) Resources[type] = style;

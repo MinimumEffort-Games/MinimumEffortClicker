@@ -70,7 +70,7 @@ With the rule, the app reads `/dev/input` like the Windows build's input hooks: 
 blocks a device, and only listens while it runs. Playback goes through GNOME's or KWin's virtual devices,
 which never appear in `/dev/input`, so the app always knows your real input from its own.
 
-In Desktop mode, Pick colour and the area picker show a Monitor list; colour and image waits then read
+In Desktop mode, the area picker (Choose area and colour) shows a Monitor list; colour and image waits then read
 that area of the screen through the helper. With a window as Click target, a run pauses when the
 window goes behind another one and continues by itself once it has been back in front for half a second.
 

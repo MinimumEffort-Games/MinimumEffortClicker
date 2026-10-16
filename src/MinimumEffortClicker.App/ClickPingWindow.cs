@@ -16,7 +16,7 @@ internal sealed class ClickPingWindow : Window
 {
     private const int SizePixels = 120;
     public static readonly Color Landed = Color.FromRgb(0x3D, 0xDC, 0x84), Location = Color.FromRgb(0xE5, 0x39, 0x35);
-    /// <summary>How long one grow-and-fade of the ring takes; Ping click location waits for its pulses before the clicker comes back.</summary>
+    /// <summary>How long one grow-and-fade of the ring takes; Ping location waits for its pulses before the clicker comes back.</summary>
     public static readonly TimeSpan Pulse = TimeSpan.FromSeconds(1);
 
     public ClickPingWindow(int screenX, int screenY, Color colour, int times = 1)

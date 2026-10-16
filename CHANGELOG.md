@@ -31,9 +31,13 @@
   rest of the app works either way, with a **Show at startup** checkbox. **Turn on** and **Turn off** (there and in
   Settings → Linux setup) ask for your password in the system's own window instead of a terminal command.
 - The clicker comes back to the front by itself after everything in the Action List that needed the target:
-  the list ending or being stopped, Ping click location, Test Selected Action, Set location, a colour pick (Linux) and
-  recording, with a window target as well as Desktop. Toggles never change focus. A list that ends while a toggle
-  keeps running leaves the clicker out of the way.
+  the list ending or being stopped, Ping location, Ping scan area, Test Selected Action, Set location and recording,
+  with a window target as well as Desktop. Toggles never change focus. A list that ends while a toggle keeps running
+  leaves the clicker out of the way.
+- Wait until a colour: the Pick colour button is gone (Choose area and colour does both). A new **Ping scan area**
+  button outlines the watched area three times on the target, and Test Selected Action on a wait outlines it once,
+  green when the colour is there and red when it is not. The area picker opens maximised. "Ping click location" is
+  now "Ping location", because scroll actions use it too.
 - With "Only Stop All (F9)", your own clicks never end a run: if you hold the button the clicker is about to press, it
   waits until you let go; if you press a button the clicker is holding, your release finishes the click. Before, either
   overlap ended the run ("physical input takes priority" or "cleanup pending"). "Stop on my input" is unchanged.

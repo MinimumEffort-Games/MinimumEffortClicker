@@ -340,7 +340,7 @@ public partial class MainWindow : Window
                     return false;
                 }
                 for (int retry = 0; retry < 50 && Covered(); retry++) await Task.Delay(20, startCancellation.Token);
-                if (Covered()) throw new InvalidOperationException("The first click location is still covered by ME Clicker. Move the clicker away or use Ping click location to check it.");
+                if (Covered()) throw new InvalidOperationException("The first click location is still covered by ME Clicker. Move the clicker away or use Ping location to check it.");
             }
             if (startIntent != runtime.StopVersion || allowClose || closing) return;
             accepted = runtime.TryStartQuick(plan!, definition!.Steps.Count, TimeSpan.Zero, ResizeClicksBox.SelectedIndex == 0);
