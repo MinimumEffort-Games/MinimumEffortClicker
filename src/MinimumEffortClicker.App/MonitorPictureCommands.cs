@@ -35,17 +35,4 @@ public partial class MainWindow
             RefreshStatus();
         }
     }
-
-    /// <summary>Cuts a Desktop-mode area (absolute screen pixels) out of the monitor pictures.</summary>
-    internal static RasterSample CutFromMonitorPictures(IReadOnlyList<DesktopMonitor> monitors, IReadOnlyList<WindowSnapshot> pictures, CaptureRegion area)
-    {
-        int index = monitors.ToList().FindIndex(m => m.Contains(area.Origin.X, area.Origin.Y) && m.Contains(area.Origin.X + area.Width - 1, area.Origin.Y + area.Height - 1));
-        if (index < 0) throw new InvalidOperationException("That area is not on one monitor. Pick it again.");
-        var monitor = monitors[index]; var picture = pictures[index];
-        int left = area.Origin.X - monitor.X, top = area.Origin.Y - monitor.Y;
-        byte[] pixels = new byte[area.Width * area.Height * 4];
-        for (int y = 0; y < area.Height; y++)
-            Array.Copy(picture.Pixels, ((top + y) * picture.Width + left) * 4, pixels, y * area.Width * 4, area.Width * 4);
-        return new(area.Width, area.Height, pixels);
-    }
 }

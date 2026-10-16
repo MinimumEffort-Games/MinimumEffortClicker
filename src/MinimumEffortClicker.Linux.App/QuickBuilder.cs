@@ -17,7 +17,10 @@ public partial class MainWindow
 {
     private SequenceHistory quickHistory = new(new([]));
     private IReadOnlyList<NamedPoint>? quickPoints;
-    private ConditionDefinition? quickCondition;
+    // Where a selected area sits, with the window size and scale it was picked at; null until an area is selected.
+    private ClientPoint? quickAreaOrigin;
+    // A wait from an older macro that the panel has no fields for (an image wait): kept as it is, only its timing edits.
+    private ConditionDefinition? quickOtherCondition;
     private SequenceStep? editingQuick;
     private string? originalQuickDefaultName;
     private Guid? loadedQuickProfile, loadedQuickMacro;
@@ -28,30 +31,56 @@ public partial class MainWindow
     private readonly ObservableCollection<QuickChildRow> quickChildren = [];
     private readonly ObservableCollection<string> quickInputNames = [];
     private readonly Dictionary<string, InputControl> quickInputs = SequenceKeys.Supported.ToDictionary(k => k.Key, k => InputControl.Key(k.Value));
-    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground)
+    private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground, bool Reselect = false)
     {
         /// <summary>The row's Repeating (0) / Once (1) dropdown.</summary>
         public int RepeatIndex => Step.Once ? 1 : 0;
     }
+    /// <summary>
+    /// User (2026-10-16): an area picked with Desktop as the Click target is a spot on the screen, one picked on a window
+    /// moves with that window. After switching between the two the area belongs to the old target, so the wait is
+    /// marked and needs Select area again.
+    /// </summary>
+    private bool PickedForOtherTarget(CaptureRegion? region) =>
+        region is not null && runtime is not null && (region.Origin.Space == CoordinateSpace.Desktop) != runtime.IsDesktopMode;
     private static SolidColorBrush ColourBrush(int rgb) => new(Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
     private static IBrush ColourText(int rgb)
     {
         static double L(int c) { double s = c / 255d; return s <= 0.04045 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4); }
         return 0.2126 * L(rgb >> 16 & 255) + 0.7152 * L(rgb >> 8 & 255) + 0.0722 * L(rgb & 255) > 0.179 ? Brushes.Black : Brushes.White;
     }
+    /// <summary>The colour preview, the one-line summary and Ping scan area, from what the wait fields say now.</summary>
     private void ShowConditionColour()
     {
-        PingScanAreaButton.IsEnabled = quickCondition?.Region is not null;
-        if (ModeBox.SelectedIndex == 3)
-            ActionHint.Text = ConditionKindBox.SelectedIndex == 1 ? "Choose an area and its colour: the wait continues once no pixel in that area has the colour any more." : "Continue when a colour appears or disappears.";
-        if (quickCondition is not null)
+        if (ConditionLabel is null || PingScanAreaButton is null) return;
+        ConditionColourPreview.Background = TryConditionColour(out int rgb) ? ColourBrush(rgb) : Brushes.Transparent;
+        if (ModeBox.SelectedIndex != 3) return;
+        ActionHint.Text = ConditionKindBox.SelectedIndex == 1 ? "Choose an area and its colour: the wait continues once no pixel in that area has the colour any more." : "Continue when a colour appears or disappears.";
+        try
         {
-            try { ConditionLabel.Text = ConditionSummary(ReadQuickCondition()); }
-            catch (ArgumentException ex) { ConditionLabel.Text = ex.Message; }
+            var condition = ReadQuickCondition();
+            ConditionLabel.Text = ConditionSummary(condition); PingScanAreaButton.IsEnabled = condition.Region is not null;
         }
-        bool colour = quickCondition?.Kind is ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears;
-        ConditionSwatch.Visibility = colour ? Visibility.Visible : Visibility.Collapsed;
-        if (colour) { ConditionSwatch.Background = ColourBrush(quickCondition!.Color); ConditionColourLabel.Foreground = ColourText(quickCondition.Color); ConditionColourLabel.Text = $"#{quickCondition.Color:X6}"; }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { ConditionLabel.Text = ex.Message; PingScanAreaButton.IsEnabled = false; }
+        // User (2026-10-16): Select area is outlined red until there is an area, then green.
+        bool areaChosen = quickOtherCondition?.Region is { } kept && !PickedForOtherTarget(kept);
+        if (!areaChosen) try { ReadQuickArea(); areaChosen = true; } catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
+        SelectAreaButton.Classes.Set("needs-choice", !areaChosen); SelectAreaButton.Classes.Set("chosen", areaChosen);
+        RefreshAddAction();
+    }
+    /// <summary>
+    /// User (2026-10-16): Add Action / Save Changes stays grey until the editor describes an action that can be added;
+    /// hovering it then says what is missing.
+    /// </summary>
+    private void RefreshAddAction()
+    {
+        if (AddActionButton is null || loadingQuick) return;
+        bool complex = editingQuick is not null && ModeBox.SelectedIndex < 0;
+        string? missing = null;
+        if (ModeBox.SelectedIndex < 0 && !complex) missing = "Choose an action first.";
+        else try { ReadQuickAction(); } catch (Exception ex) { missing = ex.Message; }
+        AddActionButton.IsEnabled = missing is null;
+        ToolTip.SetTip(AddActionButton, missing);
     }
     private sealed class QuickChildRow
     {
@@ -73,7 +102,10 @@ public partial class MainWindow
         foreach (var name in quickInputs.Keys) quickInputNames.Add(name);
         QuickChildrenGrid.ItemsSource = quickChildren;
         QuickUndoButton.IsEnabled = QuickRedoButton.IsEnabled = false;
-        QuickFields.AddHandler(TextBox.TextChangedEvent, (_, _) => { if (initialized && !loadingQuick) TestResultLabel.Text = ""; });
+        QuickFields.AddHandler(TextBox.TextChangedEvent, (_, _) => { if (initialized && !loadingQuick) { TestResultLabel.Text = ""; RefreshAddAction(); } });
+        // Any choice in the editor can make the action addable or not.
+        QuickFields.AddHandler(SelectingItemsControl.SelectionChangedEvent, (_, _) => { if (initialized) RefreshAddAction(); });
+        QuickFields.AddHandler(ToggleButton.IsCheckedChangedEvent, (_, _) => { if (initialized) RefreshAddAction(); });
     }
     private static string Ms(TimeSpan time) => time.TotalMilliseconds.ToString("0.###", CultureInfo.CurrentCulture);
     private static TimeSpan Milliseconds(TextBox box) => TimeSpan.FromMilliseconds(Number(box));
@@ -158,9 +190,8 @@ public partial class MainWindow
         DoubleFields.Visibility = ModeBox.SelectedIndex == 0 && ClickKindBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         PauseFields.Visibility = ModeBox.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
         ScreenshotActionFields.Visibility = ModeBox.SelectedIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
-        ScanIntervalFields.Visibility = ConditionFields.Visibility = ModeBox.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
+        ConditionAdvancedFields.Visibility = ConditionFields.Visibility = ModeBox.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         ComplexFields.Visibility = complex ? Visibility.Visible : Visibility.Collapsed;
-        AddActionButton.IsEnabled = ModeBox.SelectedIndex >= 0 || complex;
         // Blue Add Action adds a new action; green Save Changes changes the selected one, so it is always clear which.
         AddActionButton.Content = editingQuick is null ? "Add Action" : "Save Changes";
         AddActionButton.Classes.Set("blue", editingQuick is null); AddActionButton.Classes.Set("green", editingQuick is not null);
@@ -169,6 +200,7 @@ public partial class MainWindow
         Location_Changed(this, new RoutedEventArgs());
         ActionHint.Text = complex ? "Edit the recorded inputs below. Their overlap is preserved." : ModeBox.SelectedIndex switch
         { 0 => "Click at your cursor or a saved location.", 1 => "Press a key, with optional modifiers or a longer hold.", 2 => "Wait before the next action.", 3 => "Continue when a colour appears or disappears.", 4 => "Save a fullscreen PNG of all monitors.", 5 => "Turn the mouse wheel at your cursor or a saved location.", _ => "Choose an action to see its settings." };
+        if (ModeBox.SelectedIndex == 3) ShowConditionColour(); else RefreshAddAction();
     }
     private void ClickKind_Changed(object sender, SelectionChangedEventArgs e)
     { if (!initialized || loadingQuick) return; PressBox.Text = ClickKindBox.SelectedIndex == 2 ? "1000" : "20"; ShowQuickFields(); }
@@ -181,6 +213,7 @@ public partial class MainWindow
         SetLocationButton.SetButtonStyle(useCursorLocation ? "StandardButton" : "GreenButton");
         QuickXBox.IsEnabled = QuickYBox.IsEnabled = !useCursorLocation;
         MotionFields.Visibility = ModeBox.SelectedIndex == 0 && !useCursorLocation ? Visibility.Visible : Visibility.Collapsed;
+        RefreshAddAction();
     }
     private void CursorLocation_Click(object sender, RoutedEventArgs e)
     { useCursorLocation = true; Location_Changed(sender, e); }
@@ -203,17 +236,60 @@ public partial class MainWindow
     {
         if (loadingQuick || ConditionLabel is null) return;
         TestResultLabel.Text = "";
-        if (ConditionKindBox.SelectedIndex is 0 or 1 && quickCondition?.Kind is ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears)
-            quickCondition = quickCondition with { Kind = ConditionKindBox.SelectedIndex == 1 ? ConditionKind.ColorDisappears : ConditionKind.RegionColor };
-        else quickCondition = null;
-        ConditionLabel.Text = quickCondition is null ? "Choose the area and what to look for." : ConditionSummary(quickCondition);
-        if (PingScanAreaButton is not null) ShowConditionColour();
+        // Choosing a colour wait replaces an older image wait that was loaded into the panel.
+        if (ConditionKindBox.SelectedIndex >= 0) quickOtherCondition = null;
+        ShowConditionColour();
     }
+    private void ConditionField_Changed(object sender, TextChangedEventArgs e) { if (initialized && !loadingQuick) ShowConditionColour(); }
+    private void ConditionCalibrate_Changed(object sender, RoutedEventArgs e) { if (initialized && !loadingQuick) ShowConditionColour(); }
+
+    private bool TryConditionColour(out int rgb)
+    {
+        string text = (ConditionRgbBox.Text ?? "").Trim().TrimStart('#');
+        return int.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out rgb) && rgb is >= 0 and <= 0xFFFFFF && text.Length == 6;
+    }
+    private static int WholeNumber(TextBox box, int minimum, int maximum, string message) =>
+        int.TryParse((box.Text ?? "").Trim(), NumberStyles.Integer, CultureInfo.CurrentCulture, out int value) && value >= minimum && value <= maximum ? value : throw new ArgumentException(message);
+    private bool AreaFieldsEmpty => new[] { ConditionXBox, ConditionYBox, ConditionWidthBox, ConditionHeightBox }.All(b => string.IsNullOrWhiteSpace(b.Text));
+
+    /// <summary>
+    /// The wait as the panel's fields describe it. A selected area keeps the window size and scale it was picked at, and
+    /// playback adapts it like a click; coordinates typed with Calibrate ticked are measured on the Click target as it is now.
+    /// </summary>
     private ConditionDefinition ReadQuickCondition()
     {
-        var condition = quickCondition ?? throw new ArgumentException("Choose an area and colour first.");
-        var result = condition with { Policy = condition.Policy with { SampleInterval = QuickScanInterval() } };
-        result.Validate(); return result;
+        var policy = new ConditionPolicy(QuickScanInterval(), WholeNumber(ConditionStableBox, 1, 10, "Consecutive matching samples must be 1–10."));
+        if (quickOtherCondition is { } other)
+        {
+            if (PickedForOtherTarget(other.Region)) throw new ArgumentException("This area was picked for another Click target. Select area again.");
+            var kept = other with { Policy = policy }; kept.Validate(); return kept;
+        }
+        var region = ReadQuickArea();
+        if (!TryConditionColour(out int rgb)) throw new ArgumentException("Enter the colour as six hexadecimal digits, for example DEAB48.");
+        int tolerance = WholeNumber(ConditionToleranceBox, 0, 255, "Tolerance must be 0–255.");
+        var condition = new ConditionDefinition(ConditionKindBox.SelectedIndex == 1 ? ConditionKind.ColorDisappears : ConditionKind.RegionColor,
+            policy, region, rgb, (byte)tolerance, 1);
+        condition.Validate(); return condition;
+    }
+    /// <summary>The watched area from X, Y, width and height (see ReadQuickCondition for how it is measured).</summary>
+    private CaptureRegion ReadQuickArea()
+    {
+        if (AreaFieldsEmpty) throw new ArgumentException("Select an area first.");
+        int x = WholeNumber(ConditionXBox, int.MinValue, int.MaxValue, "Enter whole-number X and Y coordinates.");
+        int y = WholeNumber(ConditionYBox, int.MinValue, int.MaxValue, "Enter whole-number X and Y coordinates.");
+        int width = WholeNumber(ConditionWidthBox, 1, 256, "Width and height must be 1–256 pixels.");
+        int height = WholeNumber(ConditionHeightBox, 1, 256, "Width and height must be 1–256 pixels.");
+        ClientPoint origin;
+        if (ConditionCalibrateBox.IsChecked == true || quickAreaOrigin is null)
+        {
+            var frame = (runtime ?? throw new InvalidOperationException("The clicker is still starting.")).GetTargetFrame();
+            // Desktop mode keeps areas in desktop pixels so they work on any monitor.
+            origin = new(x, y, frame.Width, frame.Height, frame.Dpi, runtime.IsDesktopMode ? CoordinateSpace.Desktop : CoordinateSpace.WindowClient);
+        }
+        else origin = quickAreaOrigin with { X = x, Y = y };
+        var region = new CaptureRegion(origin, width, height); region.Validate();
+        if (PickedForOtherTarget(region)) throw new ArgumentException("This area was picked for another Click target. Select area again.");
+        return region;
     }
     private TimeSpan QuickScanInterval()
     {
@@ -221,24 +297,93 @@ public partial class MainWindow
         if (interval < 100 || interval > 5000) throw new ArgumentException("Scan interval must be 100–5,000 ms. Try 500 ms.");
         return TimeSpan.FromMilliseconds(interval);
     }
-    private void QuickScan_Changed(object sender, TextChangedEventArgs e)
+    /// <summary>Puts a saved wait into the panel's fields (called while loadingQuick is set).</summary>
+    private void ShowConditionFields(ConditionDefinition? condition)
     {
-        if (!initialized || loadingQuick || quickCondition is null) return;
-        TestResultLabel.Text = "";
-        try { ConditionLabel.Text = ConditionSummary(ReadQuickCondition()); }
-        catch (ArgumentException ex) { ConditionLabel.Text = ex.Message; }
+        bool colour = condition?.Kind is ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears;
+        quickOtherCondition = condition is not null && !colour ? condition : null;
+        ConditionKindBox.SelectedIndex = condition is null ? 0 : condition.Kind == ConditionKind.ColorDisappears ? 1 : colour ? 0 : -1;
+        var region = condition?.Region;
+        quickAreaOrigin = region?.Origin;
+        ConditionXBox.Text = region?.Origin.X.ToString(CultureInfo.CurrentCulture) ?? ""; ConditionYBox.Text = region?.Origin.Y.ToString(CultureInfo.CurrentCulture) ?? "";
+        ConditionWidthBox.Text = region?.Width.ToString(CultureInfo.CurrentCulture) ?? ""; ConditionHeightBox.Text = region?.Height.ToString(CultureInfo.CurrentCulture) ?? "";
+        ConditionRgbBox.Text = colour ? condition!.Color.ToString("X6") : "";
+        ConditionToleranceBox.Text = (condition?.Tolerance ?? 8).ToString(CultureInfo.CurrentCulture);
+        QuickScanIntervalBox.Text = condition is null ? "500" : Ms(condition.Policy.SampleInterval);
+        ConditionStableBox.Text = (condition?.Policy.StableSamples ?? 1).ToString(CultureInfo.CurrentCulture);
+        ConditionCalibrateBox.IsChecked = region is null;
     }
-    private void QuickCondition_Click(object sender, RoutedEventArgs e)
+
+    private async void SelectConditionArea_Click(object sender, RoutedEventArgs e) => await PickConditionArea(colourOnly: false);
+    private async void ConditionEyedropper_Click(object sender, RoutedEventArgs e) => await PickConditionArea(colourOnly: true);
+    /// <summary>
+    /// Select area (drag a box; the colour comes from its top-left pixel) or the Eyedropper (click one pixel; the area is
+    /// kept, or becomes that pixel when there is none yet), on a still picture of the target or, on Desktop, of the monitors.
+    /// </summary>
+    private async Task PickConditionArea(bool colourOnly)
     {
-        if (runtime is null || runtime.Snapshot.Busy) return;
-        var kind = ConditionKindBox.SelectedIndex == 1 ? ConditionKind.ColorDisappears : ConditionKind.RegionColor;
-        ConditionDefinition original;
-        try { original = quickCondition is null ? new(kind, new(QuickScanInterval())) : ReadQuickCondition(); }
-        catch (ArgumentException ex) { ReasonLabel.Text = ex.Message; return; }
-        var dialog = new ConditionEditor(this, runtime, original, coloursOnly: true);
-        quickEditorOpen = true;
-        try { if (dialog.ShowDialog() == true) { loadingQuick = true; quickCondition = dialog.Result; QuickScanIntervalBox.Text = Ms(quickCondition!.Policy.SampleInterval); ConditionKindBox.SelectedIndex = quickCondition.Kind switch { ConditionKind.ColorDisappears => 1, ConditionKind.RegionColor or ConditionKind.PixelColor => 0, _ => -1 }; ConditionLabel.Text = ConditionSummary(quickCondition!); ShowConditionColour(); } }
-        finally { loadingQuick = false; quickEditorOpen = false; }
+        if (runtime is null || runtime.Snapshot.Busy || quickOperation) return;
+        quickOperation = true;
+        using var selection = new CancellationTokenSource(); quickCancellation = selection;
+        void Cancel(string reason) { _ = selection.CancelAsync(); }
+        runtime.Control.StopRequested += Cancel;
+        RefreshStatus();
+        try
+        {
+            int side = colourOnly ? 1 : 256;
+            RegionPicker picker;
+            if (runtime.IsDesktopMode)
+            {
+                // The clicker steps out of the pictures and comes back before the picker opens.
+                var (monitors, pictures) = await CaptureMonitorPicturesAsync(selection.Token);
+                selection.Token.ThrowIfCancellationRequested();
+                Activate();
+                picker = new RegionPicker(this, monitors, pictures, runtime.GetTargetFrame(), side);
+            }
+            else
+            {
+                // The target comes to the front for its picture, then the clicker comes back to hold the picker.
+                var away = StepAsideForTarget(false);
+                TargetClientFrame frame; WindowSnapshot snapshot;
+                try
+                {
+                    if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
+                    await Task.Delay(350, selection.Token);
+                    frame = runtime.GetTargetFrame();
+                    snapshot = await Task.Run(() => runtime.CaptureAuthoringPreview(selection.Token), selection.Token);
+                }
+                finally { ComeBack(away); }
+                selection.Token.ThrowIfCancellationRequested();
+                picker = new RegionPicker(this, snapshot, frame, side);
+            }
+            using var abortPicker = selection.Token.Register(() => Dispatcher.UIThread.Post(() => picker.Close()));
+            if (picker.ShowDialog() == true && picker.Region is { } chosen)
+            {
+                loadingQuick = true;
+                try
+                {
+                    quickOtherCondition = null;
+                    if (ConditionKindBox.SelectedIndex < 0) ConditionKindBox.SelectedIndex = 0;
+                    if (!colourOnly || AreaFieldsEmpty)
+                    {
+                        quickAreaOrigin = chosen.Origin; ConditionCalibrateBox.IsChecked = false;
+                        ConditionXBox.Text = chosen.Origin.X.ToString(CultureInfo.CurrentCulture); ConditionYBox.Text = chosen.Origin.Y.ToString(CultureInfo.CurrentCulture);
+                        ConditionWidthBox.Text = chosen.Width.ToString(CultureInfo.CurrentCulture); ConditionHeightBox.Text = chosen.Height.ToString(CultureInfo.CurrentCulture);
+                    }
+                    ConditionRgbBox.Text = picker.Color.ToString("X6");
+                }
+                finally { loadingQuick = false; }
+                TestResultLabel.Text = "";
+                ReasonLabel.Text = colourOnly ? "Colour picked. The area is kept." : "Area and colour selected. Resize the target only before selecting a new area.";
+            }
+        }
+        catch (OperationCanceledException) { ReasonLabel.Text = "Selection cancelled."; }
+        catch (Exception ex) { ReasonLabel.Text = ex.Message; AppLog.Failure(colourOnly ? "Eyedropper" : "Select area", ex); }
+        finally
+        {
+            runtime.Control.StopRequested -= Cancel; quickCancellation = null; quickOperation = false;
+            RefreshStatus(); ShowConditionColour();
+        }
     }
     private static string ConditionSummary(ConditionDefinition c) => (c.Kind switch
         { ConditionKind.RegionColor or ConditionKind.PixelColor => $"Colour #{c.Color:X6} appears", ConditionKind.ColorDisappears => $"Colour #{c.Color:X6} disappears", ConditionKind.ImageAppears => "Image appears", ConditionKind.ImageDisappears => "Image disappears", ConditionKind.RegionChanged => "Area changes", _ => "Window is active" })
@@ -313,7 +458,7 @@ public partial class MainWindow
         KeyBox.SelectedItem = "W"; CtrlBox.IsChecked = ShiftBox.IsChecked = AltBox.IsChecked = HoldKeyBox.IsChecked = false;
         PressBox.Text = "20"; DoubleGapBox.Text = "80"; AfterBox.Text = "20"; PauseDurationBox.Text = "1"; PauseUnitBox.SelectedIndex = 1;
         ScreenshotPauseBox.Text = "1000"; ScrollDirectionBox.SelectedIndex = 1; ScrollNotchesBox.Text = "3"; ScrollGapBox.Text = "30";
-        quickCondition = null; QuickScanIntervalBox.Text = "500"; ConditionKindBox.SelectedIndex = 0; ConditionLabel.Text = "Select the area to scan and what to look for.";
+        ShowConditionFields(null); ConditionLabel.Text = "Select the area to scan and what to look for.";
         RandomTimingBox.IsChecked = false; MaxPressBox.Text = "40"; MaxAfterBox.Text = "80";
         VaryPositionBox.IsChecked = false; PositionOffsetBox.Text = "3";
         quickChildren.Clear(); TestResultLabel.Text = ""; AddActionButton.Content = "Add Action";
@@ -322,7 +467,8 @@ public partial class MainWindow
     private QuickRow[] QuickRows(IEnumerable<SequenceStep> steps) => steps.Select((s, i) =>
         new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : QuickActions.ReadScroll(s) is { } scroll ? ScrollSummary(scroll) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
             s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } colour ? ColourBrush(colour.Color) : Brushes.Transparent,
-            s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (IBrush)this.FindResource("TextPrimary")!)).ToArray();
+            s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (IBrush)this.FindResource("TextPrimary")!,
+            PickedForOtherTarget(s.Condition?.Region))).ToArray();
     /// <summary>Shows actions captured so far below the existing list while recording runs.</summary>
     private void ShowRecordingPreview(IReadOnlyList<SequenceStep> recorded)
     {
@@ -360,7 +506,7 @@ public partial class MainWindow
             if (s.Kind == StepKind.Wait) { ModeBox.SelectedIndex = 2; PauseUnitBox.SelectedIndex = 0; PauseDurationBox.Text = Ms(s.Duration); }
             else if (s.Kind == StepKind.Screenshot) { ModeBox.SelectedIndex = 4; ScreenshotPauseBox.Text = Ms(s.Duration); }
             else if (s.Kind == StepKind.Condition)
-            { ModeBox.SelectedIndex = 3; quickCondition = s.Condition; ConditionKindBox.SelectedIndex = s.Condition!.Kind switch { ConditionKind.ColorDisappears => 1, ConditionKind.RegionColor or ConditionKind.PixelColor => 0, _ => -1 }; QuickScanIntervalBox.Text = Ms(s.Condition.Policy.SampleInterval); ConditionLabel.Text = ConditionSummary(s.Condition); }
+            { ModeBox.SelectedIndex = 3; ShowConditionFields(s.Condition); ConditionLabel.Text = ConditionSummary(s.Condition!); }
             else
             {
                 var actions = s.Kind == StepKind.Input ? new[] { new TimedAction(Guid.NewGuid(), TimeSpan.Zero, s.Control!.Value, s.Duration, s.Position, s.EndPosition, s.TargetId) } : s.Children?.ToArray() ?? [];

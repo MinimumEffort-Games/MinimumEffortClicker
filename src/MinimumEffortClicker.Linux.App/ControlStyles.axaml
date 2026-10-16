@@ -70,6 +70,15 @@
         <Setter Property="BorderBrush" Value="{DynamicResource StopBorder}" />
         <Setter Property="Foreground" Value="{DynamicResource ColourButtonText}" />
     </Style>
+    <!-- A button that still needs a choice: outlined red, not filled, so it is noticed without competing with Stop and Record. -->
+    <Style Selector="Button.needs-choice">
+        <Setter Property="BorderBrush" Value="{DynamicResource StopBorder}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="Button.chosen">
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
     <Style Selector="Button.icon">
         <Setter Property="Width" Value="34" />
         <Setter Property="Height" Value="34" />

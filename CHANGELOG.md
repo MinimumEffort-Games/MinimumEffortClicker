@@ -41,6 +41,16 @@
 - The clicker remembers Loop, Minimize on Start, Record pauses, Minimize on record and Simulate mouse movement as you
   last left them, and the toggles you left Active are armed again at the next start. Armed only: nothing is held or
   pressed until you tap a toggle's shortcut, so the clicker still starts stopped.
+- Wait until a colour is set up entirely in the Create an Action panel; the separate wait window is gone. Select
+  area… (drag on a snapshot) sits next to Ping scan area, with the RGB colour, the Eyedropper and a colour preview
+  below; below Name, an Advanced section holds the exact coordinates, tolerance, scan interval and matching samples.
+  The area picker opens maximised on the monitor the clicker is on. Cursor location is no longer cut off.
+- Add Action (and Save Changes) stays grey until the action can be added; hovering it says what is missing. Select
+  area… is outlined red until an area is chosen, then green.
+- A colour wait picked with Desktop as the Click target belongs to the screen, one picked on a window moves with
+  that window. After switching between the two, those waits turn red in the Action List with a Reselect Area tag,
+  and the editor asks to select the area again before the wait can be saved.
+- Linux: the Ping scan area outline stays on the area near GNOME's top bar.
 - With "Only Stop All (F9)", your own clicks never end a run: if you hold the button the clicker is about to press, it
   waits until you let go; if you press a button the clicker is holding, your release finishes the click. Before, either
   overlap ended the run ("physical input takes priority" or "cleanup pending"). "Stop on my input" is unchanged.

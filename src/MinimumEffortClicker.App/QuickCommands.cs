@@ -58,7 +58,7 @@ public partial class MainWindow
         StepAside? away = null;
         try
         {
-            if (quickCondition?.Region is not { } region) throw new ArgumentException("Choose the area and colour first.");
+            if (ReadQuickCondition().Region is not { } region) throw new ArgumentException("Select an area first.");
             var area = AreaScreenRect(region);
             away = StepAsideForTarget(runtime.IsDesktopMode);
             if (!runtime.IsDesktopMode && !runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
