@@ -32,9 +32,8 @@
   Settings → Linux setup) ask for your password in the system's own window instead of a terminal command.
 - The clicker comes back to the front by itself after everything in the Action List that needed the target:
   the list ending or being stopped, Ping click location, Test Selected Action, Set location, a colour pick (Linux) and
-  recording, with a
-  window target as well as Desktop. Toggles never change focus. A list that ends while a toggle keeps running leaves
-  the clicker out of the way.
+  recording, with a window target as well as Desktop. Toggles never change focus. A list that ends while a toggle
+  keeps running leaves the clicker out of the way.
 - With "Only Stop All (F9)", your own clicks never end a run: if you hold the button the clicker is about to press, it
   waits until you let go; if you press a button the clicker is holding, your release finishes the click. Before, either
   overlap ended the run ("physical input takes priority" or "cleanup pending"). "Stop on my input" is unchanged.
