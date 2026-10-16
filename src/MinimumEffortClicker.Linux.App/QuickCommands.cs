@@ -17,17 +17,23 @@ public partial class MainWindow
     private static readonly PointerButton[] MouseChoices = [PointerButton.Left, PointerButton.Middle, PointerButton.Right, PointerButton.XButton1, PointerButton.XButton2];
     private PointerButton MouseChoice { get => MouseChoices[Math.Max(0, ButtonBox.SelectedIndex)]; set => ButtonBox.SelectedIndex = Array.IndexOf(MouseChoices, value); }
     private ClientPoint? quickPoint;
-    private void PingLocation_Click(object sender, RoutedEventArgs e)
+    private async void PingLocation_Click(object sender, RoutedEventArgs e)
     {
         if (runtime is null || runtime.Snapshot.Busy || quickOperation) return;
+        const int pulses = 3;
+        StepAside? away = null;
         try
         {
             var screen = ClickScreenPoint(ReadQuickAction()) ?? throw new ArgumentException("Set a saved click location first.");
+            // The target is shown while the ring pulses: the clicker steps aside on Desktop, a window target comes forward.
+            away = StepAsideForTarget(runtime.IsDesktopMode);
             if (!runtime.IsDesktopMode && !runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             // The same ring as a tested click, in red and three times, exactly on the saved location.
-            ClickPingWindow.At(screen.X, screen.Y, ClickPingWindow.Location, times: 3);
+            ClickPingWindow.At(screen.X, screen.Y, ClickPingWindow.Location, times: pulses);
+            await Task.Delay(ClickPingWindow.Pulse * pulses);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { ReasonLabel.Text = ex.Message; }
+        finally { ComeBack(away); }
     }
 
     /// <summary>
@@ -47,15 +53,14 @@ public partial class MainWindow
     {
         if (runtime is null || runtime.Snapshot.Busy || quickOperation) return;
         quickOperation = true;
-        WindowState? minimizedFrom = null;
+        StepAside? away = null;
         using var cancellation = new CancellationTokenSource(); quickCancellation = cancellation;
         void Cancel(string reason) { _ = cancellation.CancelAsync(); }
         runtime.Control.StopRequested += Cancel;
         RefreshStatus();
         try
         {
-            if (runtime.IsDesktopMode && WindowState != WindowState.Minimized)
-            { minimizedFrom = WindowState; WindowState = WindowState.Minimized; }
+            away = StepAsideForTarget(runtime.IsDesktopMode);
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             await Task.Delay(350, cancellation.Token);
             var picker = new TargetPreviewWindow(runtime, [], true);
@@ -64,20 +69,9 @@ public partial class MainWindow
             {
                 quickPoint = point; useCursorLocation = false; ShowQuickCoordinates();
             }
-            Activate();
         }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
-        finally { runtime.Control.StopRequested -= Cancel; quickCancellation = null; quickOperation = false; RestoreDesktopOperationWindow(minimizedFrom); RefreshStatus(); }
-    }
-
-    private void RestoreDesktopOperationWindow(WindowState? previous)
-    {
-        // Restore only minimization performed by this operation. An explicit tray hide stays hidden.
-        if (previous is null || !IsVisible || allowClose || closing || WindowState != WindowState.Minimized) return;
-        WindowState = previous.Value;
-        Activate();
-        // GNOME refuses to raise an X11 window that is not focused and only says it "is ready"; the shell helper can.
-        runtime?.ActivateOwnWindow(Title ?? "");
+        finally { runtime.Control.StopRequested -= Cancel; quickCancellation = null; quickOperation = false; ComeBack(away); RefreshStatus(); }
     }
 
     /// <summary>
