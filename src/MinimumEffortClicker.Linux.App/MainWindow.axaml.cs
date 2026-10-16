@@ -119,6 +119,7 @@ public partial class MainWindow : Window
             ResizeClicksBox.SelectedIndex = settings.ScaleClickPositions ? 0 : 1;
             CloseToTrayBox.IsChecked = settings.CloseToTray;
             trayNoticeShown = settings.TrayNoticeShown;
+            showInputAccessNotice = settings.InputAccessNotice;
             traySettingsLoaded = true;
             ((App)Application.Current!).Appearance = (Appearance)settings.Appearance;
             AppTheme.Apply((Appearance)settings.Appearance);
@@ -167,6 +168,12 @@ public partial class MainWindow : Window
                     {
                         try { await EnduranceMeasurement.CompleteAsync(() => runtime.Snapshot, () => runtime.Stop("Endurance diagnostic finished.")); }
                         finally { ExitApplication(); }
+                    }
+                    // Measurement runs have nobody to read a notice; a normal start explains missing input access once ready.
+                    if (settingsLoaded && !StartupMeasurement.Enabled && IdleMeasurement.Destination is null && EnduranceMeasurement.Destination is null)
+                    {
+                        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                        await ShowInputAccessNoticeAsync();
                     }
                 }
             }
@@ -446,7 +453,7 @@ public partial class MainWindow : Window
         if (!initialized) return;
         pendingPreferences = new(1, ThemeBox.SelectedIndex, appliedToggleKey,
             appliedStopKey, appliedHoldTrigger, OverlayBox.IsChecked == true, overlayOptions, false, appliedClickLimit, appliedKeepAwake, ResizeClicksBox.SelectedIndex == 0,
-            CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop);
+            CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop, showInputAccessNotice);
         if (preferencesBusy) return;
         preferencesBusy = true;
         try

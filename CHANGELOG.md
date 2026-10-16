@@ -27,6 +27,9 @@
   X, with the keys you bound. The run line is short ("Running · 10 Actions · Looping") and a toggle that is on shows
   in blue.
 - A "Minimize on Start" checkbox under Loop: untick it to keep the clicker up when Start runs on the Desktop target.
+- Linux: while input access is off, a notice at startup explains that Record and Stop on my input need it and that the
+  rest of the app works either way, with a **Show at startup** checkbox. **Turn on** and **Turn off** (there and in
+  Settings → Linux setup) ask for your password in the system's own window instead of a terminal command.
 - Windows: the clicker comes back to the front by itself after everything in the Action List that needed the target:
   the list ending or being stopped, Ping click location, Test Selected Action, Set location and recording, with a
   window target as well as Desktop. Toggles never change focus. A list that ends while a toggle keeps running leaves

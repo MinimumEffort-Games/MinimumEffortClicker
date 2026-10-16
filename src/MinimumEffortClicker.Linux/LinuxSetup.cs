@@ -127,6 +127,41 @@ public static class LinuxSetup
     /// </summary>
     public static string? InputAccessRemoveCommand => InputRuleScriptPath is { } script ? $"sudo bash '{script}' --remove" : null;
 
+    /// <summary>
+    /// The system's own password window for apps (polkit's pkexec), the one software updates use. Null on a system without
+    /// it; the terminal command above still works there.
+    /// </summary>
+    public static string? SystemPasswordPrompt => new[] { "/usr/bin/pkexec", "/bin/pkexec" }.FirstOrDefault(File.Exists);
+
+    /// <summary>
+    /// Turns physical input access on or off by running the same script as the terminal command, as administrator through
+    /// the system password window. Only ever called from a button the user pressed (User, 2026-10-16): elevation is never
+    /// automatic, and Linux itself asks for the password.
+    /// </summary>
+    public static async Task<(bool Done, string Message)> SetInputAccessAsync(bool on)
+    {
+        if (InputRuleScriptPath is not { } script) return (false, "The input access script is missing from this copy of the app.");
+        if (SystemPasswordPrompt is not { } prompt) return (false, "This system has no password window for apps (pkexec). Copy the command and run it in a terminal instead.");
+        var start = new ProcessStartInfo(prompt) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+        start.ArgumentList.Add("/bin/bash"); start.ArgumentList.Add(script);
+        if (!on) start.ArgumentList.Add("--remove");
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("The password window could not start.");
+        var output = process.StandardOutput.ReadToEndAsync(); var error = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        string detail = ((await error).Trim() is { Length: > 0 } text ? text : (await output).Trim()).Split('\n').LastOrDefault() ?? "";
+        return DescribeInputAccessResult(process.ExitCode, on, detail);
+    }
+
+    /// <summary>What a pkexec run of the input-access script means: 126 = the password window was closed, 127 = not
+    /// allowed or no password agent running, anything else non-zero = the script itself failed.</summary>
+    public static (bool Done, string Message) DescribeInputAccessResult(int exitCode, bool on, string detail) => exitCode switch
+    {
+        0 => (true, on ? "Input access is on." : "Input access is off."),
+        126 => (false, "Cancelled: the password window was closed. Nothing changed."),
+        127 => (false, "The system did not allow it, or no password window could open. Copy the command and run it in a terminal instead."),
+        _ => (false, "The setup script failed: " + detail)
+    };
+
     private static bool Run(string program, params string[] arguments)
     {
         try
