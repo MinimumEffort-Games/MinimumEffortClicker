@@ -25,7 +25,6 @@ public partial class MainWindow
     {
         if (ToggleIntervalLabel is not null) ToggleIntervalLabel.Text = $"{e.NewValue:0} ms · {1000 / e.NewValue:0.#} taps/sec";
     }
-    private static string HeldKey(MacroDefinition macro) => InputLabel(macro.Plan!.Control);
     private static string InputLabel(InputControl input)
     { var label = RecordingNormalizer.Label(input); return label.StartsWith("Hold ", StringComparison.Ordinal) ? label[5..] : label; }
 
@@ -48,16 +47,16 @@ public partial class MainWindow
         if (refreshingToggles || ToggleList.SelectedItem is not ToggleRow row) return;
         var macro = SavedToggles.First(m => m.Id == row.Id);
         editingToggle = row.Id; ToggleModeBox.SelectedIndex = macro.Plan!.Mode == HelperMode.Repeat ? 1 : 0; ToggleIntervalSlider.Value = Math.Clamp(macro.Plan.Interval.TotalMilliseconds, 10, 1000);
-        selectedHeldInput = macro.Plan!.Control; ToggleHeldKeyBox.Content = HeldKey(macro); ToggleNameBox.Text = macro.Name;
+        selectedHeldInput = macro.Plan!.Control; ShowHeldInput(); ToggleNameBox.Text = macro.Name;
         selectedToggleKey = macroBindings.TryGetValue(row.Id, out var binding) ? binding.Key : 0;
-        ToggleShortcutBox.Content = ShortcutKeys.Label(selectedToggleKey);
+        ShowToggleShortcut();
         SaveToggleButton.ToolTip = "Save changes";
         DeleteToggleButton.IsEnabled = true;
     }
     private void NewToggle_Click(object sender, RoutedEventArgs e)
     {
         editingToggle = null; ToggleList.SelectedIndex = -1; ToggleModeBox.SelectedIndex = 0; ToggleIntervalSlider.Value = 100;
-        selectedToggleKey = 0; ToggleShortcutBox.Content = "Choose a key…"; ToggleNameBox.Text = "";
+        selectedToggleKey = 0; ShowToggleShortcut(); ToggleNameBox.Text = "";
         SaveToggleButton.ToolTip = "Add toggle"; DeleteToggleButton.IsEnabled = false;
     }
     private async void SaveToggle_Click(object sender, RoutedEventArgs e)
@@ -103,7 +102,7 @@ public partial class MainWindow
     }
     private async void ToggleEnabled_Changed(object sender, RoutedEventArgs e)
     {
-        if (!initialized || refreshingToggles || operations.Any(Operation.Binding | Operation.Library) || sender is not CheckBox { DataContext: ToggleRow row } box) return;
+        if (!initialized || refreshingToggles || operations.Any(Operation.Binding | Operation.Library) || sender is not System.Windows.Controls.Primitives.ToggleButton { DataContext: ToggleRow row } box) return;
         if (box.IsChecked == true) enabledToggles.Add(row.Id); else enabledToggles.Remove(row.Id);
         await ApplyAvailability();
         RememberActiveToggles();

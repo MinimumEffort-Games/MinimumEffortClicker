@@ -6,9 +6,9 @@ using MinimumEffortClicker.Core;
 namespace MinimumEffortClicker.App;
 
 /// <summary>
-/// Chooses the key for a Key Press: a keyboard of keycap pictures, laid out like a US keyboard, plus the keys that have
-/// no keycap (F13–F24) as plain buttons. The current key has the green outline. Keys the clicker cannot press here are
-/// greyed: Ctrl, Shift and Alt have their own buttons next to the key, and Windows, Menu and Pause are not supported.
+/// Chooses a key, or also a mouse button, by clicking it: a keyboard of keycap pictures laid out like a US keyboard,
+/// the keys that have no keycap (F13–F24) as plain buttons, and when asked the labelled mouse beside the keyboard. The
+/// current choice has the green outline. Keys the caller cannot use are greyed, with the reason on hover.
 /// </summary>
 internal sealed class KeyPickerWindow : Window
 {
@@ -43,35 +43,49 @@ internal sealed class KeyPickerWindow : Window
         ["Numpad 0", "Numpad ."]
     ];
 
-    private readonly string current;
-    public string? SelectedKey { get; private set; }
+    private readonly InputControl? current;
+    private readonly Func<InputControl, string?> unusable;
+    public InputControl? Selected { get; private set; }
 
-    public KeyPickerWindow(Window owner, string current)
+    /// <param name="purpose">The line above the keyboard: what the choice is for.</param>
+    /// <param name="current">The current key or mouse button, outlined green; null when nothing is chosen yet.</param>
+    /// <param name="unusable">Why a key or button cannot be chosen here (shown on hover), or null when it can.</param>
+    /// <param name="withMouse">Also offer the mouse buttons, on the labelled mouse beside the keyboard.</param>
+    public KeyPickerWindow(Window owner, string title, string purpose, InputControl? current, Func<InputControl, string?> unusable, bool withMouse)
     {
-        this.current = current;
-        Owner = owner; Title = "Choose a key"; SizeToContent = SizeToContent.WidthAndHeight; ResizeMode = ResizeMode.NoResize;
+        this.current = current; this.unusable = unusable;
+        Owner = owner; Title = title; SizeToContent = SizeToContent.WidthAndHeight; ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false;
         SetResourceReference(BackgroundProperty, "AppBackground"); SetResourceReference(ForegroundProperty, "TextPrimary");
         var panel = new StackPanel { Margin = new Thickness(16) }; Content = panel;
-        panel.Children.Add(new TextBlock { Text = "Click the key to press. Ctrl, Shift and Alt are the buttons next to the key.", Margin = new Thickness(0, 0, 0, 10) });
+        panel.Children.Add(new TextBlock { Text = purpose, Margin = new Thickness(0, 0, 0, 10) });
 
         var keyboard = new StackPanel { Orientation = Orientation.Horizontal };
         keyboard.Children.Add(Block(MainBlock));
         keyboard.Children.Add(Block(NavigationBlock, Gap));
         keyboard.Children.Add(Block(NumpadBlock, Gap));
+        if (withMouse)
+        {
+            // Beside the keyboard, as on a desk, and as tall as the keyboard.
+            var mouse = new MouseButtonPicker { Height = Tile * MainBlock.Length, Margin = new Thickness(Gap * 2, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
+            if (current is { Kind: InputKind.MouseButton } button) mouse.Selected = (PointerButton)button.Code;
+            mouse.SelectedChanged += (_, _) => { if (mouse.Selected is { } chosen) Choose(InputControl.Mouse(chosen)); };
+            keyboard.Children.Add(mouse);
+        }
         panel.Children.Add(keyboard);
 
         // Keys the clicker can press that have no keycap picture.
-        var others = SequenceKeys.Supported.Keys.Where(k => UiArt.Key(k) is null && CanChoose(k)).ToList();
+        var others = SequenceKeys.Supported.Keys.Where(k => UiArt.Key(k) is null && unusable(InputControl.Key(SequenceKeys.Supported[k])) is null).ToList();
         if (others.Count > 0)
         {
             panel.Children.Add(new TextBlock { Text = "More keys", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
             var more = new WrapPanel();
             foreach (var name in others)
             {
+                var input = InputControl.Key(SequenceKeys.Supported[name]);
                 var button = new Button { Content = name, Margin = new Thickness(0, 0, 6, 6), MinWidth = 52 };
-                if (name == current) button.SetResourceReference(StyleProperty, "ChosenButton");
-                button.Click += (_, _) => Choose(name);
+                if (input == current) button.SetResourceReference(StyleProperty, "ChosenButton");
+                button.Click += (_, _) => Choose(input);
                 more.Children.Add(button);
             }
             panel.Children.Add(more);
@@ -82,8 +96,9 @@ internal sealed class KeyPickerWindow : Window
         panel.Children.Add(cancel);
     }
 
-    /// <summary>The keys the Key Press action takes: supported, and not a modifier (those are the toggles).</summary>
-    private static bool CanChoose(string name) => SequenceKeys.Supported.TryGetValue(name, out int code) && !SequenceKeys.IsModifier(InputControl.Key(code));
+    /// <summary>The key name (SequenceKeys) of a chosen key, for callers that keep names.</summary>
+    public static string? KeyName(InputControl input) =>
+        input.Kind == InputKind.ScanCode ? SequenceKeys.Supported.FirstOrDefault(k => k.Value == input.Code).Key : null;
 
     private Grid Block(string[][] rows, double left = 0)
     {
@@ -112,16 +127,20 @@ internal sealed class KeyPickerWindow : Window
             ? new Image { Source = art, Stretch = Stretch.Uniform }
             : new TextBlock { Text = name, FontSize = 10, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center };
         RenderOptions.SetBitmapScalingMode(button, BitmapScalingMode.HighQuality);
-        if (!CanChoose(name))
+        // Windows, Menu and Pause are drawn for the keyboard's shape; the clicker cannot press them.
+        string? why = SequenceKeys.Supported.TryGetValue(name, out int code) ? unusable(InputControl.Key(code)) : "The clicker cannot press this key.";
+        if (why is not null)
         {
             button.IsEnabled = false;
             ToolTipService.SetShowOnDisabled(button, true);
-            button.ToolTip = SequenceKeys.Supported.ContainsKey(name) ? $"{name}: use the Ctrl, Shift and Alt buttons next to the key." : $"{name} cannot be pressed by the clicker.";
+            button.ToolTip = $"{name}: {why}";
+            return button;
         }
-        else if (name == current) button.SetResourceReference(BorderBrushProperty, "SuccessBorder");
-        button.Click += (_, _) => Choose(name);
+        var input = InputControl.Key(code);
+        if (input == current) button.SetResourceReference(BorderBrushProperty, "SuccessBorder");
+        button.Click += (_, _) => Choose(input);
         return button;
     }
 
-    private void Choose(string name) { SelectedKey = name; DialogResult = true; }
+    private void Choose(InputControl input) { Selected = input; DialogResult = true; }
 }

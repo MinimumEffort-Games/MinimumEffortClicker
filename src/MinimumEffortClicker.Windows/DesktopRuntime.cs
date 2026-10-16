@@ -244,6 +244,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         }
     }
     public static bool InputMatchesKey(InputControl input, int key) => DesktopNative.VirtualKey(input) == key;
+    /// <summary>The Windows virtual key of a key or mouse button (0 when it has none), as shortcuts store it.</summary>
+    public static int VirtualKeyOf(InputControl input) => DesktopNative.VirtualKey(input);
     public static InputControl InputFromVirtualKey(int key)
     {
         if (ShortcutKeys.IsMouse(key)) return ShortcutKeys.MouseInput(key);

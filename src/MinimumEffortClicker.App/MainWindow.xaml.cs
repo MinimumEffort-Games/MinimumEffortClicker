@@ -46,7 +46,7 @@ public partial class MainWindow : Window
         PreviewMouseDown += EditingWindow_PreviewMouseDown;
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();
-        ToggleHeldKeyBox.Content = "W"; ToggleShortcutBox.Content = "Choose a key…";
+        ShowHeldInput(); ShowToggleShortcut();
         ToggleKeyBox.Content = "F8"; StopKeyBox.Content = "F9";
         if (previewOnly) return;
         runtime = new DesktopRuntime();
@@ -370,6 +370,26 @@ public partial class MainWindow : Window
         currentPage = page;
         foreach (UIElement child in Pages.Children)
             child.Visibility = child is FrameworkElement { Name: var name } && name == page ? Visibility.Visible : Visibility.Collapsed;
+    }
+    /// <summary>
+    /// For --render-preview: sets up each editing panel in turn (each action type, Toggles, Controller to Key) and yields
+    /// a name for its picture. The Action List gets a click, a key press and a pause so its rows show too.
+    /// </summary>
+    internal IEnumerable<string> PreviewStates()
+    {
+        var ms = TimeSpan.FromMilliseconds(20);
+        quickHistory.Commit(quickHistory.Current with { Steps = [
+            QuickActions.Click(PointerButton.Left, QuickClickKind.Single, ms, ms, ms, null),
+            QuickActions.Keys([SequenceKeys.W], ms, ms, false) with { Once = true },
+            QuickActions.Pause(TimeSpan.FromSeconds(1)) with { Enabled = false }] });
+        RefreshQuickList();
+        Navigate("QuickPage");
+        string[] actions = ["click", "key-press", "pause", "wait-until", "screenshot", "scroll"];
+        for (int i = 0; i < actions.Length; i++) { ModeBox.SelectedIndex = i; yield return "action-" + actions[i]; }
+        ModeBox.SelectedIndex = -1;
+        Navigate("TogglePage"); yield return "toggles";
+        Navigate("ControllerPage"); yield return "controller-to-key";
+        Navigate("QuickPage");
     }
     private void Navigate(string page)
     {

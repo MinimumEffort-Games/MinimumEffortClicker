@@ -51,6 +51,82 @@ public static class UiArtShapes
         return best;
     }
 
+    /// <summary>
+    /// One button of the labelled mouse: the dark face around a point (with the label and ridges inside it) and the
+    /// cream outline around that face, up to ring pixels deep. Returns 0 outside, 1 face, 2 outline.
+    /// </summary>
+    public static byte[] Button(byte[] bgra, int w, int h, int seedX, int seedY, int ring)
+    {
+        Func<int, bool> opaque = p => bgra[p * 4 + 3] >= 128;
+        Func<int, int> light = p => (bgra[p * 4] + bgra[p * 4 + 1] * 2 + bgra[p * 4 + 2]) / 4;
+        Func<int, bool> dark = p => opaque(p) && light(p) < 110;
+        // The nearest dark pixel to the given point, so the point does not have to avoid the label.
+        int seed = -1;
+        for (int r = 0; r < 60 && seed < 0; r++)
+            for (int dy = -r; dy <= r && seed < 0; dy++)
+                for (int dx = -r; dx <= r && seed < 0; dx++)
+                {
+                    int x = seedX + dx, y = seedY + dy;
+                    if (x >= 0 && y >= 0 && x < w && y < h && dark(y * w + x)) seed = y * w + x;
+                }
+        if (seed < 0) throw new InvalidOperationException("No dark face near " + seedX + "," + seedY);
+        var result = new byte[w * h];
+        var stack = new Stack<int>();
+        stack.Push(seed); result[seed] = 1;
+        while (stack.Count > 0)
+        {
+            int p = stack.Pop(), x = p % w, y = p / w;
+            foreach (int q in new[] { x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1 })
+                if (q >= 0 && result[q] == 0 && dark(q)) { result[q] = 1; stack.Push(q); }
+        }
+        // Holes (the label, the wheel's ridges, light specks) belong to the face: everything not reachable from the
+        // image edge without crossing the face.
+        var outside = new bool[w * h];
+        for (int x = 0; x < w; x++) { Seed(x); Seed((h - 1) * w + x); }
+        for (int y = 0; y < h; y++) { Seed(y * w); Seed(y * w + w - 1); }
+        void Seed(int p) { if (!outside[p] && result[p] == 0) { outside[p] = true; stack.Push(p); } }
+        while (stack.Count > 0)
+        {
+            int p = stack.Pop(), x = p % w, y = p / w;
+            foreach (int q in new[] { x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1 })
+                if (q >= 0 && !outside[q] && result[q] == 0) { outside[q] = true; stack.Push(q); }
+        }
+        for (int p = 0; p < w * h; p++) if (!outside[p]) result[p] = 1;
+        // The outline: light pixels reached from the face, at most ring steps out.
+        var front = new List<int>();
+        for (int p = 0; p < w * h; p++) if (result[p] == 1) front.Add(p);
+        for (int step = 0; step < ring && front.Count > 0; step++)
+        {
+            var next = new List<int>();
+            foreach (int p in front)
+            {
+                int x = p % w, y = p / w;
+                for (int dy = -1; dy <= 1; dy++)
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        int nx = x + dx, ny = y + dy;
+                        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                        int q = ny * w + nx;
+                        if (result[q] == 0 && opaque(q) && !dark(q)) { result[q] = 2; next.Add(q); }
+                    }
+            }
+            front = next;
+        }
+        return result;
+    }
+    /// <summary>Copies one traced button into a cropped outline mask (white where the outline is) and a cropped
+    /// button map (red channel = index where the face or outline is).</summary>
+    public static void Paint(byte[] traced, int w, int x0, int y0, int cw, int ch, byte[] ring, byte[] map, byte index)
+    {
+        for (int y = 0; y < ch; y++)
+            for (int x = 0; x < cw; x++)
+            {
+                byte m = traced[(y0 + y) * w + x0 + x];
+                int o = (y * cw + x) * 4;
+                if (m == 2) { ring[o] = ring[o + 1] = ring[o + 2] = ring[o + 3] = 255; }
+                if (m > 0) { map[o + 2] = index; map[o + 3] = 255; }
+            }
+    }
     /// <summary>One rectangle around every shape, in the same layout as a shape (label -1).</summary>
     public static int[] Bounds(List<int[]> shapes)
     {
@@ -110,7 +186,7 @@ function Read-Pixels([string]$path) {
 }
 
 # Writes BGRA bytes as a PNG, scaled down (never up) so the longer side is at most $max pixels.
-function Write-Png([byte[]]$bytes, [int]$width, [int]$height, [string]$path, [int]$max = 0) {
+function Write-Png([byte[]]$bytes, [int]$width, [int]$height, [string]$path, [int]$max = 0, [switch]$Nearest) {
     $bitmap = [Drawing.Bitmap]::new($width, $height, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $data = $bitmap.LockBits([Drawing.Rectangle]::new(0, 0, $width, $height), [Drawing.Imaging.ImageLockMode]::WriteOnly, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
     [Runtime.InteropServices.Marshal]::Copy($bytes, 0, $data.Scan0, $bytes.Length)
@@ -119,7 +195,7 @@ function Write-Png([byte[]]$bytes, [int]$width, [int]$height, [string]$path, [in
         $scale = $max / [Math]::Max($width, $height)
         $small = [Drawing.Bitmap]::new([int][Math]::Round($width * $scale), [int][Math]::Round($height * $scale), [Drawing.Imaging.PixelFormat]::Format32bppArgb)
         $g = [Drawing.Graphics]::FromImage($small)
-        $g.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+        $g.InterpolationMode = if ($Nearest) { [Drawing.Drawing2D.InterpolationMode]::NearestNeighbor } else { [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic }
         $g.PixelOffsetMode = [Drawing.Drawing2D.PixelOffsetMode]::HighQuality
         $g.CompositingMode = [Drawing.Drawing2D.CompositingMode]::SourceCopy
         $g.DrawImage($bitmap, 0, 0, $small.Width, $small.Height); $g.Dispose()
@@ -197,4 +273,27 @@ function Trim-Image([string]$file, [string]$target, [int]$max, [switch]$LargestS
 Trim-Image 'mouse.png' 'devices/mouse.png' 192 -LargestShape
 Trim-Image 'keyboard.png' 'devices/keyboard.png' 384 -LargestShape
 foreach ($icon in Get-ChildItem (Join-Path $source 'actions') -Filter *.png) { Trim-Image "actions/$($icon.Name)" "actions/$($icon.Name)" 128 }
+
+# The labelled mouse for choosing a mouse button: the picture, a mask per button that the app colours green when that
+# button is chosen, and a map of which button each pixel belongs to (red channel 40 Left, 80 Middle, 120 Right,
+# 160 Side 1 = the "4", 200 Side 2 = the "5"), which the app reads to know which button was clicked. Each button is
+# traced from a point on its face; the points are in the source picture's pixels.
+$pixels = Read-Pixels (Join-Path $source 'mouse-buttons.png')
+$labels = [int[]]::new($pixels.Width * $pixels.Height)
+$body = [UiArtShapes]::Largest([UiArtShapes]::Shapes($pixels.Bytes, $pixels.Width, $pixels.Height, 24, $labels))
+$x0 = [Math]::Max(0, $body[0] - 2); $y0 = [Math]::Max(0, $body[1] - 2)
+$cw = [Math]::Min($pixels.Width - 1, $body[2] + 2) - $x0 + 1; $ch = [Math]::Min($pixels.Height - 1, $body[3] + 2) - $y0 + 1
+$picture = [byte[]]::new($cw * $ch * 4)
+for ($y = 0; $y -lt $ch; $y++) { [Array]::Copy($pixels.Bytes, (($y0 + $y) * $pixels.Width + $x0) * 4, $picture, $y * $cw * 4, $cw * 4) }
+Write-Png $picture $cw $ch (Join-Path $output 'devices/mouse-buttons.png') 512
+$map = [byte[]]::new($cw * $ch * 4)
+$index = 0
+foreach ($button in @(@('left', 440, 200), @('middle', 612, 262), @('right', 850, 200), @('side1', 245, 730), @('side2', 245, 520))) {
+    $index += 40
+    $traced = [UiArtShapes]::Button($pixels.Bytes, $pixels.Width, $pixels.Height, $button[1], $button[2], 30)
+    $ring = [byte[]]::new($cw * $ch * 4)
+    [UiArtShapes]::Paint($traced, $pixels.Width, $x0, $y0, $cw, $ch, $ring, $map, [byte]$index)
+    Write-Png $ring $cw $ch (Join-Path $output "devices/mouse-buttons-$($button[0]).png") 512
+}
+Write-Png $map $cw $ch (Join-Path $output 'devices/mouse-buttons-map.png') 512 -Nearest
 "Written to $output"

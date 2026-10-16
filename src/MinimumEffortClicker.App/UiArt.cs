@@ -62,6 +62,34 @@ internal static class UiArt
         return row;
     }
 
+    /// <summary>What a button that shows a chosen key says: the keycap next to its name, or only the name for mouse
+    /// buttons and keys without a keycap.</summary>
+    public static object InputContent(InputControl? input, string label)
+    {
+        string? name = input is { } i ? KeyPickerWindow.KeyName(i) : null;
+        if (name is null || Key(name) is not { } art) return label;
+        var content = new StackPanel { Orientation = Orientation.Horizontal };
+        var image = new Image { Source = art, Height = 30, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 8, 0) };
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+        content.Children.Add(image);
+        content.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
+        return content;
+    }
+
+    /// <summary>The labelled mouse (LMB, MMB, RMB, 4, 5) used to choose a mouse button.</summary>
+    public static ImageSource? MouseButtons => Load("devices/mouse-buttons");
+    /// <summary>One button's traced outline on the labelled mouse, white on transparent: left, middle, right, side1, side2.</summary>
+    public static ImageSource? MouseButtonOutline(string button) => Load("devices/mouse-buttons-" + button);
+    /// <summary>The labelled mouse's button map as BGRA pixels; null when the picture is missing.</summary>
+    public static (byte[] Pixels, int Width, int Height)? MouseButtonMap()
+    {
+        if (Load("devices/mouse-buttons-map") is not BitmapSource source) return null;
+        var bgra = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+        var pixels = new byte[bgra.PixelWidth * bgra.PixelHeight * 4];
+        bgra.CopyPixels(pixels, bgra.PixelWidth * 4, 0);
+        return (pixels, bgra.PixelWidth, bgra.PixelHeight);
+    }
+
     public static ImageSource? Mouse => Load("devices/mouse");
     public static ImageSource? Keyboard => Load("devices/keyboard");
 

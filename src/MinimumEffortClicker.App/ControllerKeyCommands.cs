@@ -215,7 +215,7 @@ public partial class MainWindow
 
     private async void ControllerBindActive_Click(object sender, RoutedEventArgs e)
     {
-        if (refreshingControllerBinds || sender is not CheckBox { DataContext: ControllerBindRow row } box) return;
+        if (refreshingControllerBinds || sender is not System.Windows.Controls.Primitives.ToggleButton { DataContext: ControllerBindRow row } box) return;
         var updated = controllerBinds.Select(b => b.Id == row.Id ? b with { Active = box.IsChecked == true } : b).ToList();
         if (!await SaveControllerBinds(updated)) RefreshControllerBindList();
     }

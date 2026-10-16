@@ -70,6 +70,8 @@ public partial class MainWindow
     {
         if (ConditionLabel is null || PingScanAreaButton is null) return;
         ConditionColourPreview.Background = TryConditionColour(out int rgb) ? ColourBrush(rgb) : Brushes.Transparent;
+        // The summary sits on the colour, so it is dark on light colours and light on dark ones.
+        if (TryConditionColour(out int ink)) ConditionLabel.Foreground = ColourText(ink); else ConditionLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimary");
         if (ModeBox.SelectedIndex != 3) return;
         ActionHint.Text = ConditionKindBox.SelectedIndex == 1 ? "Choose an area and its colour: the wait continues once no pixel in that area has the colour any more." : "Continue when a colour appears or disappears.";
         try
@@ -110,6 +112,8 @@ public partial class MainWindow
     private void InitializeQuickBuilder()
     {
         SetQuickKey("W");
+        MouseChoice = PointerButton.Left;
+        ButtonPicker.SelectedChanged += (_, _) => { if (initialized && !loadingQuick) { TestResultLabel.Text = ""; RefreshAddAction(); } };
         foreach (var button in MouseChoices) quickInputs[button + " mouse"] = InputControl.Mouse(button);
         QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
         ChildInputColumn.ItemsSource = quickInputs.Keys.ToArray(); QuickChildrenGrid.ItemsSource = quickChildren;
@@ -196,6 +200,8 @@ public partial class MainWindow
         MouseFields.Visibility = ModeBox.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
         ScrollFields.Visibility = ModeBox.SelectedIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
         LocationFields.Visibility = ModeBox.SelectedIndex is 0 or 5 ? Visibility.Visible : Visibility.Collapsed;
+        ClickLocationHeader.Visibility = ModeBox.SelectedIndex == 5 ? Visibility.Collapsed : Visibility.Visible;
+        ScrollLocationHeader.Visibility = ModeBox.SelectedIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
         KeyFields.Visibility = ModeBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         RandomFields.Visibility = ModeBox.SelectedIndex is 0 or 1 or 2 ? Visibility.Visible : Visibility.Collapsed;
         PressFields.Visibility = ModeBox.SelectedIndex is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
@@ -225,20 +231,13 @@ public partial class MainWindow
     private void SetQuickKey(string name)
     {
         quickKey = name;
-        var content = new StackPanel { Orientation = Orientation.Horizontal };
-        if (UiArt.Key(name) is { } art)
-        {
-            var image = new Image { Source = art, Height = 30, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 8, 0) };
-            RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
-            content.Children.Add(image);
-        }
-        content.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
-        KeyBox.Content = content;
+        KeyBox.Content = UiArt.InputContent(InputControl.Key(SequenceKeys.Supported[name]), name);
     }
     private void ChooseKey_Click(object sender, RoutedEventArgs e)
     {
-        var picker = new KeyPickerWindow(this, quickKey);
-        if (picker.ShowDialog() != true || picker.SelectedKey is not { } key) return;
+        var picker = new KeyPickerWindow(this, "Choose a key", "Click the key to press. Ctrl, Shift and Alt are the buttons next to the key.",
+            InputControl.Key(SequenceKeys.Supported[quickKey]), input => SequenceKeys.IsModifier(input) ? "use the Ctrl, Shift and Alt buttons next to the key." : null, withMouse: false);
+        if (picker.ShowDialog() != true || picker.Selected is not { } input || KeyPickerWindow.KeyName(input) is not { } key) return;
         SetQuickKey(key); TestResultLabel.Text = ""; RefreshAddAction();
     }
     private void Location_Changed(object sender, RoutedEventArgs e)
@@ -477,7 +476,7 @@ public partial class MainWindow
     {
         loadingQuick = true; QuickActionList.SelectedIndex = -1; editingQuick = null; ModeBox.SelectedIndex = -1;
         ActionNameBox.Text = "";
-        ButtonBox.SelectedIndex = ClickKindBox.SelectedIndex = 0; useCursorLocation = true; quickPoint = null; ShowQuickCoordinates();
+        MouseChoice = PointerButton.Left; ClickKindBox.SelectedIndex = 0; useCursorLocation = true; quickPoint = null; ShowQuickCoordinates();
         SetQuickKey("W"); CtrlBox.IsChecked = ShiftBox.IsChecked = AltBox.IsChecked = HoldKeyBox.IsChecked = false;
         PressBox.Text = "20"; DoubleGapBox.Text = "80"; AfterBox.Text = "20"; PauseDurationBox.Text = "1"; PauseUnitBox.SelectedIndex = 1;
         ScreenshotPauseBox.Text = "1000"; ScrollDirectionBox.SelectedIndex = 1; ScrollNotchesBox.Text = "3"; ScrollGapBox.Text = "30";
@@ -581,7 +580,7 @@ public partial class MainWindow
     }
     private void QuickActive_Click(object sender, RoutedEventArgs e)
     {
-        if (loadingQuick || sender is not CheckBox { DataContext: QuickRow row } box || runtime?.Snapshot.Busy == true || operations.Has(Operation.Quick)) return;
+        if (loadingQuick || sender is not ToggleButton { DataContext: QuickRow row } box || runtime?.Snapshot.Busy == true || operations.Has(Operation.Quick)) return;
         var steps = quickHistory.Current.Steps.ToArray();
         var step = steps[row.Index] with { Enabled = box.IsChecked == true };
         steps[row.Index] = step;
@@ -594,7 +593,7 @@ public partial class MainWindow
     private void QuickRepeat_Changed(object sender, SelectionChangedEventArgs e)
     {
         // Also fires when a row is first shown; only a real change is committed.
-        if (loadingQuick || sender is not ComboBox { DataContext: QuickRow row, SelectedIndex: >= 0 } box || box.SelectedIndex == row.RepeatIndex) return;
+        if (loadingQuick || sender is not Selector { DataContext: QuickRow row, SelectedIndex: >= 0 } box || box.SelectedIndex == row.RepeatIndex) return;
         if (runtime?.Snapshot.Busy == true || operations.Has(Operation.Quick)) { box.SelectedIndex = row.RepeatIndex; return; }
         bool once = box.SelectedIndex == 1;
         // The list is rebuilt after the dropdown has finished closing, not while its own row is still handling the click.

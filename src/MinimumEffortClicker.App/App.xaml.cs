@@ -62,26 +62,32 @@ public partial class App : Application
         if (e.Args.Length == 2 && e.Args[0] == "--render-preview")
         {
             System.IO.Directory.CreateDirectory(e.Args[1]);
-            foreach (var theme in new[] { Appearance.Dark, Appearance.Light })
-            foreach (var size in new[] { (Name: "normal", Width: 1030, Height: 650, Scale: 1d), (Name: "minimum", Width: 844, Height: 580, Scale: 1d), (Name: "minimum-200", Width: 844, Height: 580, Scale: 2d) })
+            void Render(string name, double width, double height, double scale)
             {
-                AppTheme.Apply(theme);
                 var content = (FrameworkElement)window.Content;
-                content.Measure(new Size(size.Width, size.Height));
-                content.Arrange(new Rect(0, 0, size.Width, size.Height));
+                content.Measure(new Size(width, height));
+                content.Arrange(new Rect(0, 0, width, height));
                 content.UpdateLayout();
                 var visual = new System.Windows.Media.DrawingVisual();
                 using (var context = visual.RenderOpen())
                 {
-                    context.DrawRectangle((System.Windows.Media.Brush)Resources["AppBackground"], null, new Rect(0, 0, size.Width, size.Height));
+                    context.DrawRectangle((System.Windows.Media.Brush)Resources["AppBackground"], null, new Rect(0, 0, width, height));
                 }
-                var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)(size.Width * size.Scale), (int)(size.Height * size.Scale), 96 * size.Scale, 96 * size.Scale, System.Windows.Media.PixelFormats.Pbgra32);
+                var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)(width * scale), (int)(height * scale), 96 * scale, 96 * scale, System.Windows.Media.PixelFormats.Pbgra32);
                 bitmap.Render(visual);
                 bitmap.Render(content);
                 var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
                 encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
-                using var stream = System.IO.File.Create(System.IO.Path.Combine(e.Args[1], $"shell-{theme.ToString().ToLowerInvariant()}-{size.Name}.png"));
+                using var stream = System.IO.File.Create(System.IO.Path.Combine(e.Args[1], name + ".png"));
                 encoder.Save(stream);
+            }
+            foreach (var theme in new[] { Appearance.Dark, Appearance.Light })
+            {
+                AppTheme.Apply(theme);
+                foreach (var size in new[] { (Name: "normal", Width: 1030, Height: 650, Scale: 1d), (Name: "minimum", Width: 844, Height: 580, Scale: 1d), (Name: "minimum-200", Width: 844, Height: 580, Scale: 2d) })
+                    Render($"shell-{theme.ToString().ToLowerInvariant()}-{size.Name}", size.Width, size.Height, size.Scale);
+                // Each editing panel, tall enough to show all of it.
+                foreach (var state in window.PreviewStates()) Render($"{state}-{theme.ToString().ToLowerInvariant()}", 1030, 1150, 1);
             }
             Shutdown();
             return;

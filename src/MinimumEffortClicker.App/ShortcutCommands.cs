@@ -45,18 +45,29 @@ public partial class MainWindow
     }
     private async void CaptureRecordKey_Click(object sender, RoutedEventArgs e)
     { if (await CaptureShortcut("Record Macro / Stop shortcut") is { } key) { selectedRecordKey = key; await SetQuickRecordKey(); } }
-    private async void CaptureToggleKey_Click(object sender, RoutedEventArgs e)
-    { if (await CaptureShortcut("Toggle shortcut") is { } key) { selectedToggleKey = key; ToggleShortcutBox.Content = ShortcutKeys.Label(key); } }
-    private async void CaptureHeldInput_Click(object sender, RoutedEventArgs e)
+    private void CaptureToggleKey_Click(object sender, RoutedEventArgs e)
     {
-        if (await CaptureShortcut("Key or mouse button to hold") is not { } key) return;
-        try
-        {
-            selectedHeldInput = MinimumEffortClicker.Windows.DesktopRuntime.InputFromVirtualKey(key);
-            ToggleHeldKeyBox.Content = InputLabel(selectedHeldInput);
-        }
-        catch (ArgumentException ex) { ReasonLabel.Text = ex.Message; }
+        if (!operations.Idle) return;
+        var picker = new KeyPickerWindow(this, "Toggle shortcut", "Click the key or mouse button that switches this toggle on and off.", ShortcutInput(selectedToggleKey),
+            input => DesktopRuntime.VirtualKeyOf(input) is var key && key != 0 && ShortcutKeys.Supported(key) ? null : "this key cannot be a shortcut.", withMouse: true);
+        if (picker.ShowDialog() != true || picker.Selected is not { } input) return;
+        selectedToggleKey = DesktopRuntime.VirtualKeyOf(input); ShowToggleShortcut();
     }
+    private void CaptureHeldInput_Click(object sender, RoutedEventArgs e)
+    {
+        if (!operations.Idle) return;
+        var picker = new KeyPickerWindow(this, "Key or mouse button to hold", "Click the key or mouse button this toggle holds or taps.", selectedHeldInput, _ => null, withMouse: true);
+        if (picker.ShowDialog() != true || picker.Selected is not { } input) return;
+        selectedHeldInput = input; ShowHeldInput();
+    }
+    /// <summary>A shortcut's virtual key as the key or mouse button it is, for the picker's outline; null for none.</summary>
+    private static InputControl? ShortcutInput(int key)
+    {
+        if (key == 0) return null;
+        try { return DesktopRuntime.InputFromVirtualKey(key); } catch (ArgumentException) { return null; }
+    }
+    private void ShowHeldInput() => ToggleHeldKeyBox.Content = UiArt.InputContent(selectedHeldInput, InputLabel(selectedHeldInput));
+    private void ShowToggleShortcut() => ToggleShortcutBox.Content = UiArt.InputContent(ShortcutInput(selectedToggleKey), ShortcutKeys.Label(selectedToggleKey));
     private async void ResetGlobalKeys_Click(object sender, RoutedEventArgs e)
     {
         if (runtime is null || !operations.Idle || operations.Has(Operation.RecordKey)) return;

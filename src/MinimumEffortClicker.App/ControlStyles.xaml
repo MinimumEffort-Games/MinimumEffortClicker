@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                    xmlns:app="clr-namespace:MinimumEffortClicker.App">
     <!-- Override the dimensions used by native ScrollViewer templates as well as
          our scrollbar style, so the reserved gutter shrinks with the control. -->
     <sys:Double x:Key="{x:Static SystemParameters.VerticalScrollBarWidthKey}">8</sys:Double>
@@ -264,8 +265,9 @@
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="2" />
     </Style>
-    <!-- A row of picture choices (the action types): one is chosen at a time and gets the green outline. -->
-    <Style x:Key="IconChoiceItem" TargetType="ListBoxItem" BasedOn="{StaticResource StandardControl}">
+    <!-- A row of choices (pictures or words): one is chosen at a time and gets the green outline. -->
+    <Style x:Key="ChoiceItem" TargetType="ListBoxItem" BasedOn="{StaticResource StandardControl}">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
         <Setter Property="Margin" Value="0,0,6,0" />
         <Setter Property="Padding" Value="5" />
         <Setter Property="Template">
@@ -294,8 +296,8 @@
             </Setter.Value>
         </Setter>
     </Style>
-    <Style x:Key="IconChoiceList" TargetType="ListBox" BasedOn="{StaticResource StandardControl}">
-        <Setter Property="ItemContainerStyle" Value="{StaticResource IconChoiceItem}" />
+    <Style x:Key="ChoiceList" TargetType="ListBox" BasedOn="{StaticResource StandardControl}">
+        <Setter Property="ItemContainerStyle" Value="{StaticResource ChoiceItem}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="ItemsPanel">
@@ -305,6 +307,81 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ListBox"><ItemsPresenter /></ControlTemplate>
             </Setter.Value>
+        </Setter>
+    </Style>
+    <!-- The small up and down arrows inside a NumberBox. -->
+    <Style x:Key="SpinArrow" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Delay" Value="400" />
+        <Setter Property="Interval" Value="60" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="2">
+                        <TextBlock Text="{TemplateBinding Content}" FontFamily="Segoe Fluent Icons" FontSize="8" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Border}" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Chrome" Property="Opacity" Value="0.4" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <!-- A number field for mouse-only use: the wheel over it and its arrows change the number (see Spin.cs). Each
+         field sets its own app:Spin.Step, Minimum and Maximum. -->
+    <Style x:Key="NumberBox" TargetType="TextBox" BasedOn="{StaticResource StandardTextBox}">
+        <Setter Property="app:Spin.Step" Value="1" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" SnapsToDevicePixels="True">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="18" /></Grid.ColumnDefinitions>
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                            <Grid Grid.Column="1" Margin="0,1,1,1">
+                                <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+                                <RepeatButton Style="{StaticResource SpinArrow}" Content="&#xE70E;" Command="{x:Static app:Spin.Up}" CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" ToolTip="Up (Shift: ten steps)" />
+                                <RepeatButton Grid.Row="1" Style="{StaticResource SpinArrow}" Content="&#xE70D;" Command="{x:Static app:Spin.Down}" CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" ToolTip="Down (Shift: ten steps)" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRing}" /></Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRing}" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Chrome" Property="Opacity" Value="0.56" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <!-- A list row's on/off switch: "Active" with a green outline, or "Inactive" with a red one. -->
+    <Style x:Key="ActiveToggle" TargetType="ToggleButton" BasedOn="{StaticResource ChoiceToggle}">
+        <Setter Property="Padding" Value="8,2" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="MinWidth" Value="74" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Content" Value="Inactive" />
+        <Setter Property="BorderBrush" Value="{DynamicResource StopBorder}" />
+        <Style.Triggers>
+            <Trigger Property="IsChecked" Value="True"><Setter Property="Content" Value="Active" /></Trigger>
+        </Style.Triggers>
+    </Style>
+    <!-- Repeating / Once under a row's Active button: two small squares spread across the button's width. -->
+    <Style x:Key="RepeatChoiceItem" TargetType="ListBoxItem" BasedOn="{StaticResource ChoiceItem}">
+        <Setter Property="Margin" Value="1,0" />
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="Height" Value="24" />
+    </Style>
+    <Style x:Key="RepeatChoiceList" TargetType="ListBox" BasedOn="{StaticResource ChoiceList}">
+        <Setter Property="ItemContainerStyle" Value="{StaticResource RepeatChoiceItem}" />
+        <Setter Property="ItemsPanel">
+            <Setter.Value><ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate></Setter.Value>
         </Setter>
     </Style>
 </ResourceDictionary>
