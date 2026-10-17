@@ -18,20 +18,23 @@ public partial class MainWindow
         InstallHelperButton.IsVisible = !LinuxSetup.IsKde || control?.Helper is null;
         InstallHelperButton.Content = LinuxSetup.IsKde ? "Allow this copy of the app"
             : control?.Helper is not null ? "Reinstall GNOME helper" : control?.HelperAccessDenied == true ? "Allow this copy of the app" : "Install GNOME helper";
+        bool ours = LinuxSetup.InputRuleInstalled;
         InputAccessLabel.Text = control?.PhysicalInputAvailable == true
-            ? "Ready. Recording, Stop on my input, mouse-button shortcuts and hotkeys that work in every app are available."
+            ? (ours ? "Ready." : "Ready: this system already lets you read the keyboard and mouse, so nothing needs turning on.")
+                + " Recording, Stop on my input, mouse-button shortcuts and hotkeys that work in every app are available."
             : "Off. " + InputAccessNeeds + " Turn on asks for your password in the system's own window.";
         InputAccessCommand.Text = control?.PhysicalInputAvailable == true ? "" : LinuxSetup.InputAccessCommand;
         InputAccessCommand.IsVisible = CopyInputCommandButton.IsVisible = InputAccessTerminalHint.IsVisible = control?.PhysicalInputAvailable != true;
         // Without a system password window (pkexec) only the terminal command works.
         InputAccessOnButton.IsVisible = control?.PhysicalInputAvailable != true && LinuxSetup.SystemPasswordPrompt is not null;
-        InputAccessOffButton.IsVisible = LinuxSetup.InputAccessRemoveCommand is not null && LinuxSetup.SystemPasswordPrompt is not null;
+        // Turn off only removes what Turn on installed; access the system gives by itself is not ours to take away.
+        InputAccessOffButton.IsVisible = ours && LinuxSetup.InputAccessRemoveCommand is not null && LinuxSetup.SystemPasswordPrompt is not null;
         // Green when input access is on, red when it is off.
         CheckInputAccessButton.Classes.Set("green", control?.PhysicalInputAvailable == true);
         CheckInputAccessButton.Classes.Set("red", control?.PhysicalInputAvailable != true);
-        // Shown whether access is on or off: the rule is reversible, and people should see how.
+        // Shown while the rule is installed, so people see how to undo it.
         InputAccessRemoveCommand.Text = LinuxSetup.InputAccessRemoveCommand ?? "";
-        InputAccessScope.IsVisible = InputAccessRemoveCommand.IsVisible = CopyRemoveCommandButton.IsVisible = LinuxSetup.InputAccessRemoveCommand is not null;
+        InputAccessScope.IsVisible = InputAccessRemoveCommand.IsVisible = CopyRemoveCommandButton.IsVisible = ours && LinuxSetup.InputAccessRemoveCommand is not null;
     }
 
     private async void InstallHelper_Click(object? sender, RoutedEventArgs e)

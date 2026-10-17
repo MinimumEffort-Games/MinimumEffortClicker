@@ -126,6 +126,11 @@ public static class LinuxSetup
     /// instead of adding the account to the input group. Null when the script is missing.
     /// </summary>
     public static string? InputAccessRemoveCommand => InputRuleScriptPath is { } script ? $"sudo bash '{script}' --remove" : null;
+    /// <summary>
+    /// True when the rule setup-input-access.sh installs is there. Some systems (SteamOS) already let the person at the
+    /// computer read the keyboard and mouse; there is then nothing of ours to turn off.
+    /// </summary>
+    public static bool InputRuleInstalled => File.Exists("/etc/udev/rules.d/70-minimum-effort-clicker-input.rules");
 
     /// <summary>
     /// The system's own password window for apps (polkit's pkexec), the one software updates use. Null on a system without
