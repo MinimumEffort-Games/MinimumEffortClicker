@@ -15,7 +15,7 @@ namespace MinimumEffortClicker.App;
 public partial class MainWindow
 {
     private static readonly PointerButton[] MouseChoices = [PointerButton.Left, PointerButton.Middle, PointerButton.Right, PointerButton.XButton1, PointerButton.XButton2];
-    private PointerButton MouseChoice { get => MouseChoices[Math.Max(0, ButtonBox.SelectedIndex)]; set => ButtonBox.SelectedIndex = Array.IndexOf(MouseChoices, value); }
+    private PointerButton MouseChoice { get => ButtonPicker.Selected ?? PointerButton.Left; set => ButtonPicker.Selected = value; }
     private ClientPoint? quickPoint;
     private async void PingLocation_Click(object sender, RoutedEventArgs e)
     {

@@ -119,7 +119,7 @@ public sealed class DesktopControl : IDisposable
     /// <summary>Evdev state is live, so there is nothing to sample; kept for runtime parity with Windows.</summary>
     public void SampleBeforeRun(InputControl input) { }
 
-    private static int VirtualKey(InputControl input) => input.Kind switch
+    internal static int VirtualKey(InputControl input) => input.Kind switch
     {
         InputKind.MouseButton => ShortcutKeys.MouseKey((PointerButton)input.Code),
         InputKind.ScanCode => LinuxKeys.EvdevFromScanCode(input.Code) is int code and not 0 ? LinuxKeys.VirtualKeyFromEvdev(code) ?? 0 : 0,

@@ -50,7 +50,7 @@ public partial class MainWindow : Window
         AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, EditingWindow_PointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();
-        ToggleHeldKeyBox.Content = "W"; ToggleShortcutBox.Content = "Choose a key…";
+        ShowHeldInput(); ShowToggleShortcut();
         ToggleKeyBox.Content = "F8"; StopKeyBox.Content = "F9";
         if (previewOnly) return;
         runtime = new DesktopRuntime();
@@ -376,7 +376,7 @@ public partial class MainWindow : Window
     {
         if (EmergencyStopHint is null) return;
         EmergencyStopHint.Text = ChosenEmergencyStop == EmergencyStopMode.OnlyStopAll
-            ? "Stop All (F9) stops everything at once: the Action List, every toggle and recording. Nothing else you press or move stops the clicker, so you can click into your game while it runs."
+            ? "Stops all Actions and toggles."
             : "Any key or mouse button the clicker is using, or moving the mouse while the clicker moves it, stops everything at once. Safer, but clicking into your game to bring it to the front also stops a run. Stop All still stops everything. Needs input access (Linux setup).";
         if (runtime is not null) runtime.EmergencyStop = ChosenEmergencyStop;
         if (initialized) { RefreshStatus(); PersistPreferences(); }
@@ -391,6 +391,8 @@ public partial class MainWindow : Window
     private void ShowPage(int page)
     {
         currentPage = page;
+        // Appearance can follow the desktop, which may have switched since; the outline shows what is showing now.
+        if (page == 3) ShowThemeChoice();
         for (int i = 0; i < Pages.Children.Count; i++) Pages.Children[i].Visibility = i == page ? Visibility.Visible : Visibility.Collapsed;
     }
     private void Navigate(int page)
@@ -405,9 +407,16 @@ public partial class MainWindow : Window
         var appearance = (Appearance)ThemeBox.SelectedIndex;
         ((App)Application.Current!).Appearance = appearance;
         AppTheme.Apply(appearance);
+        ShowThemeChoice();
         // Action rows carry their own brushes (colour conditions use ink colours), so rebuild them for the new theme.
         RefreshQuickList(QuickActionList.SelectedIndex, preserveEditor: true);
         PersistPreferences();
+    }
+    /// <summary>The light or dark button that matches the colours showing now has the green outline.</summary>
+    private void ShowThemeChoice()
+    {
+        LightThemeButton.SetButtonStyle(AppTheme.IsLight ? "ChosenButton" : "StandardButton");
+        DarkThemeButton.SetButtonStyle(AppTheme.IsLight ? "StandardButton" : "ChosenButton");
     }
     private void LightTheme_Click(object sender, RoutedEventArgs e) => ThemeBox.SelectedIndex = 2;
     private void DarkTheme_Click(object sender, RoutedEventArgs e) => ThemeBox.SelectedIndex = 1;

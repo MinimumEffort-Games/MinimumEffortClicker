@@ -27,7 +27,7 @@
                     </Button>
                     <Button Content="Help" Click="Help_Click" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Help" />
                 </StackPanel>
-                <CheckBox Grid.Column="1" x:Name="OverlayBox" Content="Show overlay" IsChecked="True" VerticalAlignment="Center" IsCheckedChanged="Overlay_Changed" Margin="16,0,0,0" />
+                <ToggleButton Grid.Column="1" x:Name="OverlayBox" Classes="choice" Content="Show overlay" IsChecked="True" VerticalAlignment="Center" IsCheckedChanged="Overlay_Changed" Margin="16,0,0,0" ToolTip.Tip="The small status window that shows what the clicker is doing." />
             </Grid>
         </Border>
         <Grid Grid.Row="1" Margin="16,12,16,12" RowDefinitions="*,Auto">
@@ -40,20 +40,20 @@
                     <WrapPanel Grid.Row="1" Margin="0,0,0,12" VerticalAlignment="Bottom">
                         <Button x:Name="RunButton" Content="Start F8" Click="Run_Click" Classes="green" MinWidth="100" Margin="0,0,8,0" AutomationProperties.Name="Start Actions" />
                         <Button x:Name="PausePlaybackButton" Content="Pause" Click="PausePlayback_Click" Classes="blue" Margin="0" AutomationProperties.Name="Pause playback" />
-                        <StackPanel VerticalAlignment="Bottom" Margin="14,0,0,2">
-                            <CheckBox x:Name="LoopBox" Content="Loop" IsCheckedChanged="Loop_Changed" Margin="0,0,0,4" />
-                            <CheckBox IsCheckedChanged="ActionsChoice_Changed" x:Name="MinimizeOnStartBox" Content="Minimize on Start" IsChecked="True" ToolTip.Tip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front." />
-                        </StackPanel>
+                        <UniformGrid Rows="2" Margin="12,0,0,0">
+                            <ToggleButton x:Name="LoopBox" Classes="choice stacked" Content="Loop" IsCheckedChanged="Loop_Changed" Margin="0,0,0,2" />
+                            <ToggleButton IsCheckedChanged="ActionsChoice_Changed" x:Name="MinimizeOnStartBox" Classes="choice stacked" Content="Minimize on Start" IsChecked="True" Margin="0,2,0,0" ToolTip.Tip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front." />
+                        </UniformGrid>
                         <Button x:Name="CleanupButton" Content="Release stuck input" Click="Cleanup_Click" IsVisible="False" Classes="red" HorizontalAlignment="Left" ToolTip.Tip="Release physical buttons and keys first. This retries only inputs owned by ME Clicker and never starts playback." />
                     </WrapPanel>
                     <StackPanel Grid.Column="2" Grid.Row="1" Margin="0,0,0,12">
                         <TextBlock x:Name="QuickRecordStatus" Classes="secondary optional" FontSize="12" Margin="0,0,0,4" />
                         <WrapPanel>
-                            <Button x:Name="QuickRecordButton" Content="F10 Record/Stop" Click="QuickRecord_Click" Classes="red" Margin="0,0,14,0" Padding="6,7" MinWidth="120" />
-                            <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,2">
-                                <CheckBox IsCheckedChanged="ActionsChoice_Changed" x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" Margin="0,0,0,4" ToolTip.Tip="Keep the time between inputs as editable Pause actions." />
-                                <CheckBox IsCheckedChanged="ActionsChoice_Changed" x:Name="MinimizeOnRecordBox" Content="Minimize on record" IsChecked="True" ToolTip.Tip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records." />
-                            </StackPanel>
+                            <Button x:Name="QuickRecordButton" Content="F10 Record/Stop" Click="QuickRecord_Click" Classes="red" Margin="0,0,12,0" Padding="6,7" MinWidth="120" />
+                            <UniformGrid Rows="2">
+                                <ToggleButton IsCheckedChanged="ActionsChoice_Changed" x:Name="RecordDelaysBox" Classes="choice stacked" Content="Record pauses" IsChecked="True" Margin="0,0,0,2" ToolTip.Tip="Keep the time between inputs as editable Pause actions." />
+                                <ToggleButton IsCheckedChanged="ActionsChoice_Changed" x:Name="MinimizeOnRecordBox" Classes="choice stacked" Content="Minimize on record" IsChecked="True" Margin="0,2,0,0" ToolTip.Tip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records." />
+                            </UniformGrid>
                         </WrapPanel>
                     </StackPanel>
                     <ScrollViewer Grid.Row="2" x:Name="ActionsScroll" Padding="0,0,16,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -72,84 +72,104 @@
                                 <Border x:Name="CreateActionCard" Classes="card" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2">
                                     <StackPanel>
                                         <TextBlock Text="Action" FontWeight="SemiBold" />
-                                        <ComboBox x:Name="ModeBox" SelectedIndex="-1" SelectionChanged="ActionType_Changed" AutomationProperties.Name="Action">
-                                            <ComboBoxItem Content="Click" /><ComboBoxItem Content="Key Press" /><ComboBoxItem Content="Pause" /><ComboBoxItem Content="Wait Until" /><ComboBoxItem Content="Take fullscreen screenshot" /><ComboBoxItem Content="Scroll" />
-                                        </ComboBox>
+                                        <ListBox x:Name="ModeBox" Classes="choice" SelectedIndex="-1" SelectionChanged="ActionType_Changed" AutomationProperties.Name="Action" Margin="0,4,0,0">
+                                            <ListBoxItem ToolTip.Tip="Click" AutomationProperties.Name="Click"><Image Source="/Assets/Ui/actions/click.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
+                                            <ListBoxItem ToolTip.Tip="Key Press" AutomationProperties.Name="Key Press"><Image Source="/Assets/Ui/actions/key-press.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
+                                            <ListBoxItem ToolTip.Tip="Pause" AutomationProperties.Name="Pause"><Image Source="/Assets/Ui/actions/pause.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
+                                            <ListBoxItem ToolTip.Tip="Wait Until" AutomationProperties.Name="Wait Until"><Image Source="/Assets/Ui/actions/wait-until.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
+                                            <ListBoxItem ToolTip.Tip="Take fullscreen screenshot" AutomationProperties.Name="Take fullscreen screenshot"><Image Source="/Assets/Ui/actions/fullscreen-screenshot.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
+                                            <ListBoxItem ToolTip.Tip="Scroll" AutomationProperties.Name="Scroll"><Image Source="/Assets/Ui/actions/scroll.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
+                                        </ListBox>
                                         <TextBlock x:Name="ActionHint" Text="Choose an action to see its settings." Classes="secondary" Margin="0,4,0,8" />
                                         <StackPanel x:Name="ActionFields" IsVisible="False">
                                             <StackPanel x:Name="MouseFields" IsVisible="False">
-                                                <TextBlock Text="Mouse button" />
-                                                <ComboBox x:Name="ButtonBox" SelectedIndex="0" AutomationProperties.Name="Mouse button">
-                                                    <ComboBoxItem Content="Left" /><ComboBoxItem Content="Middle" /><ComboBoxItem Content="Right" /><ComboBoxItem Content="Side 1" /><ComboBoxItem Content="Side 2" />
-                                                </ComboBox>
-                                                <TextBlock Text="Click type" />
-                                                <ComboBox x:Name="ClickKindBox" SelectedIndex="0" SelectionChanged="ClickKind_Changed" AutomationProperties.Name="Click type">
-                                                    <ComboBoxItem Content="Single click" /><ComboBoxItem Content="Double click" /><ComboBoxItem Content="Hold" />
-                                                </ComboBox>
+                                                <TextBlock Text="Mouse Button" FontWeight="SemiBold" />
+                                                <local:MouseButtonPicker x:Name="ButtonPicker" Height="170" HorizontalAlignment="Left" Margin="0,4,0,8" />
+                                                <TextBlock Text="Click Type" FontWeight="SemiBold" />
+                                                <ListBox x:Name="ClickKindBox" Classes="choice" SelectedIndex="0" SelectionChanged="ClickKind_Changed" AutomationProperties.Name="Click type" Margin="0,4,0,8">
+                                                    <ListBoxItem Content="Single Click" Padding="10,6" /><ListBoxItem Content="Double Click" Padding="10,6" /><ListBoxItem Content="Hold" Padding="10,6" ToolTip.Tip="Presses, keeps the button down for the hold duration, then lets go." />
+                                                </ListBox>
                                             </StackPanel>
                                             <StackPanel x:Name="ScrollFields" IsVisible="False">
-                                                <TextBlock Text="Direction" />
-                                                <ComboBox x:Name="ScrollDirectionBox" SelectedIndex="1" AutomationProperties.Name="Scroll direction">
-                                                    <ComboBoxItem Content="Up" /><ComboBoxItem Content="Down" /><ComboBoxItem Content="Left" /><ComboBoxItem Content="Right" />
-                                                </ComboBox>
+                                                <TextBlock Text="Direction" FontWeight="SemiBold" />
+                                                <!-- Item order is the direction's number (Up, Down, Left, Right); the grid places them like arrow keys. -->
+                                                <ListBox x:Name="ScrollDirectionBox" Classes="choice" SelectedIndex="1" AutomationProperties.Name="Scroll direction" Margin="0,4,0,8" HorizontalAlignment="Left">
+                                                    <ListBox.ItemsPanel><ItemsPanelTemplate><Grid ColumnDefinitions="Auto,Auto,Auto" RowDefinitions="Auto,Auto" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                                                    <ListBoxItem Grid.Column="1" Padding="2" Margin="2" ToolTip.Tip="Up" AutomationProperties.Name="Up"><Image Source="/Assets/Ui/keys/up.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
+                                                    <ListBoxItem Grid.Column="1" Grid.Row="1" Padding="2" Margin="2" ToolTip.Tip="Down" AutomationProperties.Name="Down"><Image Source="/Assets/Ui/keys/down.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
+                                                    <ListBoxItem Grid.Row="1" Padding="2" Margin="2" ToolTip.Tip="Left" AutomationProperties.Name="Left"><Image Source="/Assets/Ui/keys/left.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
+                                                    <ListBoxItem Grid.Column="2" Grid.Row="1" Padding="2" Margin="2" ToolTip.Tip="Right" AutomationProperties.Name="Right"><Image Source="/Assets/Ui/keys/right.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
+                                                </ListBox>
                                                 <TextBlock Text="Notches (1–100)" />
-                                                <TextBox x:Name="ScrollNotchesBox" Text="3" AutomationProperties.Name="Scroll notches" ToolTip.Tip="One notch is one click of the mouse wheel." />
+                                                <TextBox x:Name="ScrollNotchesBox" local:Spin.Step="1" local:Spin.Minimum="1" local:Spin.Maximum="100" Text="3" AutomationProperties.Name="Scroll notches" ToolTip.Tip="One notch is one click of the mouse wheel." />
                                                 <TextBlock Text="Time between notches (ms)" />
-                                                <TextBox x:Name="ScrollGapBox" Text="30" AutomationProperties.Name="Time between scroll notches" />
+                                                <TextBox x:Name="ScrollGapBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="60000" Text="30" AutomationProperties.Name="Time between scroll notches" />
                                             </StackPanel>
                                             <StackPanel x:Name="LocationFields" IsVisible="False">
+                                                <TextBlock x:Name="ClickLocationHeader" Text="Click Location" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                <TextBlock x:Name="ScrollLocationHeader" Text="Scroll Location" FontWeight="SemiBold" Margin="0,0,0,4" />
                                                 <WrapPanel>
-                                                    <Button x:Name="CursorLocationButton" Margin="0,0,6,0" Content="Cursor location" Click="CursorLocation_Click" Classes="green" />
+                                                    <Button x:Name="CursorLocationButton" Margin="0,0,6,0" Content="Cursor location" Click="CursorLocation_Click" Classes="chosen" />
                                                     <Button x:Name="SetLocationButton" Content="Set Location…" Click="PickQuickPoint_Click" />
-                                                    <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                                    <TextBox x:Name="QuickXBox" Width="64" VerticalContentAlignment="Center" AutomationProperties.Name="Click X coordinate" ToolTip.Tip="Desktop pixels, or pixels from the selected window's top-left client corner." />
-                                                    <TextBlock Text="Y" VerticalAlignment="Center" Margin="4,0,4,0" />
-                                                    <TextBox x:Name="QuickYBox" Width="64" VerticalContentAlignment="Center" AutomationProperties.Name="Click Y coordinate" />
                                                 </WrapPanel>
-                                                <Button x:Name="PingLocationButton" Width="{Binding #CursorLocationButton.Bounds.Width}" Margin="0,6,0,0" Content="Ping location" Click="PingLocation_Click" HorizontalAlignment="Left" />
+                                                <WrapPanel Margin="0,6,0,0">
+                                                    <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                    <TextBox x:Name="QuickXBox" Width="100" local:Spin.Step="1" local:Spin.Minimum="-100000" local:Spin.Maximum="100000" VerticalContentAlignment="Center" AutomationProperties.Name="Click X coordinate" ToolTip.Tip="Desktop pixels, or pixels from the selected window's top-left client corner." />
+                                                    <TextBlock Text="Y" VerticalAlignment="Center" Margin="4,0,4,0" />
+                                                    <TextBox x:Name="QuickYBox" Width="100" local:Spin.Step="1" local:Spin.Minimum="-100000" local:Spin.Maximum="100000" VerticalContentAlignment="Center" AutomationProperties.Name="Click Y coordinate" />
+                                                    <Button x:Name="PingLocationButton" Width="100" Height="{Binding #QuickXBox.Bounds.Height}" MinHeight="0" Padding="4,0" Margin="8,4,0,8" VerticalAlignment="Top" Content="Ping location" Click="PingLocation_Click" />
+                                                </WrapPanel>
                                             </StackPanel>
                                             <StackPanel x:Name="MotionFields" IsVisible="False">
-                                                <CheckBox x:Name="VaryPositionBox" Content="Randomize click location offset" />
+                                                <ToggleButton x:Name="VaryPositionBox" Classes="choice" Content="Randomize click location offset" HorizontalAlignment="Left" Margin="0,6,0,6" />
                                                 <TextBlock Text="Maximum offset (pixels, 0–25)" />
-                                                <TextBox x:Name="PositionOffsetBox" Text="3" AutomationProperties.Name="Click position variation" />
+                                                <TextBox x:Name="PositionOffsetBox" local:Spin.Step="1" local:Spin.Minimum="0" local:Spin.Maximum="25" Text="3" AutomationProperties.Name="Click position variation" />
                                             </StackPanel>
                                             <StackPanel x:Name="KeyFields" IsVisible="False">
                                                 <TextBlock Text="Key" />
-                                                <ComboBox x:Name="KeyBox" AutomationProperties.Name="Key" />
-                                                <WrapPanel>
-                                                    <CheckBox x:Name="CtrlBox" Margin="0,8,12,8" Content="Ctrl" />
-                                                    <CheckBox x:Name="ShiftBox" Margin="0,8,12,8" Content="Shift" />
-                                                    <CheckBox x:Name="AltBox" Margin="0,8,12,8" Content="Alt" />
+                                                <WrapPanel Margin="0,4,0,8">
+                                                    <Button x:Name="KeyBox" Click="ChooseKey_Click" Padding="6,3" Margin="0,0,8,0" ToolTip.Tip="Choose the key on a keyboard." AutomationProperties.Name="Key" />
                                                 </WrapPanel>
-                                                <CheckBox x:Name="HoldKeyBox" Content="Hold key" IsCheckedChanged="HoldKey_Changed" />
+                                                <WrapPanel Margin="0,0,0,8">
+                                                    <ToggleButton x:Name="CtrlBox" Classes="choice keycap" ToolTip.Tip="Ctrl: held with the key" AutomationProperties.Name="Ctrl"><Image Source="/Assets/Ui/keys/left-ctrl.png" Width="36" Height="36" RenderOptions.BitmapInterpolationMode="HighQuality" /></ToggleButton>
+                                                    <ToggleButton x:Name="ShiftBox" Classes="choice keycap" ToolTip.Tip="Shift: held with the key" AutomationProperties.Name="Shift"><Image Source="/Assets/Ui/keys/left-shift.png" Width="36" Height="36" RenderOptions.BitmapInterpolationMode="HighQuality" /></ToggleButton>
+                                                    <ToggleButton x:Name="AltBox" Classes="choice keycap" ToolTip.Tip="Alt: held with the key" AutomationProperties.Name="Alt"><Image Source="/Assets/Ui/keys/left-alt.png" Width="36" Height="36" RenderOptions.BitmapInterpolationMode="HighQuality" /></ToggleButton>
+                                                </WrapPanel>
                                             </StackPanel>
-                                            <StackPanel x:Name="PressFields" IsVisible="False"><TextBlock x:Name="PressLabel" Text="Press duration (ms)" /><TextBox x:Name="PressBox" Text="20" AutomationProperties.Name="Press duration in milliseconds" /></StackPanel>
-                                            <StackPanel x:Name="DoubleFields" IsVisible="False"><TextBlock Text="Gap between the two clicks (ms)" /><TextBox x:Name="DoubleGapBox" Text="80" AutomationProperties.Name="Double click gap" /></StackPanel>
-                                            <StackPanel x:Name="AfterFields" IsVisible="False"><TextBlock x:Name="AfterLabel" Text="Pause after this action (ms)" /><TextBox x:Name="AfterBox" Text="20" AutomationProperties.Name="Pause after action" /></StackPanel>
+                                            <StackPanel x:Name="PressFields" IsVisible="False"><TextBlock x:Name="PressLabel" Text="Press duration (ms)" /><TextBox x:Name="PressBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="20" AutomationProperties.Name="Press duration in milliseconds" /></StackPanel>
+                                            <StackPanel x:Name="DoubleFields" IsVisible="False"><TextBlock Text="Gap between the two clicks (ms)" /><TextBox x:Name="DoubleGapBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="60000" Text="80" AutomationProperties.Name="Double click gap" /></StackPanel>
+                                            <StackPanel x:Name="AfterFields" IsVisible="False"><TextBlock x:Name="AfterLabel" Text="Pause after this action (ms)" /><TextBox x:Name="AfterBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="20" AutomationProperties.Name="Pause after action" /></StackPanel>
                                             <StackPanel x:Name="ScreenshotActionFields" IsVisible="False">
                                                 <TextBlock Text="Pause after saving (ms)" />
-                                                <TextBox x:Name="ScreenshotPauseBox" Text="1000" AutomationProperties.Name="Pause after saving screenshot" />
+                                                <TextBox x:Name="ScreenshotPauseBox" local:Spin.Step="100" local:Spin.Minimum="1000" local:Spin.Maximum="3600000" Text="1000" AutomationProperties.Name="Pause after saving screenshot" />
                                                 <TextBlock Text="Minimum 1,000 ms. Each image finishes saving before this pause begins. Uses the folder and clipboard option in Screenshot." Classes="secondary" />
                                             </StackPanel>
                                             <StackPanel x:Name="PauseFields" IsVisible="False">
                                                 <TextBlock Text="Pause for" />
                                                 <Grid ColumnDefinitions="*,*">
-                                                    <TextBox x:Name="PauseDurationBox" Text="1" Margin="0,4,6,8" AutomationProperties.Name="Pause duration" />
-                                                    <ComboBox Grid.Column="1" x:Name="PauseUnitBox" SelectedIndex="1" AutomationProperties.Name="Pause unit"><ComboBoxItem Content="Milliseconds" /><ComboBoxItem Content="Seconds" /></ComboBox>
+                                                    <TextBox x:Name="PauseDurationBox" local:Spin.Step="1" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="1" AutomationProperties.Name="Pause duration" />
+                                                    <ListBox Grid.Column="1" x:Name="PauseUnitBox" Classes="choice fill" SelectedIndex="1" Height="{Binding #PauseDurationBox.Bounds.Height}" Margin="8,4,-4,8" AutomationProperties.Name="Pause unit">
+                                                        <ListBoxItem Content="ms" ToolTip.Tip="Milliseconds" /><ListBoxItem Content="Seconds" />
+                                                    </ListBox>
                                                 </Grid>
                                             </StackPanel>
                                             <StackPanel x:Name="ConditionFields" IsVisible="False">
-                                                <TextBlock Text="Wait until" />
-                                                <ComboBox x:Name="ConditionKindBox" SelectedIndex="0" SelectionChanged="ConditionKind_Changed" AutomationProperties.Name="Wait until"><ComboBoxItem Content="A Colour appears" /><ComboBoxItem Content="A Colour disappears" /></ComboBox>
-                                                <WrapPanel Margin="0,6,0,0">
+                                                <TextBlock Text="Wait until" FontWeight="SemiBold" />
+                                                <ListBox x:Name="ConditionKindBox" Classes="choice" SelectedIndex="0" SelectionChanged="ConditionKind_Changed" AutomationProperties.Name="Wait until" Margin="0,4,0,8">
+                                                    <ListBoxItem Content="A Colour appears" Padding="10,6" /><ListBoxItem Content="A Colour disappears" Padding="10,6" />
+                                                </ListBox>
+                                                <TextBlock Text="Area" FontWeight="SemiBold" />
+                                                <WrapPanel Margin="0,4,0,0">
                                                     <Button x:Name="SelectAreaButton" Classes="needs-choice" Content="Select area… (drag on a snapshot)" Click="SelectConditionArea_Click" ToolTip.Tip="Takes a picture of the Click target (or the monitors on Desktop) and lets you drag the area to watch. The colour is taken from its top-left pixel." AutomationProperties.Name="Select area" />
                                                     <Button x:Name="PingScanAreaButton" IsEnabled="False" Content="Ping scan area" Click="PingScanArea_Click" ToolTip.Tip="Outlines the area this wait watches on the target, three times." AutomationProperties.Name="Ping scan area" />
                                                 </WrapPanel>
                                                 <TextBlock Text="RGB colour · six hexadecimal digits" Margin="0,6,0,0" />
                                                 <TextBox x:Name="ConditionRgbBox" MaxLength="7" TextChanged="ConditionField_Changed" AutomationProperties.Name="RGB colour" />
-                                                <Button x:Name="EyedropperButton" Content="Eyedropper · pick colour…" Margin="0,6,0,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ConditionEyedropper_Click" ToolTip.Tip="Click one pixel on a picture of the target to take its colour. The area is kept." AutomationProperties.Name="Eyedropper pick colour" />
-                                                <Border x:Name="ConditionColourPreview" Height="28" Margin="0,0,0,6" BorderThickness="1" BorderBrush="{DynamicResource ListBorder}" />
-                                                <TextBlock x:Name="ConditionLabel" Text="Select the area to scan and what to look for." Classes="secondary" TextWrapping="Wrap" />
+                                                <Button x:Name="EyedropperButton" Content="Eyedropper · pick colour…" Margin="0,6,0,6" HorizontalAlignment="Left" Click="ConditionEyedropper_Click" ToolTip.Tip="Click one pixel on a picture of the target to take its colour. The area is kept." AutomationProperties.Name="Eyedropper pick colour" />
+                                                <TextBlock Text="Colour Preview" FontWeight="SemiBold" />
+                                                <Border x:Name="ConditionColourPreview" MinHeight="34" Margin="0,4,0,6" Padding="8,5" BorderThickness="1" BorderBrush="{DynamicResource ListBorder}">
+                                                    <TextBlock x:Name="ConditionLabel" Text="Select the area to scan and what to look for." TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                </Border>
                                             </StackPanel>
                                             <StackPanel x:Name="ComplexFields" IsVisible="False">
                                                 <TextBlock Text="Recorded inputs — timing in milliseconds" FontWeight="SemiBold" TextWrapping="Wrap" />
@@ -167,15 +187,15 @@
                                                     </DataGrid.Columns>
                                                 </DataGrid>
                                                 <TextBlock Text="Total action duration (ms)" />
-                                                <TextBox x:Name="ComplexDurationBox" AutomationProperties.Name="Total action duration" />
+                                                <TextBox x:Name="ComplexDurationBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" AutomationProperties.Name="Total action duration" />
                                             </StackPanel>
                                             <StackPanel Margin="0,8,0,0">
                                                 <StackPanel x:Name="RandomFields" IsVisible="False">
-                                                    <CheckBox x:Name="RandomTimingBox" Content="Randomize press and pause timing" ToolTip.Tip="Choose a fresh duration between each minimum and maximum on every execution." IsCheckedChanged="TimingOptions_Changed" />
+                                                    <ToggleButton x:Name="RandomTimingBox" Classes="choice" HorizontalAlignment="Left" Margin="0,0,0,6" Content="Randomize press and pause timing" ToolTip.Tip="Choose a fresh duration between each minimum and maximum on every execution." IsCheckedChanged="TimingOptions_Changed" />
                                                     <StackPanel x:Name="RandomRanges" IsVisible="False">
                                                         <TextBlock Text="Use the values above as minimums." Classes="secondary" />
-                                                        <StackPanel x:Name="MaximumPressFields"><TextBlock Text="Maximum press duration (ms)" /><TextBox x:Name="MaxPressBox" Text="40" AutomationProperties.Name="Maximum press duration" /></StackPanel>
-                                                        <TextBlock x:Name="MaxAfterLabel" Text="Maximum pause after (ms)" /><TextBox x:Name="MaxAfterBox" Text="80" AutomationProperties.Name="Maximum pause or interval" />
+                                                        <StackPanel x:Name="MaximumPressFields"><TextBlock Text="Maximum press duration (ms)" /><TextBox x:Name="MaxPressBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="40" AutomationProperties.Name="Maximum press duration" /></StackPanel>
+                                                        <TextBlock x:Name="MaxAfterLabel" Text="Maximum pause after (ms)" /><TextBox x:Name="MaxAfterBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="80" AutomationProperties.Name="Maximum pause or interval" />
                                                     </StackPanel>
                                                 </StackPanel>
                                                 <TextBlock Text="Name (optional)" />
@@ -184,21 +204,20 @@
                                                     <Expander Header="Advanced: coordinates, scan speed and matching" Margin="0,8,0,8" HorizontalAlignment="Stretch">
                                                         <StackPanel Margin="0,4,0,0">
                                                             <Grid ColumnDefinitions="*,8,*">
-                                                                <StackPanel><TextBlock Text="X" /><TextBox x:Name="ConditionXBox" TextChanged="ConditionField_Changed" AutomationProperties.Name="Area X" /></StackPanel>
-                                                                <StackPanel Grid.Column="2"><TextBlock Text="Y" /><TextBox x:Name="ConditionYBox" TextChanged="ConditionField_Changed" AutomationProperties.Name="Area Y" /></StackPanel>
+                                                                <StackPanel><TextBlock Text="X" /><TextBox x:Name="ConditionXBox" local:Spin.Step="1" local:Spin.Minimum="-100000" local:Spin.Maximum="100000" TextChanged="ConditionField_Changed" AutomationProperties.Name="Area X" /></StackPanel>
+                                                                <StackPanel Grid.Column="2"><TextBlock Text="Y" /><TextBox x:Name="ConditionYBox" local:Spin.Step="1" local:Spin.Minimum="-100000" local:Spin.Maximum="100000" TextChanged="ConditionField_Changed" AutomationProperties.Name="Area Y" /></StackPanel>
                                                             </Grid>
                                                             <Grid ColumnDefinitions="*,8,*">
-                                                                <StackPanel><TextBlock Text="Width · 1–256 pixels" TextWrapping="Wrap" /><TextBox x:Name="ConditionWidthBox" TextChanged="ConditionField_Changed" AutomationProperties.Name="Area width" /></StackPanel>
-                                                                <StackPanel Grid.Column="2"><TextBlock Text="Height · 1–256 pixels" TextWrapping="Wrap" /><TextBox x:Name="ConditionHeightBox" TextChanged="ConditionField_Changed" AutomationProperties.Name="Area height" /></StackPanel>
+                                                                <StackPanel><TextBlock Text="Width · 1–256 pixels" TextWrapping="Wrap" /><TextBox x:Name="ConditionWidthBox" local:Spin.Step="1" local:Spin.Minimum="1" local:Spin.Maximum="256" TextChanged="ConditionField_Changed" AutomationProperties.Name="Area width" /></StackPanel>
+                                                                <StackPanel Grid.Column="2"><TextBlock Text="Height · 1–256 pixels" TextWrapping="Wrap" /><TextBox x:Name="ConditionHeightBox" local:Spin.Step="1" local:Spin.Minimum="1" local:Spin.Maximum="256" TextChanged="ConditionField_Changed" AutomationProperties.Name="Area height" /></StackPanel>
                                                             </Grid>
-                                                            <TextBlock Text="Per-channel tolerance · 0–255" /><TextBox x:Name="ConditionToleranceBox" Text="8" TextChanged="ConditionField_Changed" AutomationProperties.Name="Per-channel tolerance" />
-                                                            <TextBlock Text="Scan interval · milliseconds (100–5,000)" /><TextBox x:Name="QuickScanIntervalBox" Text="500" TextChanged="ConditionField_Changed" AutomationProperties.Name="Scan interval in milliseconds" />
+                                                            <TextBlock Text="Per-channel tolerance · 0–255" /><TextBox x:Name="ConditionToleranceBox" local:Spin.Step="1" local:Spin.Minimum="0" local:Spin.Maximum="255" Text="8" TextChanged="ConditionField_Changed" AutomationProperties.Name="Per-channel tolerance" />
+                                                            <TextBlock Text="Scan interval · milliseconds (100–5,000)" /><TextBox x:Name="QuickScanIntervalBox" local:Spin.Step="10" local:Spin.Minimum="100" local:Spin.Maximum="5000" Text="500" TextChanged="ConditionField_Changed" AutomationProperties.Name="Scan interval in milliseconds" />
                                                             <TextBlock Text="Default: 500 ms (twice a second). A smaller area uses less processing." Classes="secondary" TextWrapping="Wrap" />
-                                                            <TextBlock Text="Consecutive fresh matching samples · 1–10" /><TextBox x:Name="ConditionStableBox" Text="1" TextChanged="ConditionField_Changed" AutomationProperties.Name="Consecutive matching samples" />
-                                                            <CheckBox x:Name="ConditionCalibrateBox" IsChecked="True" Content="Calibrate against the selected window's current size and DPI" Margin="0,8,0,4" IsCheckedChanged="ConditionCalibrate_Changed" ToolTip.Tip="For coordinates typed by hand: they are measured on the Click target as it is now. Select area unticks it, because a selected area keeps the size it was picked at." />
+                                                            <TextBlock Text="Consecutive fresh matching samples · 1–10" /><TextBox x:Name="ConditionStableBox" local:Spin.Step="1" local:Spin.Minimum="1" local:Spin.Maximum="10" Text="1" TextChanged="ConditionField_Changed" AutomationProperties.Name="Consecutive matching samples" />
                                                         </StackPanel>
                                                     </Expander>
-                                                    <TextBlock Text="If the Click target window goes behind another window, the wait pauses and continues by itself when the window is back in front." Classes="secondary" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                                    <TextBlock Text="While this wait runs and the Click target goes behind another window, the wait pauses. It carries on by itself once the window is back in front." Classes="secondary" TextWrapping="Wrap" Margin="0,0,0,8" />
                                                 </StackPanel>
                                             </StackPanel>
                                         </StackPanel>
@@ -227,7 +246,7 @@
                                                 <Border Background="{Binding Background}" CornerRadius="3">
                                                     <Grid>
                                                     <Border Background="{DynamicResource StopFill}" Opacity="0.45" CornerRadius="3" IsVisible="{Binding Reselect}" IsHitTestVisible="False" />
-                                                    <Grid ColumnDefinitions="*,Auto" Margin="6,4">
+                                                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="6,4">
                                                         <StackPanel VerticalAlignment="Center">
                                                             <WrapPanel>
                                                                 <TextBlock Text="{Binding Title}" Foreground="{Binding Foreground}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
@@ -237,12 +256,13 @@
                                                             </WrapPanel>
                                                             <TextBlock Text="{Binding Detail}" Foreground="{Binding Foreground}" FontSize="12" TextWrapping="Wrap" />
                                                         </StackPanel>
-                                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                                            <CheckBox Content="Active" Foreground="{Binding Foreground}" IsChecked="{Binding Step.Enabled, Mode=OneWay}" Click="QuickActive_Click" ToolTip.Tip="Unchecked actions stay in the list and are skipped." />
-                                                            <ComboBox SelectedIndex="{Binding RepeatIndex, Mode=OneWay}" SelectionChanged="QuickRepeat_Changed" AutomationProperties.Name="Repeat this action" Margin="0,4,0,0" MinWidth="104" MinHeight="0" Padding="6,2" FontSize="12" HorizontalAlignment="Stretch"
-                                                                      ToolTip.Tip="With Loop on: Repeating actions run in every loop. Once actions run only in the first loop and are skipped in every loop after it. Without Loop, every action runs once.">
-                                                                <ComboBoxItem Content="Repeating" /><ComboBoxItem Content="Once" />
-                                                            </ComboBox>
+                                                        <Image Grid.Column="1" Source="{Binding Device}" Width="64" Height="{Binding #RowControls.Bounds.Height}" Margin="10,0,0,0" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="HighQuality" VerticalAlignment="Center" />
+                                                        <StackPanel x:Name="RowControls" Grid.Column="2" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                            <ToggleButton Classes="choice active" IsChecked="{Binding Step.Enabled, Mode=OneWay}" Click="QuickActive_Click" ToolTip.Tip="Inactive actions stay in the list and are skipped." AutomationProperties.Name="Active" />
+                                                            <ListBox Classes="choice repeat" SelectedIndex="{Binding RepeatIndex, Mode=OneWay}" SelectionChanged="QuickRepeat_Changed" AutomationProperties.Name="Repeat this action" Margin="0,4,0,0" ToolTip.Tip="With Loop on: Repeating actions run in every loop. Once actions run only in the first loop and are skipped in every loop after it. Without Loop, every action runs once.">
+                                                                <ListBoxItem AutomationProperties.Name="Repeating"><PathIcon Data="{StaticResource IconRepeat}" Width="14" Height="14" /></ListBoxItem>
+                                                                <ListBoxItem AutomationProperties.Name="Once"><Panel><PathIcon Data="{StaticResource IconRepeat}" Width="14" Height="14" /><TextBlock Text="1" FontSize="8" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" /></Panel></ListBoxItem>
+                                                            </ListBox>
                                                         </StackPanel>
                                                     </Grid>
                                                     </Grid>
@@ -269,20 +289,22 @@
                             </Grid>
                             <TextBlock Grid.Row="3" x:Name="MacroSaveStatus" Classes="secondary optional" Margin="0,4,0,0" />
                             <StackPanel Grid.Row="4" x:Name="QuickAdvanced" Margin="0,12,0,0">
-                                <CheckBox x:Name="RecordMovementBox" Content="Simulate mouse movement between click points" IsCheckedChanged="ActionsChoice_Changed" />
-                                <CheckBox x:Name="KeepAwakeBox" Content="Prevent sleep while running" IsCheckedChanged="KeepAwake_Changed" />
+                                <WrapPanel>
+                                    <ToggleButton x:Name="RecordMovementBox" Classes="choice" Content="Simulate mouse movement between click points" Margin="0,0,6,6" IsCheckedChanged="ActionsChoice_Changed" />
+                                    <ToggleButton x:Name="KeepAwakeBox" Classes="choice" Content="Prevent sleep while running" Margin="0,0,6,6" IsCheckedChanged="KeepAwake_Changed" />
+                                </WrapPanel>
                                 <StackPanel x:Name="ShutdownSettings" Margin="0,8,0,0">
                                     <ComboBox x:Name="ShutdownModeBox" SelectedIndex="0" SelectionChanged="ShutdownMode_Changed" AutomationProperties.Name="Shutdown PC after">
                                         <ComboBoxItem Content="Shutdown PC after…" IsEnabled="False" />
                                         <ComboBoxItem Content="After X loops" /><ComboBoxItem Content="After X minutes" /><ComboBoxItem Content="At set time" />
                                     </ComboBox>
-                                    <StackPanel x:Name="ShutdownNumberFields" IsVisible="False"><TextBlock x:Name="ShutdownValueLabel" Text="Loops" /><TextBox x:Name="ShutdownValueBox" Text="100" AutomationProperties.Name="Shutdown value" /></StackPanel>
+                                    <StackPanel x:Name="ShutdownNumberFields" IsVisible="False"><TextBlock x:Name="ShutdownValueLabel" Text="Loops" /><TextBox x:Name="ShutdownValueBox" local:Spin.Step="1" local:Spin.Minimum="1" local:Spin.Maximum="100000" Text="100" AutomationProperties.Name="Shutdown value" /></StackPanel>
                                     <StackPanel x:Name="ShutdownTimeFields" IsVisible="False">
                                         <TextBlock Text="System time (24-hour)" />
                                         <WrapPanel>
-                                            <TextBox x:Name="ShutdownHourBox" Width="55" MaxLength="2" AutomationProperties.Name="Shutdown hour" />
+                                            <TextBox x:Name="ShutdownHourBox" local:Spin.Step="1" local:Spin.Minimum="0" local:Spin.Maximum="23" Width="70" MaxLength="2" AutomationProperties.Name="Shutdown hour" />
                                             <TextBlock Text=":" VerticalAlignment="Center" Margin="4,0" />
-                                            <TextBox x:Name="ShutdownMinuteBox" Width="55" MaxLength="2" AutomationProperties.Name="Shutdown minute" />
+                                            <TextBox x:Name="ShutdownMinuteBox" local:Spin.Step="1" local:Spin.Minimum="0" local:Spin.Maximum="59" Width="70" MaxLength="2" AutomationProperties.Name="Shutdown minute" />
                                         </WrapPanel>
                                     </StackPanel>
                                     <Button x:Name="ArmShutdownButton" Content="Enable shutdown…" Click="ArmShutdown_Click" IsVisible="False" HorizontalAlignment="Left" />
@@ -302,20 +324,21 @@
                     <ScrollViewer Padding="0,0,16,0" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Text="When closing the window" Classes="heading" />
-                            <CheckBox x:Name="CloseToTrayBox" Content="Minimize to the top bar - If unchecked clicking X closes the app." IsChecked="True" IsCheckedChanged="CloseToTray_Changed" />
+                            <ToggleButton x:Name="CloseToTrayBox" Classes="choice" Content="Minimize to the top bar" IsChecked="True" HorizontalAlignment="Left" IsCheckedChanged="CloseToTray_Changed" />
+                            <TextBlock Text="On: clicking X keeps the clicker running in the top bar. Off: clicking X closes it." Classes="secondary" Margin="0,4,0,0" />
                             <TextBlock Text="Appearance" Classes="heading" Margin="0,18,0,8" />
                             <WrapPanel>
-                                <Button Classes="icon" Width="40" Height="40" Click="LightTheme_Click" ToolTip.Tip="Light mode" AutomationProperties.Name="Light mode"><PathIcon Data="{StaticResource IconSun}" Width="20" Height="20" /></Button>
-                                <Button Classes="icon" Width="40" Height="40" Click="DarkTheme_Click" ToolTip.Tip="Dark mode" AutomationProperties.Name="Dark mode"><PathIcon Data="{StaticResource IconMoon}" Width="20" Height="20" /></Button>
+                                <Button x:Name="LightThemeButton" Classes="icon" Width="40" Height="40" Click="LightTheme_Click" ToolTip.Tip="Light mode" AutomationProperties.Name="Light mode"><PathIcon Data="{StaticResource IconSun}" Width="20" Height="20" /></Button>
+                                <Button x:Name="DarkThemeButton" Classes="icon" Width="40" Height="40" Click="DarkTheme_Click" ToolTip.Tip="Dark mode" AutomationProperties.Name="Dark mode"><PathIcon Data="{StaticResource IconMoon}" Width="20" Height="20" /></Button>
                             </WrapPanel>
                             <ComboBox x:Name="ThemeBox" IsVisible="False" SelectedIndex="0" SelectionChanged="Theme_Changed"><ComboBoxItem Content="System" /><ComboBoxItem Content="Dark" /><ComboBoxItem Content="Light" /></ComboBox>
                             <TextBlock Text="When the click target is resized" Classes="heading" Margin="0,18,0,8" />
-                            <ComboBox x:Name="ResizeClicksBox" SelectedIndex="0" SelectionChanged="ResizeClicks_Changed" Width="360" HorizontalAlignment="Left" AutomationProperties.Name="Click positions after resizing">
-                                <ComboBoxItem Content="Scale click positions with the window (default)" /><ComboBoxItem Content="Keep fixed click positions" />
-                            </ComboBox>
-                            <TextBlock Text="Applies to saved clicks on the next Start or Test. Scaling follows the same proportional position; it does not recognise buttons. Colour areas and drags still need recalibration." Classes="secondary" />
+                            <ListBox x:Name="ResizeClicksBox" Classes="choice" SelectedIndex="0" SelectionChanged="ResizeClicks_Changed" HorizontalAlignment="Left" AutomationProperties.Name="Click positions after resizing">
+                                <ListBoxItem Content="Scale click positions with the window (default)" Padding="10,6" /><ListBoxItem Content="Keep fixed click positions" Padding="10,6" />
+                            </ListBox>
+                            <TextBlock Classes="secondary" Margin="0,4,0,0">Scale: saved clicks and scroll spots stretch with the window, so they land on the same part of it. Fixed: they keep the same distance from the window's top-left corner.<LineBreak />Drags and colour-wait areas are not changed by this choice. It applies from the next Start or Test.</TextBlock>
                             <TextBlock Text="Status overlay" Classes="heading" Margin="0,18,0,8" />
-                            <CheckBox x:Name="IdleOverlayBox" Content="Keep an idle indicator visible" IsCheckedChanged="OverlayOptions_Changed" />
+                            <ToggleButton x:Name="IdleOverlayBox" Classes="choice" Content="Show overlay when idle" HorizontalAlignment="Left" Margin="0,0,0,8" IsCheckedChanged="OverlayOptions_Changed" ToolTip.Tip="Keeps the status overlay on screen while nothing runs and the clicker is minimized, so you can see it is there." />
                             <TextBlock Text="Opacity" />
                             <Slider x:Name="OverlayOpacity" Width="300" HorizontalAlignment="Left" Minimum="0.4" Maximum="1" Value="0.94" ValueChanged="OverlayOptions_Changed" AutomationProperties.Name="Overlay opacity" />
                             <TextBlock Text="Size" />
@@ -323,31 +346,31 @@
 
                             <TextBlock Text="Global controls" Classes="heading" Margin="0,18,0,8" />
                             <WrapPanel>
-                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / toggle" /><Button x:Name="ToggleKeyBox" Content="Choose a key…" Click="CaptureStartKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Start hotkey" /></StackPanel>
-                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Stop all" /><Button x:Name="StopKeyBox" Content="Choose a key…" Click="CaptureStopKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Stop all hotkey" /></StackPanel>
-                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" /><Button x:Name="QuickRecordKeyBox" Content="F10" Click="CaptureRecordKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Record macro hotkey" /></StackPanel>
-                                <StackPanel x:Name="ScreenshotHotkeyPanel" Width="170"><TextBlock Text="Screenshot" /><Button x:Name="ScreenshotKeyBox" Content="Set Hotkey" Classes="red" Click="CaptureScreenshotKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Screenshot hotkey" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / toggle" Margin="0,0,0,4" /><Button x:Name="ToggleKeyBox" Content="Choose a key…" Click="CaptureStartKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Start hotkey" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Stop all" Margin="0,0,0,4" /><Button x:Name="StopKeyBox" Content="Choose a key…" Click="CaptureStopKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Stop all hotkey" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" Margin="0,0,0,4" /><Button x:Name="QuickRecordKeyBox" Content="F10" Click="CaptureRecordKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Record macro hotkey" /></StackPanel>
+                                <StackPanel x:Name="ScreenshotHotkeyPanel" Width="170"><TextBlock Text="Screenshot" Margin="0,0,0,4" /><Button x:Name="ScreenshotKeyBox" Content="Choose a key…" Click="CaptureScreenshotKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Screenshot hotkey" /></StackPanel>
                             </WrapPanel>
                             <CheckBox x:Name="ScreenshotHotkeyBox" IsVisible="False" />
-                            <Button Content="Reset keybinds" Click="ResetGlobalKeys_Click" HorizontalAlignment="Left" Width="170" Margin="0,12,0,0" />
+                            <Button Content="Reset keybinds" Click="ResetGlobalKeys_Click" Classes="reset" HorizontalAlignment="Left" Width="164" Padding="2,6" Margin="0,12,0,0" />
                             <TextBlock x:Name="HotkeyStatus" Classes="secondary optional" Margin="0,8,0,0" />
                             <TextBlock x:Name="ScreenshotHotkeyStatus" Classes="secondary optional" />
 
                             <TextBlock Text="Controller" Classes="heading" Margin="0,18,0,8" />
                             <TextBlock x:Name="ControllerStatus" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" Margin="0,0,0,6" />
                             <WrapPanel>
-                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / toggle" /><Button x:Name="ControllerStartBox" Tag="StartStop" Content="A" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Start controller button" /></StackPanel>
-                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Stop all" /><Button x:Name="ControllerStopBox" Tag="StopAll" Content="B" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Stop all controller button" /></StackPanel>
-                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" /><Button x:Name="ControllerRecordBox" Tag="Record" Content="Y" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Record controller button" /></StackPanel>
-                                <StackPanel Width="170"><TextBlock Text="Screenshot" /><Button x:Name="ControllerScreenshotBox" Tag="Screenshot" Content="X" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Screenshot controller button" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / toggle" Margin="0,0,0,4" /><Button x:Name="ControllerStartBox" Tag="StartStop" Content="A" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Start controller button" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Stop all" Margin="0,0,0,4" /><Button x:Name="ControllerStopBox" Tag="StopAll" Content="B" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Stop all controller button" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" Margin="0,0,0,4" /><Button x:Name="ControllerRecordBox" Tag="Record" Content="Y" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Record controller button" /></StackPanel>
+                                <StackPanel Width="170"><TextBlock Text="Screenshot" Margin="0,0,0,4" /><Button x:Name="ControllerScreenshotBox" Tag="Screenshot" Content="X" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Screenshot controller button" /></StackPanel>
                             </WrapPanel>
-                            <Button Content="Reset controller buttons" Click="ResetControllerButtons_Click" HorizontalAlignment="Left" Width="170" Margin="0,12,0,0" />
+                            <Button Content="Reset controller buttons" Click="ResetControllerButtons_Click" Classes="reset" HorizontalAlignment="Left" Width="164" Padding="2,6" Margin="0,12,0,0" />
                             <TextBlock x:Name="ControllerBindStatus" Classes="secondary optional" Margin="0,8,0,0" />
 
                             <TextBlock Text="Emergency stop" Classes="heading" Margin="0,18,0,8" />
-                            <ComboBox x:Name="EmergencyStopBox" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" Width="420" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop">
-                                <ComboBoxItem Content="Only Stop All (F9) stops the clicker (default)" /><ComboBoxItem Content="Stop on my input" />
-                            </ComboBox>
+                            <ListBox x:Name="EmergencyStopBox" Classes="choice" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop">
+                                <ListBoxItem Content="Stop All F9" Padding="10,6" ToolTip.Tip="Only Stop All stops the clicker (default)." /><ListBoxItem Content="Stop All Any Input" Padding="10,6" ToolTip.Tip="Any key you press or mouse movement stops the clicker." />
+                            </ListBox>
                             <TextBlock x:Name="EmergencyStopHint" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" />
 
                             <TextBlock Text="Linux setup" Classes="heading" Margin="0,18,0,8" />
@@ -396,8 +419,8 @@
                                     <TextBox x:Name="ToggleNameBox" MaxLength="100" AutomationProperties.Name="Toggle name" />
                                     <TextBlock Text="Key or mouse button to hold or tap" />
                                     <Button x:Name="ToggleHeldKeyBox" Content="Choose a key…" Click="CaptureHeldInput_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Key to hold" Margin="0,4,0,12" />
-                                    <Grid Margin="0,0,0,12" ColumnDefinitions="110,*">
-                                        <ComboBox x:Name="ToggleModeBox" Height="32" VerticalAlignment="Top" SelectedIndex="0" SelectionChanged="ToggleMode_Changed" Margin="0,0,10,0" AutomationProperties.Name="Toggle behavior"><ComboBoxItem Content="Hold" /><ComboBoxItem Content="Spam" /></ComboBox>
+                                    <Grid Margin="0,0,0,12" ColumnDefinitions="Auto,*">
+                                        <ListBox x:Name="ToggleModeBox" Classes="choice" VerticalAlignment="Top" SelectedIndex="0" SelectionChanged="ToggleMode_Changed" Margin="0,4,10,0" AutomationProperties.Name="Toggle behavior"><ListBoxItem Content="Hold" Padding="10,6" /><ListBoxItem Content="Spam" Padding="10,6" ToolTip.Tip="Taps the key or button as fast as its interval allows. Spam is deliberately not limited by the Actions click cap." /></ListBox>
                                         <StackPanel Grid.Column="1" x:Name="ToggleIntervalPanel" IsVisible="False">
                                             <TextBlock x:Name="ToggleIntervalLabel" Text="100 ms · 10 taps/sec" />
                                             <Slider x:Name="ToggleIntervalSlider" Minimum="10" Maximum="1000" Value="100" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="100" ValueChanged="ToggleInterval_Changed" AutomationProperties.Name="Spam interval in milliseconds" />
@@ -433,17 +456,23 @@
                                                     <DataTemplate><TextBlock Text="{Binding Name}" Margin="14,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="130">
+                                            <DataGridTemplateColumn Width="110">
+                                                <DataGridTemplateColumn.Header><TextBlock Text="Hold / Tap" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate><ContentControl Content="{Binding HeldPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="110">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Hotkey" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
-                                                    <DataTemplate><TextBlock Text="{Binding Shortcut}" Margin="8,0" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" /></DataTemplate>
+                                                    <DataTemplate><ContentControl Content="{Binding ShortcutPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
                                             <DataGridTemplateColumn Width="100">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Toggle" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>
-                                                        <CheckBox Content="Active" IsChecked="{Binding Enabled, Mode=OneWay}" Click="ToggleEnabled_Changed" ToolTip.Tip="Enable this shortcut; press it to hold or release." AutomationProperties.Name="Enable toggle shortcut" Margin="8,0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        <ToggleButton Classes="choice active" IsChecked="{Binding Enabled, Mode=OneWay}" Click="ToggleEnabled_Changed" ToolTip.Tip="Enable this shortcut; press it to hold or release." AutomationProperties.Name="Enable toggle shortcut" Margin="4,0" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
@@ -467,22 +496,22 @@
                             <Border Classes="card" BorderBrush="{DynamicResource ActionBorder}">
                                 <StackPanel>
                                     <TextBlock Text="Capture" FontWeight="SemiBold" />
-                                    <ComboBox x:Name="ScreenshotModeBox" SelectedIndex="1" SelectionChanged="ScreenshotOptions_Changed" MaxWidth="360" HorizontalAlignment="Left" MinWidth="260" Margin="0,6,0,8" AutomationProperties.Name="Screenshot area">
-                                        <ComboBoxItem Content="Full screen (all monitors)" /><ComboBoxItem Content="Select an area" />
-                                    </ComboBox>
-                                    <TextBlock Text="Drag an area and release to save; Escape cancels. Area selection stops automation first. Full-screen capture lets it continue." Classes="secondary" Margin="0,0,0,12" />
+                                    <ListBox x:Name="ScreenshotModeBox" Classes="choice" SelectedIndex="1" SelectionChanged="ScreenshotOptions_Changed" HorizontalAlignment="Left" Margin="0,6,0,12" AutomationProperties.Name="Screenshot area"><ListBoxItem Content="Full screen (all monitors)" Padding="10,6" /><ListBoxItem Content="Select an area" Padding="10,6" /></ListBox>
                                     <TextBlock Text="Save to folder" FontWeight="SemiBold" />
                                     <DockPanel Margin="0,6,0,8">
-                                        <Button DockPanel.Dock="Right" Content="Choose folder…" Click="ScreenshotFolder_Click" Margin="6,0,0,0" />
+                                        <Button DockPanel.Dock="Right" Content="Choose folder…" Click="ScreenshotFolder_Click" Height="{Binding #ScreenshotFolderBox.Bounds.Height}" MinHeight="0" Padding="10,0" Margin="6,0,6,0" />
                                         <TextBox x:Name="ScreenshotFolderBox" IsReadOnly="True" VerticalContentAlignment="Center" Margin="0" AutomationProperties.Name="Screenshot save folder" />
                                     </DockPanel>
-                                    <CheckBox x:Name="ScreenshotClipboardBox" Content="Also copy to clipboard" IsCheckedChanged="ScreenshotOptions_Changed" Margin="0,2,0,12" />
-                                    <CheckBox x:Name="ScreenshotDailyFoldersBox" Content="Organize into daily folders" IsCheckedChanged="ScreenshotOptions_Changed" Margin="0,2,0,6" />
-                                    <WrapPanel>
-                                        <Button x:Name="TakeScreenshotButton" Content="Take Screenshot" Classes="green" Click="TakeScreenshot_Click" />
-                                        <Button Content="Open folder" Click="ScreenshotOpenFolder_Click" />
-                                        <Button x:Name="ScreenshotHotkeyButton" Content="Set Hotkey" Classes="red" Click="CaptureScreenshotKey_Click" />
-                                    </WrapPanel>
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                        <WrapPanel VerticalAlignment="Bottom">
+                                            <Button x:Name="TakeScreenshotButton" Content="Take Screenshot" Classes="green" Click="TakeScreenshot_Click" />
+                                            <Button Content="Open folder" Click="ScreenshotOpenFolder_Click" />
+                                        </WrapPanel>
+                                        <WrapPanel Grid.Column="1" VerticalAlignment="Bottom">
+                                            <ToggleButton x:Name="ScreenshotClipboardBox" Classes="choice" Content="Copy to clipboard" ToolTip.Tip="Each screenshot is also put on the clipboard, ready to paste." IsCheckedChanged="ScreenshotOptions_Changed" />
+                                            <ToggleButton x:Name="ScreenshotDailyFoldersBox" Classes="choice" Content="Organize into daily folders" ToolTip.Tip="Screenshots go into a folder per day inside the save folder." IsCheckedChanged="ScreenshotOptions_Changed" />
+                                        </WrapPanel>
+                                    </Grid>
                                 </StackPanel>
                             </Border>
                             <TextBlock x:Name="ScreenshotStatus" Text="Ready to capture." TextWrapping="Wrap" Margin="0,4,0,8" />
@@ -504,15 +533,9 @@
                                     <TextBlock Text="Bind name" />
                                     <TextBox x:Name="ControllerBindNameBox" MaxLength="100" AutomationProperties.Name="Bind name" />
                                     <TextBlock Text="Key or mouse button to press" Margin="0,8,0,0" />
-                                    <Grid Margin="0,4,0,12" ColumnDefinitions="*,8,*">
-                                        <ComboBox x:Name="ControllerKeyBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="ControllerKeyChoice_Changed" AutomationProperties.Name="Key to press" />
-                                        <ComboBox Grid.Column="2" x:Name="ControllerMouseBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="ControllerMouseChoice_Changed" AutomationProperties.Name="Mouse button to press">
-                                            <ComboBoxItem Content="Select a mouse button…" /><ComboBoxItem Content="Left mouse button" /><ComboBoxItem Content="Right mouse button" /><ComboBoxItem Content="Middle mouse button" /><ComboBoxItem Content="Back mouse button" /><ComboBoxItem Content="Forward mouse button" />
-                                        </ComboBox>
-                                    </Grid>
+                                    <Button x:Name="ControllerOutputBox" Classes="needs-choice" Content="Choose a key or mouse button…" Click="ChooseBindOutput_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Key or mouse button to press" Margin="0,4,0,12" />
                                     <TextBlock Text="Controller binding" />
                                     <Button x:Name="ControllerBindButtonBox" Content="Press to choose a button…" Classes="needs-choice" Click="CaptureBindButton_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Controller binding" Margin="0,4,0,0" />
-                                    <TextBlock Text="While the controller button is held, the key or mouse button is held, in whichever window is in front. Stop All lets go of everything." Classes="secondary" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 </StackPanel>
                             </Border>
                             <WrapPanel Margin="0,6,0,0">
@@ -543,20 +566,20 @@
                                             <DataGridTemplateColumn Width="110">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Controller" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
-                                                    <DataTemplate><TextBlock Text="{Binding Button}" Margin="8,0" HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                                    <DataTemplate><ContentControl Content="{Binding ButtonPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
                                             <DataGridTemplateColumn Width="120">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Presses" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
-                                                    <DataTemplate><TextBlock Text="{Binding Output}" Margin="8,0" HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                                    <DataTemplate><ContentControl Content="{Binding OutputPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
                                             <DataGridTemplateColumn Width="100">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Bind" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>
-                                                        <CheckBox Content="Active" IsChecked="{Binding Active, Mode=OneWay}" Click="ControllerBindActive_Click" ToolTip.Tip="Active binds press their key while their controller button is held." AutomationProperties.Name="Bind active" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        <ToggleButton Classes="choice active" IsChecked="{Binding Active, Mode=OneWay}" Click="ControllerBindActive_Click" ToolTip.Tip="Active binds press their key while their controller button is held." AutomationProperties.Name="Bind active" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>

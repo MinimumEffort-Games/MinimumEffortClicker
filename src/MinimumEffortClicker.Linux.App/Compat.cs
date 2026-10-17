@@ -44,6 +44,8 @@ internal static class Compat
             control.Classes.Set("green", key == "GreenButton");
             control.Classes.Set("blue", key == "BlueButton");
             control.Classes.Set("red", key == "RedButton");
+            control.Classes.Set("chosen", key == "ChosenButton");
+            control.Classes.Set("needs-choice", key == "NeedsChoiceButton");
         }
     }
 
