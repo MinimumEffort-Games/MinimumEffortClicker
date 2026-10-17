@@ -8,6 +8,7 @@ namespace MinimumEffortClicker.Windows;
 internal static class DesktopNative
 {
     [DllImport("user32.dll")] internal static extern bool ShowWindow(nint window, int command);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern int GetClassNameW(nint window, StringBuilder name, int size);
 
     internal delegate bool EnumWindow(nint hwnd, nint parameter);
     internal delegate nint Hook(int code, nuint message, nint data);

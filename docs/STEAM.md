@@ -34,7 +34,9 @@ macros the user subscribed to.
    edited, saved into the user's own macro or duplicated. A list whose Workshop actions press keys does not start, and
    Test Selected Action does not run, while Desktop is the Click target. With a window target, keys reach only that
    window, and the run pauses when anything else comes to the front, so a Workshop macro cannot type into a command
-   line it opened.
+   line it opened. They never go to a terminal or command line either (`Core/TerminalWindows`: cmd, PowerShell, Windows
+   Terminal and other terminals by program or window class, and the Linux terminals for when the Workshop reaches
+   Linux): with one as Click target the list does not start, because there a few letters and Enter would run a command.
 4. The user's own macros are not limited.
 
 Code: `src/MinimumEffortClicker.Steam` (Steamworks.NET 2024.8.0, the only project that talks to Steam). Behind it,

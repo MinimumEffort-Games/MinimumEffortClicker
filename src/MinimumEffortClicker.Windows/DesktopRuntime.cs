@@ -218,6 +218,20 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
 
     public bool HasSelectedTarget => target is not null && !targetInvalidated;
     public TargetWindow? SelectedWindow => target;
+    /// <summary>The selected window is a terminal or command line (see <see cref="TerminalWindows"/>).</summary>
+    public bool TargetIsTerminal
+    {
+        get
+        {
+            if (target is not { } window) return false;
+            var name = new StringBuilder(256);
+            string? windowClass = DesktopNative.GetClassNameW(window.Handle, name, name.Capacity) > 0 ? name.ToString() : null;
+            string? program = null;
+            try { using var process = Process.GetProcessById(window.ProcessId); program = process.ProcessName; }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
+            return TerminalWindows.Is(program, windowClass);
+        }
+    }
     public bool IsDesktopMode => target is null && !targetInvalidated;
     public void UseDesktop()
     {
