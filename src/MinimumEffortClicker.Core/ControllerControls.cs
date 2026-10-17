@@ -10,8 +10,8 @@ public sealed record ControllerControls(ControllerButton? StartStop = Controller
     ControllerButton? Record = ControllerButton.Y, ControllerButton? Screenshot = ControllerButton.X)
 {
     public static ControllerControls Default => new();
-    /// <summary>L4 Start/Stop, R4 Stop All, L5 Record, R5 Screenshot.</summary>
-    public static ControllerControls SteamDeck => new(ControllerButton.L4, ControllerButton.R4, ControllerButton.L5, ControllerButton.R5);
+    /// <summary>L4 Start/Stop, L5 Stop All, R4 Record, R5 Screenshot (User's layout on the Deck).</summary>
+    public static ControllerControls SteamDeck => new(ControllerButton.L4, ControllerButton.L5, ControllerButton.R4, ControllerButton.R5);
     /// <summary>The default for this device.</summary>
     public static ControllerControls DefaultFor(bool steamDeck) => steamDeck ? SteamDeck : Default;
 

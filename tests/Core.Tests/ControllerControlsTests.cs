@@ -22,7 +22,7 @@ public sealed class ControllerControlsTests
     public void OnASteamDeckTheBackButtonsAreTheDefault()
     {
         var deck = ControllerControls.DefaultFor(steamDeck: true);
-        Assert.AreEqual(new ControllerControls(ControllerButton.L4, ControllerButton.R4, ControllerButton.L5, ControllerButton.R5), deck);
+        Assert.AreEqual(new ControllerControls(ControllerButton.L4, ControllerButton.L5, ControllerButton.R4, ControllerButton.R5), deck);
         Assert.IsNull(deck.CommandFor(ControllerButton.A));
         Assert.IsTrue(deck.Valid);
         Assert.AreEqual(ControllerControls.Default, ControllerControls.DefaultFor(steamDeck: false));

@@ -372,7 +372,7 @@
 
                             <TextBlock Text="Emergency stop" Classes="heading" Margin="0,18,0,8" />
                             <ListBox x:Name="EmergencyStopBox" Classes="choice" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop">
-                                <ListBoxItem Content="Stop All F9" Padding="10,6" ToolTip.Tip="Only Stop All stops the clicker (default)." /><ListBoxItem Content="Stop All Any Input" Padding="10,6" ToolTip.Tip="Any key you press or mouse movement stops the clicker." />
+                                <ListBoxItem x:Name="StopAllOnlyItem" Content="Stop All F9" Padding="10,6" ToolTip.Tip="Only Stop All stops the clicker (default)." /><ListBoxItem Content="Stop All Any Input" Padding="10,6" ToolTip.Tip="Any key you press or mouse movement stops the clicker." />
                             </ListBox>
                             <TextBlock x:Name="EmergencyStopHint" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" />
 
