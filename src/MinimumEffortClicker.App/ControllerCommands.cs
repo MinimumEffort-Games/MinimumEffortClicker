@@ -60,7 +60,7 @@ public partial class MainWindow
         string state = gamepads.Error ?? (names.Count == 0 ? "none connected" : "connected: " + string.Join(", ", names));
         if (state != loggedControllerState) { loggedControllerState = state; AppLog.Note("Controllers", state); }
         ControllerStatus.Text = gamepads.Error ?? (names.Count == 0
-            ? "No controller found. Connect one or turn it on; it is picked up straight away."
+            ? "No controller found."
             : "Connected: " + string.Join(", ", names) + ". The buttons below work in any window, like the keys above.");
     }
 

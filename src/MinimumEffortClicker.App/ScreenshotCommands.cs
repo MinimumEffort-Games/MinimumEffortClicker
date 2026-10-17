@@ -45,10 +45,8 @@ public partial class MainWindow
             ScreenshotHotkeyStatus.Text = "That key is already used or unavailable. Choose another screenshot key.";
             PersistPreferences();
         }
-        else ScreenshotHotkeyStatus.Text = screenshotSettings.HotkeyEnabled
-            ? $"Ready · {ShortcutKeys.Label(screenshotSettings.Hotkey)} · works while ME Clicker is hidden"
-            : "Screenshot hotkey is off. You can still use Take Screenshot.";
-        if (!screenshotSettings.HotkeyEnabled && success) ScreenshotHotkeyStatus.Text = "";
+        // Only a problem is worth a line here; a working key shows on its button.
+        else ScreenshotHotkeyStatus.Text = "";
         RefreshScreenshotHotkeyButtons();
     }
 

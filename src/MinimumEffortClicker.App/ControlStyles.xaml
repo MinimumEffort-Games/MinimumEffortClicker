@@ -391,4 +391,15 @@
         <Setter Property="MinHeight" Value="0" />
         <Setter Property="Margin" Value="0" />
     </Style>
+    <!-- Choices that share a fixed width and height between them (ms / Seconds beside a number field). -->
+    <Style x:Key="FillChoiceItem" TargetType="ListBoxItem" BasedOn="{StaticResource ChoiceItem}">
+        <Setter Property="Margin" Value="0,0,4,0" />
+        <Setter Property="Padding" Value="4,0" />
+    </Style>
+    <Style x:Key="FillChoiceList" TargetType="ListBox" BasedOn="{StaticResource ChoiceList}">
+        <Setter Property="ItemContainerStyle" Value="{StaticResource FillChoiceItem}" />
+        <Setter Property="ItemsPanel">
+            <Setter.Value><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

@@ -353,7 +353,7 @@ public partial class MainWindow : Window
     {
         if (EmergencyStopHint is null) return;
         EmergencyStopHint.Text = ChosenEmergencyStop == EmergencyStopMode.OnlyStopAll
-            ? "Stop All (F9) stops everything at once: the Action List, every toggle and recording. Nothing else you press or move stops the clicker, so you can click into your game while it runs."
+            ? "Stops all Actions and toggles."
             : "Any key or mouse button the clicker is using, or moving the mouse while the clicker moves it, stops everything at once. Safer, but clicking into your game to bring it to the front also stops a run. Stop All still stops everything.";
         if (runtime is not null) runtime.EmergencyStop = ChosenEmergencyStop;
         if (initialized) { RefreshStatus(); PersistPreferences(); }
@@ -368,6 +368,8 @@ public partial class MainWindow : Window
     private void ShowPage(string page)
     {
         currentPage = page;
+        // Appearance can follow Windows, which may have switched since; the outline shows what is showing now.
+        if (page == "SettingsPage") ShowThemeChoice();
         foreach (UIElement child in Pages.Children)
             child.Visibility = child is FrameworkElement { Name: var name } && name == page ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -413,9 +415,16 @@ public partial class MainWindow : Window
         var appearance = (Appearance)ThemeBox.SelectedIndex;
         ((App)Application.Current).Appearance = appearance;
         AppTheme.Apply(appearance);
+        ShowThemeChoice();
         // Action rows carry their own brushes (colour conditions use ink colours), so rebuild them for the new theme.
         RefreshQuickList(QuickActionList.SelectedIndex, preserveEditor: true);
         PersistPreferences();
+    }
+    /// <summary>The light or dark button that matches the colours showing now has the green outline.</summary>
+    private void ShowThemeChoice()
+    {
+        LightThemeButton.SetResourceReference(StyleProperty, AppTheme.IsLight ? "ChosenButton" : "StandardButton");
+        DarkThemeButton.SetResourceReference(StyleProperty, AppTheme.IsLight ? "StandardButton" : "ChosenButton");
     }
     private void LightTheme_Click(object sender, RoutedEventArgs e) => ThemeBox.SelectedIndex = 2;
     private void DarkTheme_Click(object sender, RoutedEventArgs e) => ThemeBox.SelectedIndex = 1;
