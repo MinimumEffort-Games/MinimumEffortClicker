@@ -75,8 +75,8 @@ public partial class MainWindow
         for (int i = 0; i < 80 && runtime.Snapshot.Busy; i++) await Task.Delay(25);
         if (runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) { ReasonLabel.Text = "Finish input cleanup before resetting keybinds."; return; }
         selectedStartKey = ShortcutKeys.DefaultStartKey; selectedStopKey = ShortcutKeys.DefaultStopKey; selectedRecordKey = ShortcutKeys.DefaultRecordKey;
-        selectedScreenshotKey = 0; ScreenshotHotkeyBox.IsChecked = false;
-        screenshotSettings = screenshotSettings with { Hotkey = 0, HotkeyEnabled = false };
+        selectedScreenshotKey = ShortcutKeys.DefaultScreenshotKey; ScreenshotHotkeyBox.IsChecked = true;
+        screenshotSettings = screenshotSettings with { Hotkey = ShortcutKeys.DefaultScreenshotKey, HotkeyEnabled = true };
         await ApplyHotkeysAsync();
     }
 }

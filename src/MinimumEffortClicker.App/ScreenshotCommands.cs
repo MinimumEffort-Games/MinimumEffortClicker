@@ -21,14 +21,17 @@ public partial class MainWindow
     private void LoadScreenshotSettings(ScreenshotSettings? settings)
     {
         screenshotSettings = settings ?? new();
+        // F7 is the screenshot key out of the box. Older versions started without one (0), and Reset keybinds cleared
+        // it; a missing key now gets F7 too. A key the user chose stays.
+        if (screenshotSettings.Hotkey == 0) screenshotSettings = screenshotSettings with { Hotkey = ShortcutKeys.DefaultScreenshotKey, HotkeyEnabled = true };
         screenshotSettings = screenshotSettings with { Folder = screenshotSettings.Folder ?? Path.Combine(store.DirectoryPath, "Screenshots") };
         ScreenshotModeBox.SelectedIndex = screenshotSettings.Mode;
         ScreenshotClipboardBox.IsChecked = screenshotSettings.CopyToClipboard;
         ScreenshotDailyFoldersBox.IsChecked = screenshotSettings.DailyFolders;
         ScreenshotFolderBox.Text = screenshotSettings.Folder;
         selectedScreenshotKey = screenshotSettings.Hotkey;
-        ScreenshotKeyBox.Content = selectedScreenshotKey == 0 ? "Choose a key…" : ShortcutKeys.Label(selectedScreenshotKey);
         ScreenshotHotkeyBox.IsChecked = screenshotSettings.HotkeyEnabled;
+        RefreshScreenshotHotkeyButtons();
     }
 
     private async Task ConfigureScreenshotHotkey()
@@ -55,19 +58,16 @@ public partial class MainWindow
         if (!ScreenshotSettings.SupportedKey(key))
         { ScreenshotHotkeyStatus.Text = "Choose a keyboard key. Escape and modifier keys are reserved."; return; }
         selectedScreenshotKey = key;
-        ScreenshotKeyBox.Content = ShortcutKeys.Label(key);
         ScreenshotHotkeyBox.IsChecked = true;
         ApplyScreenshotKey_Click(sender, e);
     }
 
+    /// <summary>The screenshot key on its Settings button (like the other keys) and on Take Screenshot.</summary>
     private void RefreshScreenshotHotkeyButtons()
     {
         bool enabled = screenshotSettings.HotkeyEnabled && screenshotSettings.Hotkey != 0;
-        foreach (var button in new[] { ScreenshotKeyBox, ScreenshotHotkeyButton })
-        {
-            button.Content = enabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "Set Hotkey";
-            button.Style = (Style)FindResource(enabled ? "BlueButton" : "RedButton");
-        }
+        ScreenshotKeyBox.Content = enabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "Choose a key…";
+        TakeScreenshotButton.Content = enabled ? $"Take Screenshot {ShortcutKeys.Label(screenshotSettings.Hotkey)}" : "Take Screenshot";
     }
 
     private async void ApplyScreenshotKey_Click(object sender, RoutedEventArgs e)
