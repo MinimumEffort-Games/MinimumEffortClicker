@@ -37,7 +37,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly DockPanel row = new();
     private readonly List<(Border Button, System.Windows.Shapes.Shape? Glyph, Brush Normal, Brush Hover)> buttons = [];
-    private readonly Image lockPicture = new() { Width = 16, Height = 16 };
+    // The padlock fills its button with no square behind it; the show and quit buttons keep theirs.
+    private readonly Image lockPicture = new() { Width = 20, Height = 20 };
     private readonly Border lockButton;
     // The window is click-through as a whole; while the pointer is over a button (or over any of it while unlocked) it
     // takes clicks, so the rest never does.
@@ -66,7 +67,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         WindowStyle = WindowStyle.None; AllowsTransparency = true; Background = Brushes.Transparent;
         ShowActivated = false; ShowInTaskbar = false; Topmost = true; ResizeMode = ResizeMode.NoResize; Focusable = false;
         FontFamily = new FontFamily("Segoe UI");
-        lockButton = AddButton("", lockPicture, null, () => LockToggled?.Invoke(), ButtonNormal, ButtonHover);
+        lockButton = AddButton("", lockPicture, null, () => LockToggled?.Invoke(), Brushes.Transparent, Brushes.Transparent);
         ShowLock();
         AddButton("Show Minimum Effort Clicker", "show", new System.Windows.Shapes.Rectangle { Width = 9, Height = 9, StrokeThickness = 1.5 }, () => ShowRequested?.Invoke(), ButtonNormal, ButtonHover);
         AddButton("Quit Minimum Effort Clicker (stops anything running)", "quit", new System.Windows.Shapes.Path { Data = Geometry.Parse("M0,0 L9,9 M9,0 L0,9"), StrokeThickness = 1.5, Width = 9, Height = 9 }, () => ExitRequested?.Invoke(), QuitNormal, QuitHover);

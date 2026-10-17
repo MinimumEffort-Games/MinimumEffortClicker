@@ -40,7 +40,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Spacing = 4, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private PixelRect[] clickable = [];
     private static readonly IBrush ButtonNormal = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)), ButtonHover = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255));
-    private readonly Image lockPicture = new() { Width = 16, Height = 16 };
+    // The padlock fills its button with no square behind it; the show and quit buttons keep theirs.
+    private readonly Image lockPicture = new() { Width = 20, Height = 20 };
     private readonly Border lockButton;
     // The Click target it was last placed on, in screen pixels: a drag is turned into an anchor relative to it.
     private (double Left, double Top, double Width, double Height)? target;
@@ -65,7 +66,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         WindowDecorations = WindowDecorations.None; Background = Brushes.Transparent;
         TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
         ShowActivated = false; ShowInTaskbar = false; Topmost = true; CanResize = false; Focusable = false;
-        lockButton = OverlayButton("", lockPicture, () => LockToggled?.Invoke(), ButtonNormal, ButtonHover);
+        lockButton = OverlayButton("", lockPicture, () => LockToggled?.Invoke(), Brushes.Transparent, Brushes.Transparent);
         actions.Children.Add(lockButton);
         // On GNOME the clicker has no taskbar entry while it is hidden or minimised, so the overlay offers a way back and out.
         actions.Children.Add(OverlayButton("Show Minimum Effort Clicker", "show", new Rectangle { Width = 9, Height = 9, Stroke = Brushes.White, StrokeThickness = 1.5 }, () => ShowRequested?.Invoke(),
