@@ -27,30 +27,18 @@ public partial class MainWindow
         };
         RefreshStatus(); overlay?.Constrain(); PersistPreferences();
     }
-    private void OverlayLock_Changed(object sender, RoutedEventArgs e)
-    {
-        if (initialized) SetOverlayUnlocked(OverlayUnlockedBox.IsChecked == true);
-    }
     /// <summary>A click on the Settings picture: the overlay goes to that point on the Click target's edge.</summary>
     private void OverlayAnchor_Chosen(double x, double y) { if (initialized) SetOverlayAnchor(x, y); }
-    /// <summary>The Settings toggle and the overlay's padlock both land here, so they always agree.</summary>
+    /// <summary>The overlay's padlock: unlocked, the overlay can be dragged.</summary>
     private void SetOverlayUnlocked(bool unlocked)
     {
         if (overlayOptions.Unlocked == unlocked) return;
         overlayOptions = overlayOptions with { Unlocked = unlocked };
-        ShowOverlayLock(); RefreshStatus(); PersistPreferences();
+        RefreshStatus(); PersistPreferences();
     }
     private void SetOverlayAnchor(double x, double y)
     {
         overlayOptions = overlayOptions with { AnchorX = x, AnchorY = y };
         OverlayAnchorPicture.Show(x, y); RefreshStatus(); PersistPreferences();
-    }
-    private void ShowOverlayLock()
-    {
-        bool unlocked = overlayOptions.Unlocked;
-        OverlayUnlockedBox.IsChecked = unlocked;
-        // The padlock is a mask filled with the text colour, so it reads in the light theme as well as the dark one.
-        if (UiPictures.Lock(!unlocked) is { } padlock) OverlayLockPicture.OpacityMask = new System.Windows.Media.ImageBrush(padlock) { Stretch = System.Windows.Media.Stretch.Uniform };
-        OverlayLockText.Text = unlocked ? "Overlay unlocked" : "Overlay locked";
     }
 }

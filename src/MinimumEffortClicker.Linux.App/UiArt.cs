@@ -27,8 +27,7 @@ internal static class UiArt
     /// <summary>An action type: click, key-press, pause, wait-until, fullscreen-screenshot or scroll.</summary>
     public static Bitmap? Action(string name) => Load("actions/" + name);
 
-    /// <summary>An overlay button: show (the four corners), quit (the X), locked or unlocked (the padlock, also on the
-    /// Settings lock toggle).</summary>
+    /// <summary>An overlay button: show (the four corners), quit (the X), locked or unlocked (the padlock).</summary>
     public static Bitmap? Overlay(string name) => Load("overlay/" + name);
     public static Bitmap? Lock(bool locked) => Overlay(locked ? "locked" : "unlocked");
 

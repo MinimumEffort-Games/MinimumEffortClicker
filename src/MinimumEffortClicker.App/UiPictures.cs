@@ -14,8 +14,7 @@ internal static class UiPictures
 {
     private static readonly Dictionary<string, ImageSource?> Cache = [];
 
-    /// <summary>An overlay button: show (the four corners), quit (the X), locked or unlocked (the padlock, also on the
-    /// Settings lock toggle).</summary>
+    /// <summary>An overlay button: show (the four corners), quit (the X), locked or unlocked (the padlock).</summary>
     public static ImageSource? Overlay(string name) => Load("overlay/" + name);
     public static ImageSource? Lock(bool locked) => Overlay(locked ? "locked" : "unlocked");
 

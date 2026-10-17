@@ -299,8 +299,8 @@ function Trim-Image([string]$file, [string]$target, [int]$max, [switch]$LargestS
 }
 Trim-Image 'mouse.png' 'devices/mouse.png' 192 -LargestShape
 Trim-Image 'keyboard.png' 'devices/keyboard.png' 384 -LargestShape
-# The overlay's buttons: the padlock, closed (left of the sheet) and open (right; both also on the Settings lock
-# toggle), bring the clicker back (the four corners) and quit (the X).
+# The overlay's buttons: the padlock, closed (left of the sheet) and open (right), bring the clicker back (the four
+# corners) and quit (the X).
 Split-Sheet 'lock-sheet.png' @('locked', 'unlocked') 2 'overlay' 96
 Trim-Image 'overlay-show.png' 'overlay/show.png' 96
 Trim-Image 'overlay-quit.png' 'overlay/quit.png' 96

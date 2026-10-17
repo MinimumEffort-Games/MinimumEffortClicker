@@ -129,7 +129,7 @@ public partial class MainWindow : Window
             overlayOptions = settings.OverlayOptions ?? new();
             IdleOverlayBox.IsChecked = overlayOptions.KeepIdle;
             OverlayOpacity.Value = overlayOptions.Opacity; OverlayScale.Value = overlayOptions.Scale;
-            ShowOverlayLock(); OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY);
+            OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY);
             Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
             EmergencyStopBox.SelectedIndex = (int)settings.EmergencyStop; runtime.EmergencyStop = settings.EmergencyStop; EmergencyStop_Changed(this, null!);
