@@ -64,7 +64,8 @@ public partial class MainWindow
     {
         bool unlocked = overlayOptions.Unlocked;
         OverlayUnlockedBox.IsChecked = unlocked;
-        OverlayLockPicture.Source = UiArt.Lock(!unlocked);
+        // The padlock is a mask filled with the text colour, so it reads in the light theme as well as the dark one.
+        if (UiArt.Lock(!unlocked) is { } padlock) OverlayLockPicture.OpacityMask = new ImageBrush(padlock) { Stretch = Stretch.Uniform };
         OverlayLockText.Text = unlocked ? "Overlay unlocked" : "Overlay locked";
     }
 }
