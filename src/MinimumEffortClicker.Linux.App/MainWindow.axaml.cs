@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         if (!previewOnly) AppLog.Initialize(store.DirectoryPath);
         InitializeComponent();
         AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, EditingWindow_PointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+        OverlayAnchorPicture.AnchorChosen += OverlayAnchor_Chosen;
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();
         ShowHeldInput(); ShowToggleShortcut();
@@ -128,6 +129,7 @@ public partial class MainWindow : Window
             overlayOptions = settings.OverlayOptions ?? new();
             IdleOverlayBox.IsChecked = overlayOptions.KeepIdle;
             OverlayOpacity.Value = overlayOptions.Opacity; OverlayScale.Value = overlayOptions.Scale;
+            ShowOverlayLock(); OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY);
             Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
             EmergencyStopBox.SelectedIndex = (int)settings.EmergencyStop; runtime.EmergencyStop = settings.EmergencyStop; EmergencyStop_Changed(this, null!);
@@ -275,7 +277,7 @@ public partial class MainWindow : Window
         try
         {
             var frame = runtime.GetTargetFrame();
-            overlay.PlaceAt(frame.X + frame.Width, frame.Y);
+            overlay.PlaceOn(frame.X, frame.Y, frame.Width, frame.Height);
         }
         catch (InvalidOperationException) { overlay.Constrain(); }
     }

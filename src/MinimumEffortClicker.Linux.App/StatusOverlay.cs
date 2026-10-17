@@ -17,8 +17,9 @@ internal interface IOverlayPresenter
 }
 
 /// <summary>
-/// Always-on-top status window. It is click-through (an empty X11 input region), never takes focus, and the
-/// runtime's hit tests look through it by title.
+/// Always-on-top status window pinned to the Click target at the anchor chosen in Settings. Locked, it is
+/// click-through (an X11 input region that covers only its three buttons: lock, show, quit); unlocked, all of it takes
+/// the mouse so it can be dragged. It never takes focus, and the runtime's hit tests look through it by title.
 /// </summary>
 internal sealed class StatusOverlay : Window, IOverlayPresenter
 {
@@ -38,11 +39,25 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private bool recording, active;
     private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Spacing = 4, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private PixelRect[] clickable = [];
+    private static readonly IBrush ButtonNormal = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)), ButtonHover = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255));
+    private readonly Image lockPicture = new() { Width = 16, Height = 16 };
+    private readonly Border lockButton;
+    // The Click target it was last placed on, in screen pixels: a drag is turned into an anchor relative to it.
+    private (double Left, double Top, double Width, double Height)? target;
+    // The window manager moves the window during a drag and sends no release, so a move the overlay did not make itself
+    // counts as a drag, and the drag is over once the position has stayed put this long.
+    private readonly Avalonia.Threading.DispatcherTimer dragSettle = new() { Interval = TimeSpan.FromMilliseconds(500) };
+    private PixelPoint placed;
+    private bool dragging;
 
     /// <summary>The overlay's square: bring the clicker window to the front.</summary>
     public event Action? ShowRequested;
     /// <summary>The overlay's X: stop whatever runs and quit the clicker.</summary>
     public event Action? ExitRequested;
+    /// <summary>The overlay's padlock: lock it to its anchor, or unlock it to drag it.</summary>
+    public event Action? LockToggled;
+    /// <summary>The unlocked overlay was dropped: the anchor that keeps it there relative to the Click target.</summary>
+    public event Action<double, double>? AnchorDragged;
 
     public StatusOverlay()
     {
@@ -50,11 +65,13 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         WindowDecorations = WindowDecorations.None; Background = Brushes.Transparent;
         TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
         ShowActivated = false; ShowInTaskbar = false; Topmost = true; CanResize = false; Focusable = false;
+        lockButton = OverlayButton("", lockPicture, () => LockToggled?.Invoke(), ButtonNormal, ButtonHover);
+        actions.Children.Add(lockButton);
         // On GNOME the clicker has no taskbar entry while it is hidden or minimised, so the overlay offers a way back and out.
-        actions.Children.Add(OverlayButton("Show Minimum Effort Clicker", new Rectangle { Width = 9, Height = 9, Stroke = Brushes.White, StrokeThickness = 1.5 }, () => ShowRequested?.Invoke(),
-            new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)), new SolidColorBrush(Color.FromArgb(110, 255, 255, 255))));
+        actions.Children.Add(OverlayButton("Show Minimum Effort Clicker", "show", new Rectangle { Width = 9, Height = 9, Stroke = Brushes.White, StrokeThickness = 1.5 }, () => ShowRequested?.Invoke(),
+            ButtonNormal, ButtonHover));
         // A red X, like a window's close button, so it reads as "quit".
-        actions.Children.Add(OverlayButton("Quit Minimum Effort Clicker (stops anything running)", new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse("M0,0 L9,9 M9,0 L0,9"), Stroke = Brushes.White, StrokeThickness = 1.5, Width = 9, Height = 9 }, () => ExitRequested?.Invoke(),
+        actions.Children.Add(OverlayButton("Quit Minimum Effort Clicker (stops anything running)", "quit", new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse("M0,0 L9,9 M9,0 L0,9"), Stroke = Brushes.White, StrokeThickness = 1.5, Width = 9, Height = 9 }, () => ExitRequested?.Invoke(),
             new SolidColorBrush(Color.FromRgb(196, 43, 28)), new SolidColorBrush(Color.FromRgb(232, 17, 35))));
         // The shortcut line stays on top in every state: the start key on the left, the stop that works now in red
         // beside the buttons. Status and toggle lines follow below.
@@ -65,30 +82,73 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         frame = new Border { Background = Idle, BorderBrush = IdleBorder, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 6, 4), Child = body };
         scaler.Child = frame;
         Content = scaler;
+        ShowLock();
         ApplyColours();
+        // Unlocked, a press anywhere but on a button drags the overlay.
+        frame.PointerPressed += (_, e) =>
+        {
+            if (!options.Unlocked || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+            e.Handled = true; dragging = true; dragSettle.Stop(); dragSettle.Start();
+            BeginMoveDrag(e);
+        };
+        PositionChanged += (_, e) =>
+        {
+            if (e.Point == placed || !options.Unlocked) return;
+            dragging = true; dragSettle.Stop(); dragSettle.Start();
+        };
+        dragSettle.Tick += (_, _) => { dragSettle.Stop(); EndDrag(); };
         Opened += (_, _) => ApplyStyles();
         LayoutUpdated += (_, _) => UpdateClickable();
     }
 
-    private static Border OverlayButton(string tip, Control glyph, Action click, IBrush normal, IBrush hover)
+    /// <summary>A button with its overlay picture; if the picture is missing, the drawn glyph stands in.</summary>
+    private static Border OverlayButton(string tip, string picture, Control glyph, Action click, IBrush normal, IBrush hover)
+        => UiArt.Overlay(picture) is { } source
+            ? OverlayButton(tip, new Image { Source = source, Width = 12, Height = 12 }, click, normal, hover)
+            : OverlayButton(tip, new Viewbox { Width = 11, Height = 11, Child = glyph }, click, normal, hover);
+    private static Border OverlayButton(string tip, Control content, Action click, IBrush normal, IBrush hover)
     {
-        var button = new Border { Width = 20, Height = 20, CornerRadius = new CornerRadius(3), Background = normal, Cursor = new Cursor(StandardCursorType.Hand),
-            Child = new Viewbox { Width = 11, Height = 11, Child = glyph, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+        content.HorizontalAlignment = HorizontalAlignment.Center; content.VerticalAlignment = VerticalAlignment.Center;
+        var button = new Border { Width = 20, Height = 20, CornerRadius = new CornerRadius(3), Background = normal, Cursor = new Cursor(StandardCursorType.Hand), Child = content };
         ToolTip.SetTip(button, tip);
         Avalonia.Automation.AutomationProperties.SetName(button, tip);
         button.PointerEntered += (_, _) => button.Background = hover;
         button.PointerExited += (_, _) => button.Background = normal;
+        button.PointerPressed += (_, e) => e.Handled = true; // A press on a button never starts a drag.
         button.PointerReleased += (_, e) => { if (e.InitialPressMouseButton == MouseButton.Left) { e.Handled = true; click(); } };
         return button;
     }
 
-    /// <summary>Clicks reach only the two buttons; the rest of the overlay stays click-through.</summary>
+    /// <summary>The padlock shows the state it is in: closed while locked to the anchor, open while it can be dragged.</summary>
+    private void ShowLock()
+    {
+        lockPicture.Source = UiArt.Lock(!options.Unlocked);
+        ToolTip.SetTip(lockButton, options.Unlocked ? "Unlocked: drag the overlay anywhere. Click to lock it there" : "Locked to its anchor point. Click to unlock it and drag it anywhere");
+        Avalonia.Automation.AutomationProperties.SetName(lockButton, options.Unlocked ? "Lock the overlay" : "Unlock the overlay");
+        frame.Cursor = options.Unlocked ? new Cursor(StandardCursorType.SizeAll) : null;
+        clickable = []; if (IsVisible) UpdateClickable();
+    }
+
+    private void EndDrag()
+    {
+        dragging = false;
+        if (target is not { } on || Position == placed) return;
+        var size = PixelFrame;
+        var anchor = OverlayAnchor.From(on.Left, on.Top, on.Width, on.Height, size.Width, size.Height, Position.X, Position.Y, options.AnchorX, options.AnchorY);
+        placed = Position;
+        AnchorDragged?.Invoke(anchor.X, anchor.Y);
+    }
+
+    /// <summary>Locked, clicks reach only the buttons and the rest of the overlay stays click-through; unlocked, all of it
+    /// takes the mouse.</summary>
     private void UpdateClickable()
     {
         double scale = RenderScaling;
-        var areas = actions.Children.Select(c => c.TranslatePoint(new Point(0, 0), this) is { } p
-            ? new PixelRect((int)Math.Floor(p.X * scale), (int)Math.Floor(p.Y * scale), (int)Math.Ceiling(c.Bounds.Width * scale), (int)Math.Ceiling(c.Bounds.Height * scale))
-            : default).Where(r => r.Width > 0).ToArray();
+        var areas = options.Unlocked
+            ? [new PixelRect(0, 0, (int)Math.Ceiling(Bounds.Width * scale), (int)Math.Ceiling(Bounds.Height * scale))]
+            : actions.Children.Select(c => c.TranslatePoint(new Point(0, 0), this) is { } p
+                ? new PixelRect((int)Math.Floor(p.X * scale), (int)Math.Floor(p.Y * scale), (int)Math.Ceiling(c.Bounds.Width * scale), (int)Math.Ceiling(c.Bounds.Height * scale))
+                : default).Where(r => r.Width > 0).ToArray();
         if (areas.SequenceEqual(clickable)) return;
         clickable = areas;
         X11Windows.SetInputRegion(this, areas);
@@ -120,6 +180,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         options = value; Opacity = value.Opacity;
         MaxWidth = 580 * value.Scale;
         scaler.LayoutTransform = new ScaleTransform(value.Scale, value.Scale);
+        ShowLock();
     }
 
     public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false)
@@ -178,13 +239,18 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         }
     }
 
-    public void PlaceAt(double right, double top)
+    /// <summary>Places the overlay on the Click target (screen pixels) at its anchor, kept on the monitor's work area.</summary>
+    public void PlaceOn(double left, double top, double width, double height)
     {
+        target = (left, top, width, height);
+        if (dragging) return; // The drag owns the position until it settles.
         var size = PixelFrame;
-        PlaceWithinMonitor((int)right - size.Width - 12, (int)top + 12, size.Width, size.Height);
+        var (x, y) = OverlayAnchor.Place(left, top, width, height, size.Width, size.Height, options.AnchorX, options.AnchorY);
+        PlaceWithinMonitor((int)Math.Round(x), (int)Math.Round(y), size.Width, size.Height);
     }
     public void Constrain()
     {
+        if (dragging) return;
         var size = PixelFrame;
         PlaceWithinMonitor(Position.X, Position.Y, size.Width, size.Height);
     }
@@ -195,7 +261,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         var work = screen.WorkingArea;
         x = Math.Clamp(x, work.X, Math.Max(work.X, work.Right - width));
         y = Math.Clamp(y, work.Y, Math.Max(work.Y, work.Bottom - height));
-        if (Position.X != x || Position.Y != y) Position = new PixelPoint(x, y);
+        placed = new PixelPoint(x, y);
+        if (Position != placed) Position = placed;
         Topmost = true;
     }
 }

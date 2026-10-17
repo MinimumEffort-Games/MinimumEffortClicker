@@ -14,7 +14,7 @@ namespace MinimumEffortClicker.App;
 /// </summary>
 internal static class UiArt
 {
-    private static readonly Dictionary<string, ImageSource?> Cache = [];
+    private static ImageSource? Load(string path) => UiPictures.Load(path);
 
     /// <summary>The keycap for a key name as the app lists it (SequenceKeys), or null for keys without one (F13–F24).</summary>
     public static ImageSource? Key(string name) => Load("keys/" + KeyFileName(name));
@@ -123,24 +123,4 @@ internal static class UiArt
     /// <summary>Same rule as Get-KeyFileName in scripts/Build-UiArt.ps1.</summary>
     public static string KeyFileName(string name) => name.ToLowerInvariant()
         .Replace("/", "slash").Replace("*", "star").Replace("+", "plus").Replace("-", "minus").Replace(".", "period").Replace(' ', '-');
-
-    private static ImageSource? Load(string path)
-    {
-        if (Cache.TryGetValue(path, out var cached)) return cached;
-        ImageSource? image = null;
-        var uri = new Uri($"pack://application:,,,/Assets/Ui/{path}.png", UriKind.Absolute);
-        try
-        {
-            if (Application.GetResourceStream(uri) is { } resource)
-            {
-                using var stream = resource.Stream;
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.StreamSource = stream; bitmap.EndInit();
-                bitmap.Freeze();
-                image = bitmap;
-            }
-        }
-        catch (IOException) { }
-        return Cache[path] = image;
-    }
 }

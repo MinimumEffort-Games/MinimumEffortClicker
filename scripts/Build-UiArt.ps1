@@ -195,7 +195,7 @@ public static class UiArtShapes
 $source = Join-Path $Root 'assets/ui/source'
 $output = Join-Path $Root 'assets/ui/generated'
 if (Test-Path -LiteralPath $output) { Remove-Item -LiteralPath $output -Recurse -Force }
-foreach ($folder in 'keys', 'controller', 'actions', 'devices', 'brand') { New-Item -ItemType Directory -Force (Join-Path $output $folder) | Out-Null }
+foreach ($folder in 'keys', 'controller', 'actions', 'devices', 'brand', 'overlay') { New-Item -ItemType Directory -Force (Join-Path $output $folder) | Out-Null }
 
 function Read-Pixels([string]$path) {
     $image = [Drawing.Bitmap]::FromFile($path)
@@ -299,6 +299,11 @@ function Trim-Image([string]$file, [string]$target, [int]$max, [switch]$LargestS
 }
 Trim-Image 'mouse.png' 'devices/mouse.png' 192 -LargestShape
 Trim-Image 'keyboard.png' 'devices/keyboard.png' 384 -LargestShape
+# The overlay's buttons: the padlock (closed on the left of the sheet, open on the right, also on the Settings lock
+# toggle), bring the clicker back (the four corners) and quit (the X).
+Split-Sheet 'lock-sheet.png' @('locked', 'unlocked') 2 'overlay' 96
+Trim-Image 'overlay-show.png' 'overlay/show.png' 96
+Trim-Image 'overlay-quit.png' 'overlay/quit.png' 96
 foreach ($icon in Get-ChildItem (Join-Path $source 'actions') -Filter *.png) { Trim-Image "actions/$($icon.Name)" "actions/$($icon.Name)" 128 }
 
 # Pictures to choose a button on (the labelled mouse, the controller): the picture, a mask per button that the app
