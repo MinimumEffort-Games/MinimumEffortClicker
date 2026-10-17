@@ -27,7 +27,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            ReasonLabel.Text = "Top bar icon unavailable. Closing will exit the app. " + ex.Message;
+            ReasonLabel.Text = "Tray icon unavailable. Closing will exit the app. " + ex.Message;
         }
     }
 

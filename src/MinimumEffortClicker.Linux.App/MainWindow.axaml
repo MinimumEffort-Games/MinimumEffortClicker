@@ -324,8 +324,8 @@
                     <ScrollViewer x:Name="SettingsScroll" Padding="0,0,16,0" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Text="When closing the window" Classes="heading" />
-                            <ToggleButton x:Name="CloseToTrayBox" Classes="choice" Content="Minimize to the top bar" IsChecked="True" HorizontalAlignment="Left" IsCheckedChanged="CloseToTray_Changed" />
-                            <TextBlock Text="On: clicking X keeps the clicker running in the top bar. Off: clicking X closes it." Classes="secondary" Margin="0,4,0,0" />
+                            <ToggleButton x:Name="CloseToTrayBox" Classes="choice" Content="Minimize to tray" IsChecked="True" HorizontalAlignment="Left" IsCheckedChanged="CloseToTray_Changed" />
+                            <TextBlock Text="On: clicking X keeps the clicker running in the system tray (the top bar on GNOME). Off: clicking X closes it." Classes="secondary" Margin="0,4,0,0" />
                             <TextBlock Text="Appearance" Classes="heading" Margin="0,18,0,8" />
                             <WrapPanel>
                                 <Button x:Name="LightThemeButton" Classes="icon" Width="40" Height="40" Click="LightTheme_Click" ToolTip.Tip="Light mode" AutomationProperties.Name="Light mode"><PathIcon Data="{StaticResource IconSun}" Width="20" Height="20" /></Button>

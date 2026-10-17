@@ -82,7 +82,7 @@ public partial class MainWindow
         ]),
         ("Settings",
         [
-            "- Minimize to the top bar: clicking X keeps the clicker running in the top bar; use the icon's Exit to quit. Turn it off and X closes the clicker.",
+            "- Minimize to tray: clicking X keeps the clicker running in the system tray (the top bar on GNOME); use the icon's Exit to quit. Turn it off and X closes the clicker.",
             "- Appearance: light or dark; the one showing has the green outline.",
             "- When the click target is resized: Scale makes saved clicks and scroll spots stretch with the window; Keep fixed keeps them the same distance from its top-left corner.",
             "- Emergency stop: Stop All F9 (the default) means only F9 stops the clicker. Stop All Any Input also stops everything when you press a key or button the clicker is using, or move the mouse while it does. F9 always stops everything.",

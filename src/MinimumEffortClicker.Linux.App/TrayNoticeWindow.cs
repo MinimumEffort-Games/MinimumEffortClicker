@@ -5,7 +5,7 @@ using Avalonia.Media;
 
 namespace MinimumEffortClicker.App;
 
-/// <summary>First-close notice: the window hides to the top bar and keeps hotkeys available.</summary>
+/// <summary>First-close notice: the window hides to the system tray (the top bar on GNOME) and keeps hotkeys available.</summary>
 public sealed class TrayNoticeWindow : DialogWindow
 {
     public bool DisableRequested { get; private set; }
@@ -14,7 +14,7 @@ public sealed class TrayNoticeWindow : DialogWindow
         Title = "ME Clicker will stay active"; Width = 460; SizeToContent = SizeToContent.Height; CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false; FontSize = 14;
         var panel = new StackPanel { Margin = new Thickness(20) };
-        panel.Children.Add(new TextBlock { Text = "ME Clicker will minimize to the top bar and stay active.", FontSize = 20, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) });
+        panel.Children.Add(new TextBlock { Text = "ME Clicker will minimize to the system tray and stay active.", FontSize = 20, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) });
         var body = new StackPanel();
         body.Children.Add(new TextBlock { Text = "Click Disable if you do not want this.", TextWrapping = TextWrapping.Wrap });
         body.Children.Add(new TextBlock { Text = "(Can be changed in Settings at any time.)", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) });
