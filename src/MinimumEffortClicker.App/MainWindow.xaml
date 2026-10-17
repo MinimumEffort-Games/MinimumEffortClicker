@@ -65,20 +65,20 @@
                   <WrapPanel Grid.Row="1" Margin="0,0,0,12" VerticalAlignment="Bottom">
                     <Button x:Name="RunButton" Content="Start F8" Click="Run_Click" Style="{StaticResource GreenButton}" MinWidth="100" Margin="0,0,8,0" ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="Start Actions"/>
                     <Button x:Name="PausePlaybackButton" Content="Pause" Click="PausePlayback_Click" Style="{StaticResource BlueButton}" Margin="0,0,0,0" AutomationProperties.Name="Pause playback"/>
-                    <StackPanel VerticalAlignment="Bottom" Margin="14,0,0,2">
-                      <CheckBox x:Name="LoopBox" Content="Loop" Checked="Loop_Changed" Unchecked="Loop_Changed" Margin="0,0,0,4"/>
-                      <CheckBox Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="MinimizeOnStartBox" Content="Minimize on Start" IsChecked="True" ToolTip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front."/>
-                    </StackPanel>
+                    <UniformGrid Rows="2" Margin="12,0,0,0">
+                      <ToggleButton x:Name="LoopBox" Style="{StaticResource StackedToggle}" Content="Loop" Checked="Loop_Changed" Unchecked="Loop_Changed" Margin="0,0,0,2"/>
+                      <ToggleButton Style="{StaticResource StackedToggle}" Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="MinimizeOnStartBox" Content="Minimize on Start" IsChecked="True" Margin="0,2,0,0" ToolTip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front."/>
+                    </UniformGrid>
                     <Button x:Name="CleanupButton" Content="Release stuck input" Click="Cleanup_Click" Visibility="Collapsed" Style="{StaticResource RedButton}" HorizontalAlignment="Left" ToolTip="Release physical buttons and keys first. This retries only inputs owned by ME Clicker and never starts playback."/>
                   </WrapPanel>
                   <StackPanel Grid.Column="2" Grid.Row="1" Margin="0,0,0,12">
                     <TextBlock x:Name="QuickRecordStatus" Style="{StaticResource OptionalStatus}" FontSize="12" Margin="0,0,0,4"/>
                     <WrapPanel>
-                      <Button x:Name="QuickRecordButton" Content="F10 Record/Stop" Click="QuickRecord_Click" Style="{StaticResource RedButton}" Margin="0,0,14,0" Padding="6,7" MinWidth="120"/>
-                      <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,2">
-                        <CheckBox Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" Margin="0,0,0,4" ToolTip="Keep the time between inputs as editable Pause actions."/>
-                        <CheckBox Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="MinimizeOnRecordBox" Content="Minimize on record" IsChecked="True" ToolTip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records."/>
-                      </StackPanel>
+                      <Button x:Name="QuickRecordButton" Content="F10 Record/Stop" Click="QuickRecord_Click" Style="{StaticResource RedButton}" Margin="0,0,12,0" Padding="6,7" MinWidth="120"/>
+                      <UniformGrid Rows="2">
+                        <ToggleButton Style="{StaticResource StackedToggle}" Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="RecordDelaysBox" Content="Record pauses" IsChecked="True" Margin="0,0,0,2" ToolTip="Keep the time between inputs as editable Pause actions."/>
+                        <ToggleButton Style="{StaticResource StackedToggle}" Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="MinimizeOnRecordBox" Content="Minimize on record" IsChecked="True" Margin="0,2,0,0" ToolTip="Ticked: the Record button minimises the clicker (F10 too when the Click target is Desktop). Unticked: the clicker stays where it is and just records."/>
+                      </UniformGrid>
                     </WrapPanel>
                   </StackPanel>
                   <ScrollViewer Padding="0,0,16,0" Grid.Row="2" x:Name="ActionsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
@@ -199,10 +199,11 @@
                                   <TextBlock Text="Scan interval · milliseconds (100–5,000)"/><TextBox x:Name="QuickScanIntervalBox" Style="{StaticResource NumberBox}" app:Spin.Step="10" app:Spin.Minimum="100" app:Spin.Maximum="5000" Text="500" TextChanged="ConditionField_Changed" AutomationProperties.Name="Scan interval in milliseconds"/>
                                   <TextBlock Text="Default: 500 ms (twice a second). A smaller area uses less processing." Style="{StaticResource Secondary}" TextWrapping="Wrap"/>
                                   <TextBlock Text="Consecutive fresh matching samples · 1–10"/><TextBox x:Name="ConditionStableBox" Style="{StaticResource NumberBox}" app:Spin.Step="1" app:Spin.Minimum="1" app:Spin.Maximum="10" Text="1" TextChanged="ConditionField_Changed" AutomationProperties.Name="Consecutive matching samples"/>
-                                  <CheckBox x:Name="ConditionCalibrateBox" IsChecked="True" Content="Calibrate against the selected window's current size and DPI" Margin="0,8,0,4" Checked="ConditionCalibrate_Changed" Unchecked="ConditionCalibrate_Changed" ToolTip="For coordinates typed by hand: they are measured on the Click target as it is now. Select area unticks it, because a selected area keeps the size it was picked at."/>
+                                  <ToggleButton x:Name="ConditionCalibrateBox" Style="{StaticResource ChoiceToggle}" IsChecked="True" Content="Measure on the window as it is now" HorizontalAlignment="Left" Margin="0,8,0,4" Checked="ConditionCalibrate_Changed" Unchecked="ConditionCalibrate_Changed"/>
+                                  <TextBlock Text="On: the X, Y, width and height above are read on the Click target at its current size and display scaling. Select area turns this off, because a selected area remembers the window size it was picked at and follows the window when it is resized." Style="{StaticResource Secondary}" TextWrapping="Wrap"/>
                                 </StackPanel>
                               </Expander>
-                              <TextBlock Text="If the Click target window goes behind another window, the wait pauses and continues by itself when the window is back in front." Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                              <TextBlock Text="While this wait runs and the Click target goes behind another window, the wait pauses. It carries on by itself once the window is back in front." Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,0,0,8"/>
                             </StackPanel></StackPanel>
                         </StackPanel>
                       </StackPanel></Border>
@@ -250,8 +251,10 @@
                       </StackPanel>
 
 <StackPanel Grid.Row="4" x:Name="QuickAdvanced" Margin="0,12,0,0">
-  <CheckBox x:Name="RecordMovementBox" Content="Simulate mouse movement between click points" Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed"/>
-  <CheckBox x:Name="KeepAwakeBox" Content="Prevent sleep while running" Checked="KeepAwake_Changed" Unchecked="KeepAwake_Changed"/>
+  <WrapPanel>
+    <ToggleButton x:Name="RecordMovementBox" Style="{StaticResource ChoiceToggle}" Content="Simulate mouse movement between click points" Margin="0,0,6,6" Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed"/>
+    <ToggleButton x:Name="KeepAwakeBox" Style="{StaticResource ChoiceToggle}" Content="Prevent sleep while running" Margin="0,0,6,6" Checked="KeepAwake_Changed" Unchecked="KeepAwake_Changed"/>
+  </WrapPanel>
   <StackPanel x:Name="ShutdownSettings" Margin="0,8,0,0">
     <ComboBox x:Name="ShutdownModeBox" SelectedIndex="0" SelectionChanged="ShutdownMode_Changed" AutomationProperties.Name="Shutdown PC after">
       <ComboBoxItem Content="Shutdown PC after…" IsEnabled="False"/>
@@ -402,16 +405,17 @@
                     <TextBlock Text="Save a screenshot as a PNG. ME Clicker hides while you capture." Style="{StaticResource Secondary}" Margin="0,0,0,12"/>
                     <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource ActionBorder}"><StackPanel>
                         <TextBlock Text="Capture" FontWeight="SemiBold"/>
-                        <ComboBox x:Name="ScreenshotModeBox" SelectedIndex="1" SelectionChanged="ScreenshotOptions_Changed" MaxWidth="360" HorizontalAlignment="Left" MinWidth="260" Margin="0,6,0,8" AutomationProperties.Name="Screenshot area">
-                            <ComboBoxItem Content="Full screen (all monitors)"/><ComboBoxItem Content="Select an area"/>
-                        </ComboBox>
+                        <ListBox x:Name="ScreenshotModeBox" Style="{StaticResource ChoiceList}" SelectedIndex="1" SelectionChanged="ScreenshotOptions_Changed" HorizontalAlignment="Left" Margin="0,6,0,8" AutomationProperties.Name="Screenshot area"><ListBoxItem Content="Full screen (all monitors)" Padding="10,6"/><ListBoxItem Content="Select an area" Padding="10,6"/></ListBox>
                         <TextBlock Text="Drag an area and release to save; Escape cancels. Area selection stops automation first. Full-screen capture lets it continue." Style="{StaticResource Secondary}" Margin="0,0,0,12"/>
                         <TextBlock Text="Save to folder" FontWeight="SemiBold"/>
                         <DockPanel Margin="0,6,0,8"><Button DockPanel.Dock="Right" Content="Choose folder…" Click="ScreenshotFolder_Click"/><TextBox x:Name="ScreenshotFolderBox" IsReadOnly="True" VerticalContentAlignment="Center" AutomationProperties.Name="Screenshot save folder"/></DockPanel>
-                        <CheckBox x:Name="ScreenshotClipboardBox" Content="Also copy to clipboard" Checked="ScreenshotOptions_Changed" Unchecked="ScreenshotOptions_Changed" Margin="0,2,0,12"/>
-                        <CheckBox x:Name="ScreenshotDailyFoldersBox" Content="Organize into daily folders" Checked="ScreenshotOptions_Changed" Unchecked="ScreenshotOptions_Changed" Margin="0,2,0,6"/>
-
-                        <WrapPanel><Button x:Name="TakeScreenshotButton" Content="Take Screenshot" Style="{StaticResource GreenButton}" Click="TakeScreenshot_Click"/><Button Content="Open folder" Click="ScreenshotOpenFolder_Click"/><Button x:Name="ScreenshotHotkeyButton" Content="Set Hotkey" Style="{StaticResource RedButton}" Click="CaptureScreenshotKey_Click"/></WrapPanel>
+                        <Grid Margin="0,4,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                          <WrapPanel VerticalAlignment="Bottom"><Button x:Name="TakeScreenshotButton" Content="Take Screenshot" Style="{StaticResource GreenButton}" Click="TakeScreenshot_Click"/><Button Content="Open folder" Click="ScreenshotOpenFolder_Click"/><Button x:Name="ScreenshotHotkeyButton" Content="Set Hotkey" Style="{StaticResource RedButton}" Click="CaptureScreenshotKey_Click"/></WrapPanel>
+                          <WrapPanel Grid.Column="1" VerticalAlignment="Bottom">
+                            <ToggleButton x:Name="ScreenshotClipboardBox" Style="{StaticResource ChoiceToggle}" Content="Copy to clipboard" ToolTip="Each screenshot is also put on the clipboard, ready to paste." Checked="ScreenshotOptions_Changed" Unchecked="ScreenshotOptions_Changed"/>
+                            <ToggleButton x:Name="ScreenshotDailyFoldersBox" Style="{StaticResource ChoiceToggle}" Content="Organize into daily folders" ToolTip="Screenshots go into a folder per day inside the save folder." Checked="ScreenshotOptions_Changed" Unchecked="ScreenshotOptions_Changed"/>
+                          </WrapPanel>
+                        </Grid>
 
                     </StackPanel></Border>
                     <TextBlock x:Name="ScreenshotStatus" Text="Ready to capture." TextWrapping="Wrap" Margin="0,4,0,8" AutomationProperties.LiveSetting="Polite"/>

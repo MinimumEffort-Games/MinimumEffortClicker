@@ -397,6 +397,7 @@ public partial class MainWindow : Window
             new(Guid.NewGuid(), "Shoot", ControllerButton.RightTrigger, InputControl.Mouse(PointerButton.Left), false)];
         RefreshControllerBindList();
         Navigate("ControllerPage"); yield return "controller-to-key";
+        Navigate("ScreenshotPage"); yield return "screenshot";
         Navigate("SettingsPage"); yield return "settings";
         Navigate("QuickPage");
     }

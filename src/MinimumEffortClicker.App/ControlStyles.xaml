@@ -384,4 +384,11 @@
             <Setter.Value><ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate></Setter.Value>
         </Setter>
     </Style>
+    <!-- Two on/off choices stacked beside a big button (Loop / Minimize on Start, Record pauses / Minimize on record):
+         compact, so together they are as tall as the button. -->
+    <Style x:Key="StackedToggle" TargetType="ToggleButton" BasedOn="{StaticResource ChoiceToggle}">
+        <Setter Property="Padding" Value="10,1" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
 </ResourceDictionary>
