@@ -12,7 +12,7 @@ public sealed class ShortcutKeysTests
         foreach (int key in new[] { 1, 2, 4, 5, 6, 0x41, 0x30, 0x20, 0xC0, 0x7B, 0x87, 0x25 }) Assert.IsTrue(ShortcutKeys.Supported(key));
         foreach (int key in new[] { 0, 3, 7, 0x5B, 0x88, 0xFF, -1 }) Assert.IsFalse(ShortcutKeys.Supported(key));
         Assert.AreEqual("A", ShortcutKeys.Label(0x41)); Assert.AreEqual("F24", ShortcutKeys.Label(0x87));
-        Assert.AreEqual("Mouse side 1", ShortcutKeys.Label(5)); Assert.AreEqual(0x77, UserPreferences.Default.ToggleKey);
+        Assert.AreEqual("M4", ShortcutKeys.Label(5)); Assert.AreEqual(0x77, UserPreferences.Default.ToggleKey);
         foreach (var mouse in Enum.GetValues<PointerButton>()) Assert.AreEqual(InputControl.Mouse(mouse), ShortcutKeys.MouseInput(ShortcutKeys.MouseKey(mouse)));
     }
     [TestMethod]

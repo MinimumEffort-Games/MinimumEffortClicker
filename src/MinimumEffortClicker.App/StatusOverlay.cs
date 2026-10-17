@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using MinimumEffortClicker.Core;
@@ -16,8 +17,9 @@ internal interface IOverlayPresenter
 }
 
 /// <summary>
-/// Status window pinned beside the Click target. It never takes focus. It is click-through except for its two buttons
-/// (bring the clicker back, quit), which take only a real mouse click: the clicker's own clicks pass them by.
+/// Status window pinned to the Click target at the anchor chosen in Settings. It never takes focus. Locked, it is
+/// click-through except for its three buttons (lock, bring the clicker back, quit), which take only a real mouse click:
+/// the clicker's own clicks pass them by. Unlocked, all of it takes the mouse, so it can be dragged.
 /// </summary>
 internal sealed class StatusOverlay : Window, IOverlayPresenter
 {
@@ -34,18 +36,29 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private readonly StackPanel body = new();
     private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly DockPanel row = new();
-    private readonly List<(Border Button, System.Windows.Shapes.Shape Glyph, Brush Normal, Brush Hover)> buttons = [];
-    // The window is click-through as a whole; while the pointer is over a button it takes clicks, so the rest never does.
+    private readonly List<(Border Button, System.Windows.Shapes.Shape? Glyph, Brush Normal, Brush Hover)> buttons = [];
+    // The padlock fills its button with no square behind it; the show and quit buttons keep theirs.
+    private readonly Image lockPicture = new() { Width = 20, Height = 20 };
+    private readonly Border lockButton;
+    // The window is click-through as a whole; while the pointer is over a button (or over any of it while unlocked) it
+    // takes clicks, so the rest never does.
     private readonly System.Windows.Threading.DispatcherTimer pointerWatch = new() { Interval = TimeSpan.FromMilliseconds(50) };
     private bool clickable;
     private OverlayOptions options = new();
     private bool configured;
     private bool recording, active;
+    // The Click target it was last placed on, in screen pixels: a drag is turned into an anchor relative to it.
+    private (double Left, double Top, double Width, double Height)? target;
+    private bool dragging;
 
     /// <summary>The overlay's square: bring the clicker window to the front.</summary>
     public event Action? ShowRequested;
     /// <summary>The overlay's X: stop whatever runs and quit the clicker.</summary>
     public event Action? ExitRequested;
+    /// <summary>The overlay's padlock: lock it to its anchor, or unlock it to drag it.</summary>
+    public event Action? LockToggled;
+    /// <summary>The unlocked overlay was dropped: the anchor that keeps it there relative to the Click target.</summary>
+    public event Action<double, double>? AnchorDragged;
 
     public StatusOverlay()
     {
@@ -54,14 +67,19 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         WindowStyle = WindowStyle.None; AllowsTransparency = true; Background = Brushes.Transparent;
         ShowActivated = false; ShowInTaskbar = false; Topmost = true; ResizeMode = ResizeMode.NoResize; Focusable = false;
         FontFamily = new FontFamily("Segoe UI");
-        AddButton("Show Minimum Effort Clicker", new System.Windows.Shapes.Rectangle { Width = 9, Height = 9, StrokeThickness = 1.5 }, () => ShowRequested?.Invoke(), ButtonNormal, ButtonHover);
-        AddButton("Quit Minimum Effort Clicker (stops anything running)", new System.Windows.Shapes.Path { Data = Geometry.Parse("M0,0 L9,9 M9,0 L0,9"), StrokeThickness = 1.5, Width = 9, Height = 9 }, () => ExitRequested?.Invoke(), QuitNormal, QuitHover);
+        lockButton = AddButton("", lockPicture, null, () => LockToggled?.Invoke(), Brushes.Transparent, Brushes.Transparent);
+        ShowLock();
+        AddButton("Show Minimum Effort Clicker", "show", new System.Windows.Shapes.Rectangle { Width = 9, Height = 9, StrokeThickness = 1.5 }, () => ShowRequested?.Invoke(), ButtonNormal, ButtonHover);
+        AddButton("Quit Minimum Effort Clicker (stops anything running)", "quit", new System.Windows.Shapes.Path { Data = Geometry.Parse("M0,0 L9,9 M9,0 L0,9"), StrokeThickness = 1.5, Width = 9, Height = 9 }, () => ExitRequested?.Invoke(), QuitNormal, QuitHover);
         // The shortcut line stays on top in every state: the start key on the left, the stop that works now in red
         // beside the buttons. Status and toggle lines follow below.
         DockPanel.SetDock(actions, Dock.Right); DockPanel.SetDock(stopLabel, Dock.Right);
         row.Children.Add(actions); row.Children.Add(stopLabel); row.Children.Add(label);
         body.Children.Add(row); body.Children.Add(activityLabel);
-        Content = new Border { Background = new SolidColorBrush(Color.FromRgb(17, 16, 16)), BorderBrush = new SolidColorBrush(Color.FromRgb(163, 158, 147)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 6, 4), Child = body };
+        var frame = new Border { Background = new SolidColorBrush(Color.FromRgb(17, 16, 16)), BorderBrush = new SolidColorBrush(Color.FromRgb(163, 158, 147)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 6, 4), Child = body };
+        // Unlocked, a press anywhere but on a button drags the overlay.
+        frame.MouseLeftButtonDown += (_, e) => { if (!options.Unlocked) return; e.Handled = true; Drag(); };
+        Content = frame;
         ApplyContrast();
         SystemParameters.StaticPropertyChanged += ContrastChanged;
         pointerWatch.Tick += (_, _) => WatchPointer();
@@ -74,21 +92,40 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         };
     }
 
-    private void AddButton(string tip, System.Windows.Shapes.Shape glyph, Action click, Brush normal, Brush hover)
+    /// <summary>A button with its overlay picture; if the picture is missing, the drawn glyph stands in.</summary>
+    private void AddButton(string tip, string picture, System.Windows.Shapes.Shape glyph, Action click, Brush normal, Brush hover)
     {
-        var button = new Border { Width = 20, Height = 20, Margin = new Thickness(4, 0, 0, 0), CornerRadius = new CornerRadius(3), Background = normal,
-            Child = new Viewbox { Width = 11, Height = 11, Child = glyph, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+        if (UiPictures.Overlay(picture) is { } source) AddButton(tip, new Image { Source = source, Width = 12, Height = 12 }, null, click, normal, hover);
+        else AddButton(tip, new Viewbox { Width = 11, Height = 11, Child = glyph }, glyph, click, normal, hover);
+    }
+    private Border AddButton(string tip, FrameworkElement content, System.Windows.Shapes.Shape? glyph, Action click, Brush normal, Brush hover)
+    {
+        content.HorizontalAlignment = HorizontalAlignment.Center; content.VerticalAlignment = VerticalAlignment.Center;
+        var button = new Border { Width = 20, Height = 20, Margin = new Thickness(4, 0, 0, 0), CornerRadius = new CornerRadius(3), Background = normal, Child = content, Cursor = Cursors.Arrow };
         System.Windows.Automation.AutomationProperties.SetName(button, tip);
         button.ToolTip = tip;
+        button.MouseLeftButtonDown += (_, e) => e.Handled = true; // A press on a button never starts a drag.
         button.MouseLeftButtonUp += (_, e) => { e.Handled = true; click(); };
         buttons.Add((button, glyph, normal, hover)); actions.Children.Add(button);
+        return button;
+    }
+    /// <summary>The padlock shows the state it is in: closed while locked to the anchor, open while it can be dragged.</summary>
+    private void ShowLock()
+    {
+        lockPicture.Source = UiPictures.Lock(!options.Unlocked);
+        string tip = options.Unlocked ? "Unlocked: drag the overlay anywhere. Click to lock it there" : "Locked to its anchor point. Click to unlock it and drag it anywhere";
+        lockButton.ToolTip = tip;
+        System.Windows.Automation.AutomationProperties.SetName(lockButton, options.Unlocked ? "Lock the overlay" : "Unlock the overlay");
+        if (Content is Border frame) frame.Cursor = options.Unlocked ? Cursors.SizeAll : null;
     }
 
-    /// <summary>Lets clicks reach the overlay only while the pointer is over one of its buttons, and shows the hover.</summary>
+    /// <summary>Lets clicks reach the overlay only while the pointer is over one of its buttons (or over any of it while
+    /// unlocked), and shows the hover.</summary>
     private void WatchPointer()
     {
         if (!ProbeNative.GetCursorPos(out var pointer)) return;
         Border? over = null;
+        bool inside = false;
         try
         {
             foreach (var (button, _, _, _) in buttons)
@@ -96,10 +133,23 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
                 var from = button.PointToScreen(new Point(0, 0)); var to = button.PointToScreen(new Point(button.ActualWidth, button.ActualHeight));
                 if (pointer.X >= from.X && pointer.X < to.X && pointer.Y >= from.Y && pointer.Y < to.Y) { over = button; break; }
             }
+            if (options.Unlocked && ProbeNative.GetWindowRect(new WindowInteropHelper(this).Handle, out var rect))
+                inside = pointer.X >= rect.Left && pointer.X < rect.Right && pointer.Y >= rect.Top && pointer.Y < rect.Bottom;
         }
         catch (InvalidOperationException) { } // Not on screen yet.
         foreach (var (button, _, normal, hover) in buttons) button.Background = button == over ? hover : normal;
-        SetClickable(over is not null);
+        SetClickable(over is not null || inside || dragging);
+    }
+    private void Drag()
+    {
+        dragging = true;
+        try { DragMove(); }
+        catch (InvalidOperationException) { return; } // The button was already up.
+        finally { dragging = false; }
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (target is not { } on || !ProbeNative.GetWindowRect(hwnd, out var rect)) return;
+        var anchor = OverlayAnchor.From(on.Left, on.Top, on.Width, on.Height, rect.Right - rect.Left, rect.Bottom - rect.Top, rect.Left, rect.Top, options.AnchorX, options.AnchorY);
+        AnchorDragged?.Invoke(anchor.X, anchor.Y);
     }
     private void SetClickable(bool on)
     {
@@ -118,7 +168,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         bool contrast = SystemParameters.HighContrast;
         label.Foreground = activityLabel.Foreground = contrast ? SystemColors.WindowTextBrush : Brushes.White;
         stopLabel.Foreground = contrast ? SystemColors.WindowTextBrush : StopRed;
-        foreach (var (_, glyph, _, _) in buttons) glyph.Stroke = contrast ? SystemColors.WindowTextBrush : Brushes.White;
+        foreach (var (_, glyph, _, _) in buttons) if (glyph is not null) glyph.Stroke = contrast ? SystemColors.WindowTextBrush : Brushes.White;
         if (Content is Border border)
         {
             border.Background = contrast ? SystemColors.WindowBrush : recording ? Brushes.DarkRed : active ? new SolidColorBrush(Color.FromRgb(28, 96, 50)) : new SolidColorBrush(Color.FromRgb(17, 16, 16));
@@ -150,6 +200,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         options = value; Opacity = SystemParameters.HighContrast ? 1 : value.Opacity;
         MaxWidth = 580 * value.Scale;
         body.LayoutTransform = new ScaleTransform(value.Scale, value.Scale);
+        ShowLock();
     }
     public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false)
     {
@@ -196,15 +247,21 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         stopLabel.Visibility = stop is null ? Visibility.Collapsed : Visibility.Visible;
         stopLabel.Text = stop ?? "";
     }
-    public void PlaceAt(double right, double top)
+    /// <summary>Places the overlay on the Click target (screen pixels) at its anchor, kept on the monitor's work area.</summary>
+    public void PlaceOn(double left, double top, double width, double height)
     {
+        target = (left, top, width, height);
+        if (dragging) return; // The drag owns the position until the button is let go.
         UpdateLayout();
         var hwnd = new WindowInteropHelper(this).Handle;
-        if (hwnd != 0 && ProbeNative.GetWindowRect(hwnd, out var rect))
-            PlaceWithinMonitor((int)right - (rect.Right - rect.Left) - 12, (int)top + 12, rect.Right - rect.Left, rect.Bottom - rect.Top);
+        if (hwnd == 0 || !ProbeNative.GetWindowRect(hwnd, out var rect)) return;
+        int w = rect.Right - rect.Left, h = rect.Bottom - rect.Top;
+        var (x, y) = OverlayAnchor.Place(left, top, width, height, w, h, options.AnchorX, options.AnchorY);
+        PlaceWithinMonitor((int)Math.Round(x), (int)Math.Round(y), w, h);
     }
     public void Constrain()
     {
+        if (dragging) return;
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd != 0 && ProbeNative.GetWindowRect(hwnd, out var rect)) PlaceWithinMonitor(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
     }

@@ -255,6 +255,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         InputKind.ScanCode => LinuxKeys.EvdevFromScanCode(input.Code) is int code and not 0 && LinuxKeys.EvdevFromVirtualKey(key) == code,
         _ => false
     };
+    /// <summary>The virtual key of a key or mouse button (0 when it has none), as shortcuts store it.</summary>
+    public static int VirtualKeyOf(InputControl input) => DesktopControl.VirtualKey(input);
     public static InputControl InputFromVirtualKey(int key)
     {
         if (ShortcutKeys.IsMouse(key)) return ShortcutKeys.MouseInput(key);
@@ -475,6 +477,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         lock (gate) if (success && !disposed) armedHelpers = copy;
         return success;
     }
+    /// <summary>A toggle's controller button was pressed: the same as tapping its keyboard or mouse shortcut.</summary>
+    public void TriggerToggle(Guid id) => MacroTriggered(id, TriggerCommand.Toggle, false);
     private void MacroTriggered(Guid id, TriggerCommand command, bool holdTrigger)
     {
         if (command == TriggerCommand.None) return;

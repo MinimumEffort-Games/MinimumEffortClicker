@@ -17,6 +17,8 @@ public partial class MainWindow
         overlay = new();
         overlay.ShowRequested += BringToFront;
         overlay.ExitRequested += ExitApplication;
+        overlay.LockToggled += () => SetOverlayUnlocked(!overlayOptions.Unlocked);
+        overlay.AnchorDragged += (x, y) => SetOverlayAnchor(x, y);
     }
 
     /// <summary>The overlay's square: shows the clicker in front, also when GNOME would only say it "is ready".</summary>
@@ -39,5 +41,19 @@ public partial class MainWindow
             Opacity = OverlayOpacity.Value, Scale = OverlayScale.Value
         };
         RefreshStatus(); overlay?.Constrain(); PersistPreferences();
+    }
+    /// <summary>A click on the Settings picture: the overlay goes to that point on the Click target's edge.</summary>
+    private void OverlayAnchor_Chosen(double x, double y) { if (initialized) SetOverlayAnchor(x, y); }
+    /// <summary>The overlay's padlock: unlocked, the overlay can be dragged.</summary>
+    private void SetOverlayUnlocked(bool unlocked)
+    {
+        if (overlayOptions.Unlocked == unlocked) return;
+        overlayOptions = overlayOptions with { Unlocked = unlocked };
+        RefreshStatus(); PersistPreferences();
+    }
+    private void SetOverlayAnchor(double x, double y)
+    {
+        overlayOptions = overlayOptions with { AnchorX = x, AnchorY = y };
+        OverlayAnchorPicture.Show(x, y); RefreshStatus(); PersistPreferences();
     }
 }

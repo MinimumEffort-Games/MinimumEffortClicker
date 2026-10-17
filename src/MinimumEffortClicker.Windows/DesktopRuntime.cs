@@ -244,6 +244,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         }
     }
     public static bool InputMatchesKey(InputControl input, int key) => DesktopNative.VirtualKey(input) == key;
+    /// <summary>The Windows virtual key of a key or mouse button (0 when it has none), as shortcuts store it.</summary>
+    public static int VirtualKeyOf(InputControl input) => DesktopNative.VirtualKey(input);
     public static InputControl InputFromVirtualKey(int key)
     {
         if (ShortcutKeys.IsMouse(key)) return ShortcutKeys.MouseInput(key);
@@ -488,6 +490,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         lock (gate) if (success && !disposed) armedHelpers = copy;
         return success;
     }
+    /// <summary>A toggle's controller button was pressed: the same as tapping its keyboard or mouse shortcut.</summary>
+    public void TriggerToggle(Guid id) => MacroTriggered(id, TriggerCommand.Toggle, false);
     private void MacroTriggered(Guid id, TriggerCommand command, bool holdTrigger)
     {
         if (command != TriggerCommand.Toggle) return;

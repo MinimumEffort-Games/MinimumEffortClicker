@@ -11,6 +11,8 @@ public enum Appearance { System, Dark, Light }
 public static class AppTheme
 {
     private static (bool Light, bool HighContrast, Color Window, Color Text, Color Highlight)? applied;
+    /// <summary>Whether the light colours are showing now (also when Appearance follows Windows).</summary>
+    public static bool IsLight => applied?.Light == true;
     public static void Apply(Appearance appearance)
     {
         bool light = appearance == Appearance.Light;

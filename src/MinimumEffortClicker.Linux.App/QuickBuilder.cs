@@ -33,8 +33,25 @@ public partial class MainWindow
     private readonly Dictionary<string, InputControl> quickInputs = SequenceKeys.Supported.ToDictionary(k => k.Key, k => InputControl.Key(k.Value));
     private sealed record QuickRow(int Index, SequenceStep Step, string Title, string Detail, IBrush Background, IBrush Foreground, bool Reselect = false)
     {
-        /// <summary>The row's Repeating (0) / Once (1) dropdown.</summary>
+        /// <summary>The row's Repeating (0) / Once (1) choice.</summary>
         public int RepeatIndex => Step.Once ? 1 : 0;
+        /// <summary>The mouse for clicks and scrolls, the keyboard for key presses, nothing for pauses, waits and
+        /// screenshots. A recording that mixes both shows the mouse.</summary>
+        public Avalonia.Media.Imaging.Bitmap? Device
+        {
+            get
+            {
+                IEnumerable<InputControl> inputs = Step.Kind switch
+                {
+                    StepKind.Input when Step.Control is { } control => [control],
+                    StepKind.TimedGroup => (Step.Children ?? []).Select(c => c.Control),
+                    _ => []
+                };
+                var kinds = inputs.Where(i => i.Kind != InputKind.PointerMove).Select(i => i.Kind).ToList();
+                if (kinds.Count == 0) return null;
+                return kinds.All(k => k == InputKind.ScanCode) ? UiArt.Keyboard : UiArt.Mouse;
+            }
+        }
     }
     /// <summary>
     /// An area picked with Desktop as the Click target is a spot on the screen, one picked on a window
@@ -54,6 +71,8 @@ public partial class MainWindow
     {
         if (ConditionLabel is null || PingScanAreaButton is null) return;
         ConditionColourPreview.Background = TryConditionColour(out int rgb) ? ColourBrush(rgb) : Brushes.Transparent;
+        // The summary sits on the colour, so it is dark on light colours and light on dark ones.
+        if (TryConditionColour(out int ink)) ConditionLabel.Foreground = ColourText(ink); else ConditionLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimary");
         if (ModeBox.SelectedIndex != 3) return;
         ActionHint.Text = ConditionKindBox.SelectedIndex == 1 ? "Choose an area and its colour: the wait continues once no pixel in that area has the colour any more." : "Continue when a colour appears or disappears.";
         try
@@ -95,8 +114,9 @@ public partial class MainWindow
     }
     private void InitializeQuickBuilder()
     {
-        KeyBox.ItemsSource = SequenceKeys.Supported.Where(k => !SequenceKeys.IsModifier(InputControl.Key(k.Value))).Select(k => k.Key).ToArray();
-        KeyBox.SelectedItem = "W";
+        SetQuickKey("W");
+        MouseChoice = PointerButton.Left;
+        ButtonPicker.SelectedChanged += (_, _) => { if (initialized && !loadingQuick) { TestResultLabel.Text = ""; RefreshAddAction(); } };
         foreach (var button in MouseChoices) quickInputs[button + " mouse"] = InputControl.Mouse(button);
         QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
         foreach (var name in quickInputs.Keys) quickInputNames.Add(name);
@@ -182,6 +202,8 @@ public partial class MainWindow
         MouseFields.Visibility = ModeBox.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
         ScrollFields.Visibility = ModeBox.SelectedIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
         LocationFields.Visibility = ModeBox.SelectedIndex is 0 or 5 ? Visibility.Visible : Visibility.Collapsed;
+        ClickLocationHeader.Visibility = ModeBox.SelectedIndex == 5 ? Visibility.Collapsed : Visibility.Visible;
+        ScrollLocationHeader.Visibility = ModeBox.SelectedIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
         KeyFields.Visibility = ModeBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         RandomFields.Visibility = ModeBox.SelectedIndex is 0 or 1 or 2 ? Visibility.Visible : Visibility.Collapsed;
         PressFields.Visibility = ModeBox.SelectedIndex is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
@@ -195,7 +217,7 @@ public partial class MainWindow
         // Blue Add Action adds a new action; green Save Changes changes the selected one, so it is always clear which.
         AddActionButton.Content = editingQuick is null ? "Add Action" : "Save Changes";
         AddActionButton.Classes.Set("blue", editingQuick is null); AddActionButton.Classes.Set("green", editingQuick is not null);
-        PressLabel.Text = ClickKindBox.SelectedIndex == 2 && ModeBox.SelectedIndex == 0 || HoldKeyBox.IsChecked == true && ModeBox.SelectedIndex == 1 ? "Hold duration (ms)" : "Press duration (ms)";
+        PressLabel.Text = ClickKindBox.SelectedIndex == 2 && ModeBox.SelectedIndex == 0 ? "Hold duration (ms)" : "Press duration (ms)";
         ShowTimingOptions();
         Location_Changed(this, new RoutedEventArgs());
         ActionHint.Text = complex ? "Edit the recorded inputs below. Their overlap is preserved." : ModeBox.SelectedIndex switch
@@ -204,13 +226,25 @@ public partial class MainWindow
     }
     private void ClickKind_Changed(object sender, SelectionChangedEventArgs e)
     { if (!initialized || loadingQuick) return; PressBox.Text = ClickKindBox.SelectedIndex == 2 ? "1000" : "20"; ShowQuickFields(); }
-    private void HoldKey_Changed(object sender, RoutedEventArgs e)
-    { if (!initialized || loadingQuick) return; PressBox.Text = HoldKeyBox.IsChecked == true ? "1000" : "20"; ShowQuickFields(); }
+    /// <summary>The Key Press key (a SequenceKeys name), shown on the Key button as its keycap.</summary>
+    private string quickKey = "W";
+    private void SetQuickKey(string name)
+    {
+        quickKey = name;
+        KeyBox.Content = UiArt.InputContent(InputControl.Key(SequenceKeys.Supported[name]), name);
+    }
+    private void ChooseKey_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new KeyPickerWindow(this, "Choose a key", "Click the key to press. Ctrl, Shift and Alt are the buttons next to the key.",
+            InputControl.Key(SequenceKeys.Supported[quickKey]), input => SequenceKeys.IsModifier(input) ? "use the Ctrl, Shift and Alt buttons next to the key." : null, withMouse: false);
+        if (picker.ShowDialog() != true || picker.Selected is not { } input || KeyPickerWindow.KeyName(input) is not { } key) return;
+        SetQuickKey(key); TestResultLabel.Text = ""; RefreshAddAction();
+    }
     private void Location_Changed(object sender, RoutedEventArgs e)
     {
         if (CursorLocationButton is null || SetLocationButton is null) return;
-        CursorLocationButton.SetButtonStyle(useCursorLocation ? "GreenButton" : "StandardButton");
-        SetLocationButton.SetButtonStyle(useCursorLocation ? "StandardButton" : "GreenButton");
+        CursorLocationButton.SetButtonStyle(useCursorLocation ? "ChosenButton" : "StandardButton");
+        SetLocationButton.SetButtonStyle(useCursorLocation ? "StandardButton" : "ChosenButton");
         QuickXBox.IsEnabled = QuickYBox.IsEnabled = !useCursorLocation;
         MotionFields.Visibility = ModeBox.SelectedIndex == 0 && !useCursorLocation ? Visibility.Visible : Visibility.Collapsed;
         RefreshAddAction();
@@ -241,7 +275,6 @@ public partial class MainWindow
         ShowConditionColour();
     }
     private void ConditionField_Changed(object sender, TextChangedEventArgs e) { if (initialized && !loadingQuick) ShowConditionColour(); }
-    private void ConditionCalibrate_Changed(object sender, RoutedEventArgs e) { if (initialized && !loadingQuick) ShowConditionColour(); }
 
     private bool TryConditionColour(out int rgb)
     {
@@ -254,7 +287,7 @@ public partial class MainWindow
 
     /// <summary>
     /// The wait as the panel's fields describe it. A selected area keeps the window size and scale it was picked at, and
-    /// playback adapts it like a click; coordinates typed with Calibrate ticked are measured on the Click target as it is now.
+    /// playback adapts it like a click; coordinates typed before any area was selected are measured on the Click target as it is now.
     /// </summary>
     private ConditionDefinition ReadQuickCondition()
     {
@@ -280,7 +313,8 @@ public partial class MainWindow
         int width = WholeNumber(ConditionWidthBox, 1, 256, "Width and height must be 1–256 pixels.");
         int height = WholeNumber(ConditionHeightBox, 1, 256, "Width and height must be 1–256 pixels.");
         ClientPoint origin;
-        if (ConditionCalibrateBox.IsChecked == true || quickAreaOrigin is null)
+        // Typed numbers mean the picture the area was selected on; with no area selected yet, the window as it is now.
+        if (quickAreaOrigin is null)
         {
             var frame = (runtime ?? throw new InvalidOperationException("The clicker is still starting.")).GetTargetFrame();
             // Desktop mode keeps areas in desktop pixels so they work on any monitor.
@@ -311,7 +345,6 @@ public partial class MainWindow
         ConditionToleranceBox.Text = (condition?.Tolerance ?? 8).ToString(CultureInfo.CurrentCulture);
         QuickScanIntervalBox.Text = condition is null ? "500" : Ms(condition.Policy.SampleInterval);
         ConditionStableBox.Text = (condition?.Policy.StableSamples ?? 1).ToString(CultureInfo.CurrentCulture);
-        ConditionCalibrateBox.IsChecked = region is null;
     }
 
     private async void SelectConditionArea_Click(object sender, RoutedEventArgs e) => await PickConditionArea(colourOnly: false);
@@ -366,7 +399,7 @@ public partial class MainWindow
                     if (ConditionKindBox.SelectedIndex < 0) ConditionKindBox.SelectedIndex = 0;
                     if (!colourOnly || AreaFieldsEmpty)
                     {
-                        quickAreaOrigin = chosen.Origin; ConditionCalibrateBox.IsChecked = false;
+                        quickAreaOrigin = chosen.Origin;
                         ConditionXBox.Text = chosen.Origin.X.ToString(CultureInfo.CurrentCulture); ConditionYBox.Text = chosen.Origin.Y.ToString(CultureInfo.CurrentCulture);
                         ConditionWidthBox.Text = chosen.Width.ToString(CultureInfo.CurrentCulture); ConditionHeightBox.Text = chosen.Height.ToString(CultureInfo.CurrentCulture);
                     }
@@ -401,8 +434,10 @@ public partial class MainWindow
                 if (CtrlBox.IsChecked == true) keys.Add(0x1D);
                 if (ShiftBox.IsChecked == true) keys.Add(0x2A);
                 if (AltBox.IsChecked == true) keys.Add(0x38);
-                keys.Add(SequenceKeys.Supported[(string)KeyBox.SelectedItem!]);
-                step = QuickActions.Keys(keys, Milliseconds(PressBox), after, HoldKeyBox.IsChecked == true); break;
+                keys.Add(SequenceKeys.Supported[quickKey]);
+                // A long press is named "Hold W", a short one "Press W"; the press duration decides.
+                var press = Milliseconds(PressBox);
+                step = QuickActions.Keys(keys, press, after, hold: press >= TimeSpan.FromMilliseconds(500)); break;
             case 2: step = QuickActions.Pause(TimeSpan.FromMilliseconds(Number(PauseDurationBox) * (PauseUnitBox.SelectedIndex == 1 ? 1000 : 1))); break;
             case 3: step = SequenceStep.WaitUntil("Wait Until", ReadQuickCondition()); break;
             case 4: step = SequenceStep.Screenshot(Milliseconds(ScreenshotPauseBox)); break;
@@ -454,8 +489,8 @@ public partial class MainWindow
     {
         loadingQuick = true; QuickActionList.SelectedIndex = -1; editingQuick = null; ModeBox.SelectedIndex = -1;
         ActionNameBox.Text = "";
-        ButtonBox.SelectedIndex = ClickKindBox.SelectedIndex = 0; useCursorLocation = true; quickPoint = null; ShowQuickCoordinates();
-        KeyBox.SelectedItem = "W"; CtrlBox.IsChecked = ShiftBox.IsChecked = AltBox.IsChecked = HoldKeyBox.IsChecked = false;
+        MouseChoice = PointerButton.Left; ClickKindBox.SelectedIndex = 0; useCursorLocation = true; quickPoint = null; ShowQuickCoordinates();
+        SetQuickKey("W"); CtrlBox.IsChecked = ShiftBox.IsChecked = AltBox.IsChecked = false;
         PressBox.Text = "20"; DoubleGapBox.Text = "80"; AfterBox.Text = "20"; PauseDurationBox.Text = "1"; PauseUnitBox.SelectedIndex = 1;
         ScreenshotPauseBox.Text = "1000"; ScrollDirectionBox.SelectedIndex = 1; ScrollNotchesBox.Text = "3"; ScrollGapBox.Text = "30";
         ShowConditionFields(null); ConditionLabel.Text = "Select the area to scan and what to look for.";
@@ -528,9 +563,9 @@ public partial class MainWindow
                 }
                 else if (uncomplicated && actions.All(c => c.Control.Kind == InputKind.ScanCode && c.Offset == TimeSpan.Zero && c.Duration == actions[0].Duration) && actions.Count(c => !SequenceKeys.IsModifier(c.Control)) == 1 && actions.Where(c => SequenceKeys.IsModifier(c.Control)).All(c => c.Control.Code is 0x1D or 0x2A or 0x38))
                 {
-                    ModeBox.SelectedIndex = 1; KeyBox.SelectedItem = SequenceKeys.Supported.First(k => k.Value == actions.First(c => !SequenceKeys.IsModifier(c.Control)).Control.Code).Key;
+                    ModeBox.SelectedIndex = 1; SetQuickKey(SequenceKeys.Supported.First(k => k.Value == actions.First(c => !SequenceKeys.IsModifier(c.Control)).Control.Code).Key);
                     CtrlBox.IsChecked = actions.Any(c => c.Control.Code == 0x1D); ShiftBox.IsChecked = actions.Any(c => c.Control.Code == 0x2A); AltBox.IsChecked = actions.Any(c => c.Control.Code == 0x38);
-                    HoldKeyBox.IsChecked = s.Name.StartsWith("Hold ", StringComparison.Ordinal) || actions[0].Duration.TotalMilliseconds >= 500; PressBox.Text = Ms(actions[0].Duration); AfterBox.Text = Ms(s.Duration - actions[0].Duration);
+                    PressBox.Text = Ms(actions[0].Duration); AfterBox.Text = Ms(s.Duration - actions[0].Duration);
                 }
                 else
                 {
@@ -558,7 +593,7 @@ public partial class MainWindow
     }
     private void QuickActive_Click(object sender, RoutedEventArgs e)
     {
-        if (loadingQuick || sender is not CheckBox { DataContext: QuickRow row } box || runtime?.Snapshot.Busy == true || quickOperation) return;
+        if (loadingQuick || sender is not ToggleButton { DataContext: QuickRow row } box || runtime?.Snapshot.Busy == true || quickOperation) return;
         var steps = quickHistory.Current.Steps.ToArray();
         var step = steps[row.Index] with { Enabled = box.IsChecked == true };
         steps[row.Index] = step;
@@ -571,7 +606,7 @@ public partial class MainWindow
     private void QuickRepeat_Changed(object? sender, SelectionChangedEventArgs e)
     {
         // Also fires when a row is first shown; only a real change is committed.
-        if (loadingQuick || sender is not ComboBox { DataContext: QuickRow row, SelectedIndex: >= 0 } box || box.SelectedIndex == row.RepeatIndex) return;
+        if (loadingQuick || sender is not SelectingItemsControl { DataContext: QuickRow row, SelectedIndex: >= 0 } box || box.SelectedIndex == row.RepeatIndex) return;
         if (runtime?.Snapshot.Busy == true || quickOperation) { box.SelectedIndex = row.RepeatIndex; return; }
         bool once = box.SelectedIndex == 1;
         // The list is rebuilt after the dropdown has finished closing, not while its own row is still handling the click.

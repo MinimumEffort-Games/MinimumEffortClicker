@@ -32,6 +32,8 @@ public partial class MainWindow : Window
     private StatusOverlay? overlay;
     private OverlayOptions overlayOptions = new();
     private bool initialized, closing, allowClose, ioBusy;
+    // The overlay waits for its saved place and lock, so it never shows at the default place first.
+    private bool overlaySettingsLoaded;
     private int refreshPending;
     private (string State, string Reason)? lastRuntimeStatus;
     private string stopKey = "F9";
@@ -48,9 +50,10 @@ public partial class MainWindow : Window
         if (!previewOnly) AppLog.Initialize(store.DirectoryPath);
         InitializeComponent();
         AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, EditingWindow_PointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+        OverlayAnchorPicture.AnchorChosen += OverlayAnchor_Chosen;
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();
-        ToggleHeldKeyBox.Content = "W"; ToggleShortcutBox.Content = "Choose a key…";
+        ShowHeldInput(); ShowToggleShortcut();
         ToggleKeyBox.Content = "F8"; StopKeyBox.Content = "F9";
         if (previewOnly) return;
         runtime = new DesktopRuntime();
@@ -128,6 +131,7 @@ public partial class MainWindow : Window
             overlayOptions = settings.OverlayOptions ?? new();
             IdleOverlayBox.IsChecked = overlayOptions.KeepIdle;
             OverlayOpacity.Value = overlayOptions.Opacity; OverlayScale.Value = overlayOptions.Scale;
+            OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY); overlaySettingsLoaded = true;
             Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
             EmergencyStopBox.SelectedIndex = (int)settings.EmergencyStop; runtime.EmergencyStop = settings.EmergencyStop; EmergencyStop_Changed(this, null!);
@@ -162,7 +166,7 @@ public partial class MainWindow : Window
                 if (!allowClose)
                 {
                     // If loading failed the defaults stand, and closing must still work.
-                    initialized = true; Pages.IsEnabled = true; traySettingsLoaded = true;
+                    initialized = true; Pages.IsEnabled = true; traySettingsLoaded = true; overlaySettingsLoaded = true;
                     if (StartupMeasurement.Enabled)
                     {
                         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
@@ -253,7 +257,7 @@ public partial class MainWindow : Window
         timer.Interval = TimeSpan.FromMilliseconds(snapshot.Busy ? 100 : 1000);
         if (snapshot.Busy || shutdownSchedule.Armed) timer.Start(); else timer.Stop();
         bool capturing = snapshot.Busy && snapshot.State.StartsWith("Recording", StringComparison.Ordinal);
-        if (!screenshotBusy && (capturing || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
+        if (overlaySettingsLoaded && !screenshotBusy && (capturing || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
@@ -275,7 +279,7 @@ public partial class MainWindow : Window
         try
         {
             var frame = runtime.GetTargetFrame();
-            overlay.PlaceAt(frame.X + frame.Width, frame.Y);
+            overlay.PlaceOn(frame.X, frame.Y, frame.Width, frame.Height);
         }
         catch (InvalidOperationException) { overlay.Constrain(); }
     }
@@ -376,7 +380,7 @@ public partial class MainWindow : Window
     {
         if (EmergencyStopHint is null) return;
         EmergencyStopHint.Text = ChosenEmergencyStop == EmergencyStopMode.OnlyStopAll
-            ? "Stop All (F9) stops everything at once: the Action List, every toggle and recording. Nothing else you press or move stops the clicker, so you can click into your game while it runs."
+            ? "Stops all Actions and toggles."
             : "Any key or mouse button the clicker is using, or moving the mouse while the clicker moves it, stops everything at once. Safer, but clicking into your game to bring it to the front also stops a run. Stop All still stops everything. Needs input access (Linux setup).";
         if (runtime is not null) runtime.EmergencyStop = ChosenEmergencyStop;
         if (initialized) { RefreshStatus(); PersistPreferences(); }
@@ -388,10 +392,20 @@ public partial class MainWindow : Window
         if (Navigation.SelectedItem is ListBoxItem item && int.TryParse(item.Tag?.ToString(), out int page)) ShowPage(page);
     }
     private int currentPage;
+    private bool settingsShown;
     private void ShowPage(int page)
     {
         currentPage = page;
+        // Appearance can follow the desktop, which may have switched since; the outline shows what is showing now.
+        if (page == 3) ShowThemeChoice();
         for (int i = 0; i < Pages.Children.Count; i++) Pages.Children[i].Visibility = i == page ? Visibility.Visible : Visibility.Collapsed;
+        // The first layout of Settings scrolls its chosen list items into view, which left the page opened half-way
+        // down; once that layout is done it starts at the top.
+        if (page == 3 && !settingsShown)
+        {
+            settingsShown = true;
+            Dispatcher.UIThread.Post(() => SettingsScroll.Offset = default, DispatcherPriority.Background);
+        }
     }
     private void Navigate(int page)
     {
@@ -405,9 +419,16 @@ public partial class MainWindow : Window
         var appearance = (Appearance)ThemeBox.SelectedIndex;
         ((App)Application.Current!).Appearance = appearance;
         AppTheme.Apply(appearance);
+        ShowThemeChoice();
         // Action rows carry their own brushes (colour conditions use ink colours), so rebuild them for the new theme.
         RefreshQuickList(QuickActionList.SelectedIndex, preserveEditor: true);
         PersistPreferences();
+    }
+    /// <summary>The light or dark button that matches the colours showing now has the green outline.</summary>
+    private void ShowThemeChoice()
+    {
+        LightThemeButton.SetButtonStyle(AppTheme.IsLight ? "ChosenButton" : "StandardButton");
+        DarkThemeButton.SetButtonStyle(AppTheme.IsLight ? "StandardButton" : "ChosenButton");
     }
     private void LightTheme_Click(object sender, RoutedEventArgs e) => ThemeBox.SelectedIndex = 2;
     private void DarkTheme_Click(object sender, RoutedEventArgs e) => ThemeBox.SelectedIndex = 1;

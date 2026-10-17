@@ -31,7 +31,7 @@ public sealed class LocalBindings(string directory)
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
     private static bool Valid(IReadOnlyList<MacroBinding> bindings) => bindings.Count <= 500
-        && bindings.All(b => b is not null && b.MacroId != Guid.Empty && MacroBindings.IsSupportedKey(b.Key))
+        && bindings.All(b => b is not null && b.MacroId != Guid.Empty && MacroBindings.IsValid(b))
         && bindings.Select(b => b.MacroId).Distinct().Count() == bindings.Count;
     private sealed record BindingFile(int Version, IReadOnlyList<MacroBinding> Bindings);
 }

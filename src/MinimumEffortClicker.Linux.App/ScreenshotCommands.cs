@@ -23,17 +23,27 @@ public partial class MainWindow
     private long screenshotFinishedAt = -10000;
     private string? lastScreenshot;
 
+    private string DefaultScreenshotFolder => Path.Combine(store.DirectoryPath, "Screenshots");
+    /// <summary>Where screenshots go: the folder the user chose, or the default.</summary>
+    private string ScreenshotFolder => screenshotSettings.Folder ?? DefaultScreenshotFolder;
+
     private void LoadScreenshotSettings(ScreenshotSettings? settings)
     {
         screenshotSettings = settings ?? new();
-        screenshotSettings = screenshotSettings with { Folder = screenshotSettings.Folder ?? Path.Combine(store.DirectoryPath, "Screenshots") };
+        // F7 is the screenshot key out of the box. Older versions started without one (0), and Reset keybinds cleared
+        // it; a missing key now gets F7 too. A key the user chose stays.
+        if (screenshotSettings.Hotkey == 0) screenshotSettings = screenshotSettings with { Hotkey = ShortcutKeys.DefaultScreenshotKey, HotkeyEnabled = true };
+        // The default folder is not saved, so it stays the Screenshots folder beside this copy's data, also when the
+        // data is moved or copied. Settings that saved it in full are read back as the default when they point here.
+        if (screenshotSettings.Folder is { } saved && string.Equals(Path.GetFullPath(saved), DefaultScreenshotFolder, StringComparison.Ordinal))
+            screenshotSettings = screenshotSettings with { Folder = null };
         ScreenshotModeBox.SelectedIndex = screenshotSettings.Mode;
         ScreenshotClipboardBox.IsChecked = screenshotSettings.CopyToClipboard;
         ScreenshotDailyFoldersBox.IsChecked = screenshotSettings.DailyFolders;
-        ScreenshotFolderBox.Text = screenshotSettings.Folder;
+        ScreenshotFolderBox.Text = ScreenshotFolder;
         selectedScreenshotKey = screenshotSettings.Hotkey;
-        ScreenshotKeyBox.Content = selectedScreenshotKey == 0 ? "Choose a key…" : ShortcutKeys.Label(selectedScreenshotKey);
         ScreenshotHotkeyBox.IsChecked = screenshotSettings.HotkeyEnabled;
+        RefreshScreenshotHotkeyButtons();
     }
 
     private async Task ConfigureScreenshotHotkey()
@@ -47,10 +57,8 @@ public partial class MainWindow
             ScreenshotHotkeyStatus.Text = "That key is already used or unavailable. Choose another screenshot key.";
             PersistPreferences();
         }
-        else ScreenshotHotkeyStatus.Text = screenshotSettings.HotkeyEnabled
-            ? $"Ready · {ShortcutKeys.Label(screenshotSettings.Hotkey)} · works while ME Clicker is hidden"
-            : "Screenshot hotkey is off. You can still use Take Screenshot.";
-        if (!screenshotSettings.HotkeyEnabled && success) ScreenshotHotkeyStatus.Text = "";
+        // Only a problem is worth a line here; a working key shows on its button.
+        else ScreenshotHotkeyStatus.Text = "";
         RefreshScreenshotHotkeyButtons();
     }
 
@@ -60,19 +68,16 @@ public partial class MainWindow
         if (!ScreenshotSettings.SupportedKey(key))
         { ScreenshotHotkeyStatus.Text = "Choose a keyboard key. Escape and modifier keys are reserved."; return; }
         selectedScreenshotKey = key;
-        ScreenshotKeyBox.Content = ShortcutKeys.Label(key);
         ScreenshotHotkeyBox.IsChecked = true;
         ApplyScreenshotKey_Click(sender, e);
     }
 
+    /// <summary>The screenshot key on its Settings button (like the other keys) and on Take Screenshot.</summary>
     private void RefreshScreenshotHotkeyButtons()
     {
         bool enabled = screenshotSettings.HotkeyEnabled && screenshotSettings.Hotkey != 0;
-        foreach (var button in new[] { ScreenshotKeyBox, ScreenshotHotkeyButton })
-        {
-            button.Content = enabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "Set Hotkey";
-            button.SetButtonStyle(enabled ? "BlueButton" : "RedButton");
-        }
+        ScreenshotKeyBox.Content = enabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "Choose a key…";
+        TakeScreenshotButton.Content = enabled ? $"Take Screenshot {ShortcutKeys.Label(screenshotSettings.Hotkey)}" : "Take Screenshot";
     }
 
     private async void ApplyScreenshotKey_Click(object sender, RoutedEventArgs e)
@@ -101,7 +106,7 @@ public partial class MainWindow
     private async void ScreenshotFolder_Click(object? sender, RoutedEventArgs e)
     {
         if (screenshotBusy) return;
-        var start = await StorageProvider.TryGetFolderFromPathAsync(screenshotSettings.Folder ?? store.DirectoryPath);
+        var start = await StorageProvider.TryGetFolderFromPathAsync(ScreenshotFolder);
         var folders = await StorageProvider.OpenFolderPickerAsync(new() { Title = "Save screenshots in", SuggestedStartLocation = start, AllowMultiple = false });
         if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } folder) return;
         screenshotSettings = screenshotSettings with { Folder = folder };
@@ -112,7 +117,7 @@ public partial class MainWindow
     {
         try
         {
-            string folder = ScreenshotFiles.DestinationDirectory(screenshotSettings.Folder ?? Path.Combine(store.DirectoryPath, "Screenshots"), screenshotSettings.DailyFolders, DateTime.Now);
+            string folder = ScreenshotFiles.DestinationDirectory(ScreenshotFolder, screenshotSettings.DailyFolders, DateTime.Now);
             Directory.CreateDirectory(folder);
             Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
         }
@@ -203,7 +208,7 @@ public partial class MainWindow
                 width = area.Width; height = area.Height;
             }
             using var image = Imaging.FromBgra(pixels, width, height);
-            string path = await Task.Run(() => ScreenshotFiles.Save(settings.Folder!, stream => image.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default), token, targetTitle, capturedAt, settings.DailyFolders), token);
+            string path = await Task.Run(() => ScreenshotFiles.Save(settings.Folder ?? DefaultScreenshotFolder, stream => image.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default), token, targetTitle, capturedAt, settings.DailyFolders), token);
             // A committed file remains valid even if the clipboard is busy or Stop arrives now.
             string clipboard = "";
             if (settings.CopyToClipboard && !token.IsCancellationRequested && Clipboard is { } board)

@@ -107,6 +107,12 @@ internal static class X11Windows
                     Data3 = 1, // a normal application asked
                 };
                 XSendEvent(display, XDefaultRootWindow(display), false, (1 << 19) | (1 << 20), ref message);
+                // KWin marks a window that is shown without taking focus as wanting attention, which can light the app
+                // up in the task bar; these windows never want it.
+                message.Data0 = 0; // remove
+                message.Data1 = XInternAtom(display, "_NET_WM_STATE_DEMANDS_ATTENTION", false);
+                message.Data2 = 0;
+                XSendEvent(display, XDefaultRootWindow(display), false, (1 << 19) | (1 << 20), ref message);
                 XFlush(display);
                 return true;
             }

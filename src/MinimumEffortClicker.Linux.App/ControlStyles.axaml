@@ -15,6 +15,8 @@
         <StreamGeometry x:Key="IconMoon">M14,2.5 A9.5,9.5 0 1 0 21.5,14 A7.5,7.5 0 1 1 14,2.5 Z</StreamGeometry>
         <StreamGeometry x:Key="IconSave">F1 M3,3 L17,3 L21,7 L21,21 L3,21 Z M6,5 L6,10 L15,10 L15,5 Z M7,14 L7,19 L17,19 L17,14 Z</StreamGeometry>
         <StreamGeometry x:Key="IconAdd">M11,4 L13,4 L13,11 L20,11 L20,13 L13,13 L13,20 L11,20 L11,13 L4,13 L4,11 L11,11 Z</StreamGeometry>
+        <!-- Repeat (two arrows chasing round a loop), like a music player's repeat button; Once adds a 1 in its middle. -->
+        <StreamGeometry x:Key="IconRepeat">M7,6 L17,6 L17,3 L21.5,7.5 L17,12 L17,9 L7,9 C5.9,9 5,9.9 5,11 L5,13 L2,13 L2,11 C2,8.2 4.2,6 7,6 Z M17,18 L7,18 L7,21 L2.5,16.5 L7,12 L7,15 L17,15 C18.1,15 19,14.1 19,13 L19,11 L22,11 L22,13 C22,15.8 19.8,18 17,18 Z</StreamGeometry>
     </Styles.Resources>
 
     <Style Selector="Window">
@@ -167,5 +169,132 @@
     <Style Selector="DataGridColumnHeader">
         <Setter Property="Background" Value="{DynamicResource RaisedSurface}" />
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+
+    <!-- On/off choices and rows of choices. A green outline means chosen; it is drawn over the button (the Ring), so
+         the text never moves. The face is not named PART_ContentPresenter, so the Fluent theme's checked and selected
+         colours do not reach it. -->
+    <Style Selector="ToggleButton.choice">
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="Background" Value="{DynamicResource RaisedSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <ContentPresenter Name="Face" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                                      Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      Foreground="{TemplateBinding Foreground}" RecognizesAccessKey="True" />
+                    <Border Name="Ring" CornerRadius="{TemplateBinding CornerRadius}" BorderThickness="2" BorderBrush="{DynamicResource FocusRing}" IsVisible="False" IsHitTestVisible="False" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ToggleButton.choice:pointerover /template/ ContentPresenter#Face"><Setter Property="BorderBrush" Value="{DynamicResource FocusRing}" /></Style>
+    <Style Selector="ToggleButton.choice:focus-visible /template/ Border#Ring"><Setter Property="IsVisible" Value="True" /></Style>
+    <Style Selector="ToggleButton.choice:checked /template/ Border#Ring">
+        <Setter Property="IsVisible" Value="True" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
+    </Style>
+    <Style Selector="ToggleButton.choice:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+    <!-- Two choices stacked beside a big button (Loop / Minimize on Start): compact, so together they are as tall as it. -->
+    <Style Selector="ToggleButton.stacked">
+        <Setter Property="Padding" Value="10,1" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+    <!-- A keycap picture as an on/off choice (Ctrl, Shift, Alt): no button face, only the outline when chosen. -->
+    <Style Selector="ToggleButton.keycap">
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <!-- A list row's on/off switch: "Active" with a green outline, or "Inactive" with a red one. -->
+    <Style Selector="ToggleButton.active">
+        <Setter Property="Padding" Value="8,2" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="MinWidth" Value="74" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="BorderBrush" Value="{DynamicResource StopBorder}" />
+        <Setter Property="Content" Value="Inactive" />
+    </Style>
+    <Style Selector="ToggleButton.active:checked"><Setter Property="Content" Value="Active" /></Style>
+
+    <Style Selector="ListBox.choice">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ItemsPanel"><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></Setter>
+    </Style>
+    <Style Selector="ListBox.choice > ListBoxItem">
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="Padding" Value="5" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <ContentPresenter Name="Face" Background="{DynamicResource RaisedSurface}" BorderBrush="{DynamicResource Border}" BorderThickness="1" CornerRadius="6"
+                                      Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      Foreground="{DynamicResource TextPrimary}" />
+                    <Border Name="Ring" CornerRadius="6" BorderThickness="2" BorderBrush="{DynamicResource FocusRing}" IsVisible="False" IsHitTestVisible="False" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.choice > ListBoxItem:selected"><Setter Property="FontWeight" Value="Normal" /></Style>
+    <Style Selector="ListBox.choice > ListBoxItem:pointerover /template/ ContentPresenter#Face"><Setter Property="BorderBrush" Value="{DynamicResource FocusRing}" /></Style>
+    <Style Selector="ListBox.choice > ListBoxItem:focus-visible /template/ Border#Ring"><Setter Property="IsVisible" Value="True" /></Style>
+    <Style Selector="ListBox.choice > ListBoxItem:selected /template/ Border#Ring">
+        <Setter Property="IsVisible" Value="True" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
+    </Style>
+    <Style Selector="ListBox.choice > ListBoxItem:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+    <!-- Choices that share a fixed width and height between them (ms / Seconds beside a number field). -->
+    <Style Selector="ListBox.fill"><Setter Property="ItemsPanel"><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></Setter></Style>
+    <Style Selector="ListBox.fill > ListBoxItem">
+        <Setter Property="Margin" Value="0,0,4,0" />
+        <Setter Property="Padding" Value="4,0,4,2" />
+    </Style>
+    <!-- Repeating / Once under a row's Active button: two small squares spread across the button's width. -->
+    <Style Selector="ListBox.repeat"><Setter Property="ItemsPanel"><ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate></Setter></Style>
+    <Style Selector="ListBox.repeat > ListBoxItem">
+        <Setter Property="Margin" Value="1,0" />
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="Height" Value="24" />
+    </Style>
+
+    <!-- A keycap picture as a button (the key picker). -->
+    <Style Selector="Button.keycap">
+        <Setter Property="Padding" Value="1" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="Button.keycap.chosen"><Setter Property="BorderBrush" Value="{DynamicResource SuccessBorder}" /></Style>
+    <!-- Puts something back to its defaults: outlined red so it is not pressed by accident. -->
+    <Style Selector="Button.reset">
+        <Setter Property="BorderBrush" Value="{DynamicResource StopBorder}" />
+        <Setter Property="BorderThickness" Value="2" />
     </Style>
 </Styles>
