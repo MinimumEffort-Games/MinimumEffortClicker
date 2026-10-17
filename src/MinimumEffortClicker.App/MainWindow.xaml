@@ -406,8 +406,7 @@
                     <TextBlock Text="Save a screenshot as a PNG. ME Clicker hides while you capture." Style="{StaticResource Secondary}" Margin="0,0,0,12"/>
                     <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource ActionBorder}"><StackPanel>
                         <TextBlock Text="Capture" FontWeight="SemiBold"/>
-                        <ListBox x:Name="ScreenshotModeBox" Style="{StaticResource ChoiceList}" SelectedIndex="1" SelectionChanged="ScreenshotOptions_Changed" HorizontalAlignment="Left" Margin="0,6,0,8" AutomationProperties.Name="Screenshot area"><ListBoxItem Content="Full screen (all monitors)" Padding="10,6"/><ListBoxItem Content="Select an area" Padding="10,6"/></ListBox>
-                        <TextBlock Text="Drag an area and release to save; Escape cancels. Area selection stops automation first. Full-screen capture lets it continue." Style="{StaticResource Secondary}" Margin="0,0,0,12"/>
+                        <ListBox x:Name="ScreenshotModeBox" Style="{StaticResource ChoiceList}" SelectedIndex="1" SelectionChanged="ScreenshotOptions_Changed" HorizontalAlignment="Left" Margin="0,6,0,12" AutomationProperties.Name="Screenshot area"><ListBoxItem Content="Full screen (all monitors)" Padding="10,6"/><ListBoxItem Content="Select an area" Padding="10,6"/></ListBox>
                         <TextBlock Text="Save to folder" FontWeight="SemiBold"/>
                         <DockPanel Margin="0,6,0,8"><Button DockPanel.Dock="Right" Content="Choose folder…" Click="ScreenshotFolder_Click"/><TextBox x:Name="ScreenshotFolderBox" IsReadOnly="True" VerticalContentAlignment="Center" AutomationProperties.Name="Screenshot save folder"/></DockPanel>
                         <Grid Margin="0,4,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
