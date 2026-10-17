@@ -224,25 +224,28 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Chrome" CornerRadius="5" Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
-                    </Border>
+                    <Grid x:Name="Root">
+                        <Border x:Name="Chrome" CornerRadius="5" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                        </Border>
+                        <Border x:Name="Ring" CornerRadius="5" BorderThickness="2" BorderBrush="{DynamicResource FocusRing}" Visibility="Collapsed" IsHitTestVisible="False" />
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRing}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="Chrome" Property="BorderThickness" Value="2" />
+                            <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
                         </Trigger>
-                        <!-- After the hover trigger, so a chosen toggle stays green under the mouse. -->
+                        <!-- After the hover and focus triggers, so a chosen toggle stays green. -->
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
-                            <Setter TargetName="Chrome" Property="BorderThickness" Value="2" />
+                            <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+                            <Setter TargetName="Root" Property="Opacity" Value="0.45" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -273,23 +276,26 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="Chrome" CornerRadius="6" Background="{DynamicResource RaisedSurface}" BorderBrush="{DynamicResource Border}"
-                            BorderThickness="1" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                    <Grid x:Name="Root">
+                        <Border x:Name="Chrome" CornerRadius="6" Background="{DynamicResource RaisedSurface}" BorderBrush="{DynamicResource Border}"
+                                BorderThickness="1" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <Border x:Name="Ring" CornerRadius="6" BorderThickness="2" BorderBrush="{DynamicResource FocusRing}" Visibility="Collapsed" IsHitTestVisible="False" />
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusRing}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="Chrome" Property="BorderThickness" Value="2" />
+                            <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
-                            <Setter TargetName="Chrome" Property="BorderThickness" Value="2" />
+                            <Setter TargetName="Ring" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource SuccessBorder}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+                            <Setter TargetName="Root" Property="Opacity" Value="0.45" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -394,7 +400,7 @@
     <!-- Choices that share a fixed width and height between them (ms / Seconds beside a number field). -->
     <Style x:Key="FillChoiceItem" TargetType="ListBoxItem" BasedOn="{StaticResource ChoiceItem}">
         <Setter Property="Margin" Value="0,0,4,0" />
-        <Setter Property="Padding" Value="4,0" />
+        <Setter Property="Padding" Value="4,0,4,2" />
     </Style>
     <Style x:Key="FillChoiceList" TargetType="ListBox" BasedOn="{StaticResource ChoiceList}">
         <Setter Property="ItemContainerStyle" Value="{StaticResource FillChoiceItem}" />

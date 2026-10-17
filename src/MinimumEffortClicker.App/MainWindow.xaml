@@ -14,6 +14,8 @@
         <!-- A button that still needs a choice: outlined red, not filled, so it is noticed without competing with Stop and Record. -->
         <Style x:Key="NeedsChoiceButton" TargetType="Button" BasedOn="{StaticResource StandardButton}"><Setter Property="BorderBrush" Value="{DynamicResource StopBorder}"/><Setter Property="BorderThickness" Value="2"/></Style>
         <Style x:Key="ChosenButton" TargetType="Button" BasedOn="{StaticResource StandardButton}"><Setter Property="BorderBrush" Value="{DynamicResource SuccessBorder}"/><Setter Property="BorderThickness" Value="2"/></Style>
+        <!-- Puts something back to its defaults: outlined red so it is not pressed by accident. -->
+        <Style x:Key="ResetButton" TargetType="Button" BasedOn="{StaticResource StandardButton}"><Setter Property="BorderBrush" Value="{DynamicResource StopBorder}"/><Setter Property="BorderThickness" Value="2"/></Style>
 
 
 
@@ -138,7 +140,6 @@
                             <TextBlock Text="Key"/>
                             <WrapPanel Margin="0,4,0,8" RenderOptions.BitmapScalingMode="HighQuality">
                               <Button x:Name="KeyBox" Click="ChooseKey_Click" Padding="6,3" Margin="0,0,8,0" ToolTip="Choose the key on a keyboard." AutomationProperties.Name="Key"/>
-                              <ToggleButton x:Name="HoldKeyBox" Style="{StaticResource ChoiceToggle}" Content="Hold key" VerticalAlignment="Center" Checked="HoldKey_Changed" Unchecked="HoldKey_Changed"/>
                             </WrapPanel>
                             <WrapPanel Margin="0,0,0,8" RenderOptions.BitmapScalingMode="HighQuality">
                               <ToggleButton x:Name="CtrlBox" Style="{StaticResource KeycapToggle}" ToolTip="Ctrl: held with the key" AutomationProperties.Name="Ctrl"><Image Source="Assets/Ui/keys/left-ctrl.png" Width="36" Height="36"/></ToggleButton>
@@ -296,7 +297,7 @@
                   </WrapPanel>
                   <CheckBox x:Name="ScreenshotHotkeyBox" Visibility="Collapsed"/>
 
-                  <Button Content="Reset keybinds" Click="ResetGlobalKeys_Click" HorizontalAlignment="Left" Width="170" Margin="0,12,0,0"/>
+                  <Button Content="Reset keybinds" Click="ResetGlobalKeys_Click" Style="{StaticResource ResetButton}" HorizontalAlignment="Left" Width="164" Padding="2,6" Margin="0,12,0,0"/>
                   <TextBlock x:Name="HotkeyStatus" Style="{StaticResource OptionalStatus}" Margin="0,8,0,0"/>
                   <TextBlock x:Name="ScreenshotHotkeyStatus" Style="{StaticResource OptionalStatus}"/>
 
@@ -308,7 +309,7 @@
                    <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" Margin="0,0,0,4"/><Button x:Name="ControllerRecordBox" Tag="Record" Content="Y" Click="CaptureControllerButton_Click" MouseRightButtonUp="ClearControllerButton_Click" ToolTip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Record controller button"/></StackPanel>
                    <StackPanel Width="170"><TextBlock Text="Screenshot" Margin="0,0,0,4"/><Button x:Name="ControllerScreenshotBox" Tag="Screenshot" Content="X" Click="CaptureControllerButton_Click" MouseRightButtonUp="ClearControllerButton_Click" ToolTip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Screenshot controller button"/></StackPanel>
                   </WrapPanel>
-                  <Button Content="Reset controller buttons" Click="ResetControllerButtons_Click" HorizontalAlignment="Left" Width="170" Margin="0,12,0,0"/>
+                  <Button Content="Reset controller buttons" Click="ResetControllerButtons_Click" Style="{StaticResource ResetButton}" HorizontalAlignment="Left" Width="164" Padding="2,6" Margin="0,12,0,0"/>
                   <TextBlock x:Name="ControllerBindStatus" Style="{StaticResource OptionalStatus}" Margin="0,8,0,0"/>
 
                   <TextBlock Text="Emergency stop" Style="{StaticResource Heading}" Margin="0,18,0,8"/>

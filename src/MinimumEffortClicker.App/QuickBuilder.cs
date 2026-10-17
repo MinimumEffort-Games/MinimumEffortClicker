@@ -215,7 +215,7 @@ public partial class MainWindow
         // Blue Add Action adds a new action; green Save Changes changes the selected one, so it is always clear which.
         AddActionButton.Content = editingQuick is null ? "Add Action" : "Save Changes";
         AddActionButton.SetResourceReference(StyleProperty, editingQuick is null ? "BlueButton" : "GreenButton");
-        PressLabel.Text = ClickKindBox.SelectedIndex == 2 && ModeBox.SelectedIndex == 0 || HoldKeyBox.IsChecked == true && ModeBox.SelectedIndex == 1 ? "Hold duration (ms)" : "Press duration (ms)";
+        PressLabel.Text = ClickKindBox.SelectedIndex == 2 && ModeBox.SelectedIndex == 0 ? "Hold duration (ms)" : "Press duration (ms)";
         ShowTimingOptions();
         Location_Changed(this, new RoutedEventArgs());
         ActionHint.Text = complex ? "Edit the recorded inputs below. Their overlap is preserved." : ModeBox.SelectedIndex switch
@@ -224,8 +224,6 @@ public partial class MainWindow
     }
     private void ClickKind_Changed(object sender, SelectionChangedEventArgs e)
     { if (!initialized || loadingQuick) return; PressBox.Text = ClickKindBox.SelectedIndex == 2 ? "1000" : "20"; ShowQuickFields(); }
-    private void HoldKey_Changed(object sender, RoutedEventArgs e)
-    { if (!initialized || loadingQuick) return; PressBox.Text = HoldKeyBox.IsChecked == true ? "1000" : "20"; ShowQuickFields(); }
     /// <summary>The Key Press key (a SequenceKeys name), shown on the Key button as its keycap.</summary>
     private string quickKey = "W";
     private void SetQuickKey(string name)
@@ -424,7 +422,8 @@ public partial class MainWindow
                 if (ShiftBox.IsChecked == true) keys.Add(SequenceKeys.LeftShift);
                 if (AltBox.IsChecked == true) keys.Add(SequenceKeys.LeftAlt);
                 keys.Add(SequenceKeys.Supported[quickKey]);
-                step = QuickActions.Keys(keys, Milliseconds(PressBox), after, HoldKeyBox.IsChecked == true); break;
+                var press = Milliseconds(PressBox);
+                step = QuickActions.Keys(keys, press, after, hold: press >= TimeSpan.FromMilliseconds(500)); break;
             case 2: step = QuickActions.Pause(TimeSpan.FromMilliseconds(Number(PauseDurationBox) * (PauseUnitBox.SelectedIndex == 1 ? 1000 : 1))); break;
             case 3: step = SequenceStep.WaitUntil("Wait Until", ReadQuickCondition()); break;
             case 4: step = SequenceStep.Screenshot(Milliseconds(ScreenshotPauseBox)); break;
@@ -477,7 +476,7 @@ public partial class MainWindow
         loadingQuick = true; QuickActionList.SelectedIndex = -1; editingQuick = null; ModeBox.SelectedIndex = -1;
         ActionNameBox.Text = "";
         MouseChoice = PointerButton.Left; ClickKindBox.SelectedIndex = 0; useCursorLocation = true; quickPoint = null; ShowQuickCoordinates();
-        SetQuickKey("W"); CtrlBox.IsChecked = ShiftBox.IsChecked = AltBox.IsChecked = HoldKeyBox.IsChecked = false;
+        SetQuickKey("W"); CtrlBox.IsChecked = ShiftBox.IsChecked = AltBox.IsChecked = false;
         PressBox.Text = "20"; DoubleGapBox.Text = "80"; AfterBox.Text = "20"; PauseDurationBox.Text = "1"; PauseUnitBox.SelectedIndex = 1;
         ScreenshotPauseBox.Text = "1000"; ScrollDirectionBox.SelectedIndex = 1; ScrollNotchesBox.Text = "3"; ScrollGapBox.Text = "30";
         ShowConditionFields(null); ConditionLabel.Text = "Select the area to scan and what to look for.";
@@ -552,7 +551,7 @@ public partial class MainWindow
                 {
                     ModeBox.SelectedIndex = 1; SetQuickKey(SequenceKeys.Supported.First(k => k.Value == actions.First(c => !SequenceKeys.IsModifier(c.Control)).Control.Code).Key);
                     CtrlBox.IsChecked = actions.Any(c => c.Control.Code == SequenceKeys.LeftCtrl); ShiftBox.IsChecked = actions.Any(c => c.Control.Code == SequenceKeys.LeftShift); AltBox.IsChecked = actions.Any(c => c.Control.Code == SequenceKeys.LeftAlt);
-                    HoldKeyBox.IsChecked = s.Name.StartsWith("Hold ", StringComparison.Ordinal) || actions[0].Duration.TotalMilliseconds >= 500; PressBox.Text = Ms(actions[0].Duration); AfterBox.Text = Ms(s.Duration - actions[0].Duration);
+                    PressBox.Text = Ms(actions[0].Duration); AfterBox.Text = Ms(s.Duration - actions[0].Duration);
                 }
                 else
                 {
