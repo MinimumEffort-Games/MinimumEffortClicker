@@ -70,7 +70,7 @@ public partial class MainWindow
         try
         {
             toggleRows = SavedToggles.Select(m => new ToggleRow(m.Id, ToggleName(m),
-                macroBindings.TryGetValue(m.Id, out var binding) ? ShortcutLabel(binding) : "Choose shortcut", enabledToggles.Contains(m.Id),
+                macroBindings.TryGetValue(m.Id, out var binding) ? ShortcutLabel(binding) : "Not set", enabledToggles.Contains(m.Id),
                 binding?.Key ?? 0, m.Plan!.Control,
                 $"{(m.Plan.Mode == HelperMode.Repeat ? "Taps" : "Holds")} {InputLabel(m.Plan.Control)}", binding?.Controller)).ToArray();
             ToggleList.ItemsSource = toggleRows;

@@ -195,7 +195,7 @@ public static class UiArtShapes
 $source = Join-Path $Root 'assets/ui/source'
 $output = Join-Path $Root 'assets/ui/generated'
 if (Test-Path -LiteralPath $output) { Remove-Item -LiteralPath $output -Recurse -Force }
-foreach ($folder in 'keys', 'controller', 'actions', 'devices') { New-Item -ItemType Directory -Force (Join-Path $output $folder) | Out-Null }
+foreach ($folder in 'keys', 'controller', 'actions', 'devices', 'brand') { New-Item -ItemType Directory -Force (Join-Path $output $folder) | Out-Null }
 
 function Read-Pixels([string]$path) {
     $image = [Drawing.Bitmap]::FromFile($path)
@@ -343,4 +343,21 @@ Trace-Picture 'controller-layout.png' 'controller-layout' @(
     @(@('rightstickup', 'rightstickdown', 'rightstickleft', 'rightstickright'), @(216, 224, 232, 240), 702, 880),
     @('rightstickpress', 96, 750, 860),
     @(@('dpadup', 'dpaddown', 'dpadleft', 'dpadright'), @(104, 112, 120, 128), 440, 860)) 18
+# The app icon: one picture from the icon sheet (the rounded square with the shrug and MEC), cut along its outline and
+# centred on a transparent square. scripts/Update-AppIcon.ps1 makes the Windows .ico and the Linux PNG from it. The
+# point is on the icon, in the sheet's pixels.
+$sheet = Read-Pixels (Join-Path $source 'icon-sheet.png')
+$sheetLabels = [int[]]::new($sheet.Width * $sheet.Height)
+$sheetShapes = [UiArtShapes]::Shapes($sheet.Bytes, $sheet.Width, $sheet.Height, 160, $sheetLabels)
+$iconLabel = $sheetLabels[195 * $sheet.Width + 662]
+$iconShape = $sheetShapes | Where-Object { $_[5] -eq $iconLabel } | Select-Object -First 1
+if ($null -eq $iconShape) { throw 'The app icon was not found on icon-sheet.png at 662, 195.' }
+$cw = 0; $ch = 0; $cx = 0; $cy = 0
+$crop = [UiArtShapes]::Extract($sheet.Bytes, $sheet.Width, $sheet.Height, $sheetLabels, $iconShape, 3, [ref]$cw, [ref]$ch, [ref]$cx, [ref]$cy)
+$side = [Math]::Max($cw, $ch)
+$square = [byte[]]::new($side * $side * 4)
+$left = [int](($side - $cw) / 2); $top = [int](($side - $ch) / 2)
+for ($y = 0; $y -lt $ch; $y++) { [Array]::Copy($crop, $y * $cw * 4, $square, (($top + $y) * $side + $left) * 4, $cw * 4) }
+New-Item -ItemType Directory -Force (Join-Path $output 'brand') | Out-Null
+Write-Png $square $side $side (Join-Path $output 'brand/app-icon.png')
 "Written to $output"

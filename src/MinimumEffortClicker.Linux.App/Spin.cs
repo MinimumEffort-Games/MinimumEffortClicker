@@ -46,7 +46,8 @@ internal sealed class Spin : AvaloniaObject
 
     private static Control Arrows(TextBox box)
     {
-        var panel = new Grid { RowDefinitions = new RowDefinitions("*,*"), Width = 18, Margin = new Thickness(0, 1, 1, 1) };
+        // At least 22 high and stretched, so a field that centres its text still gets two arrows, not one squashed pair.
+        var panel = new Grid { RowDefinitions = new RowDefinitions("*,*"), Width = 18, MinHeight = 22, Margin = new Thickness(0, 1, 1, 1), VerticalAlignment = VerticalAlignment.Stretch };
         panel.Children.Add(Arrow(box, 1, "M0,5 L5,0 L10,5 Z", "Up (Shift: ten steps)", 0));
         panel.Children.Add(Arrow(box, -1, "M0,0 L5,5 L10,0 Z", "Down (Shift: ten steps)", 1));
         return panel;

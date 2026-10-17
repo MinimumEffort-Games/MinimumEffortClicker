@@ -261,7 +261,7 @@
                                                             <ToggleButton Classes="choice active" IsChecked="{Binding Step.Enabled, Mode=OneWay}" Click="QuickActive_Click" ToolTip.Tip="Inactive actions stay in the list and are skipped." AutomationProperties.Name="Active" />
                                                             <ListBox Classes="choice repeat" SelectedIndex="{Binding RepeatIndex, Mode=OneWay}" SelectionChanged="QuickRepeat_Changed" AutomationProperties.Name="Repeat this action" Margin="0,4,0,0" ToolTip.Tip="With Loop on: Repeating actions run in every loop. Once actions run only in the first loop and are skipped in every loop after it. Without Loop, every action runs once.">
                                                                 <ListBoxItem AutomationProperties.Name="Repeating"><PathIcon Data="{StaticResource IconRepeat}" Width="14" Height="14" /></ListBoxItem>
-                                                                <ListBoxItem AutomationProperties.Name="Once"><Panel><PathIcon Data="{StaticResource IconRepeat}" Width="14" Height="14" /><TextBlock Text="1" FontSize="8" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" /></Panel></ListBoxItem>
+                                                                <ListBoxItem AutomationProperties.Name="Once"><Panel Width="18" Height="16"><PathIcon Data="{StaticResource IconRepeat}" Width="13" Height="13" HorizontalAlignment="Left" VerticalAlignment="Top" /><Border Background="{DynamicResource TextPrimary}" CornerRadius="5" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom"><TextBlock Text="1" FontSize="8" FontWeight="Bold" Foreground="{DynamicResource Surface}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border></Panel></ListBoxItem>
                                                             </ListBox>
                                                         </StackPanel>
                                                     </Grid>
@@ -352,7 +352,7 @@
                                 <StackPanel x:Name="ScreenshotHotkeyPanel" Width="170"><TextBlock Text="Screenshot" Margin="0,0,0,4" /><Button x:Name="ScreenshotKeyBox" Content="Choose a key…" Click="CaptureScreenshotKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Screenshot hotkey" /></StackPanel>
                             </WrapPanel>
                             <CheckBox x:Name="ScreenshotHotkeyBox" IsVisible="False" />
-                            <Button Content="Reset keybinds" Click="ResetGlobalKeys_Click" Classes="reset" HorizontalAlignment="Left" Width="164" Padding="2,6" Margin="0,12,0,0" />
+                            <Button Content="Reset keybinds" Click="ResetGlobalKeys_Click" Classes="reset" HorizontalAlignment="Left" MinWidth="164" Padding="2,6" Margin="0,12,0,0" />
                             <TextBlock x:Name="HotkeyStatus" Classes="secondary optional" Margin="0,8,0,0" />
                             <TextBlock x:Name="ScreenshotHotkeyStatus" Classes="secondary optional" />
 
@@ -364,7 +364,7 @@
                                 <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" Margin="0,0,0,4" /><Button x:Name="ControllerRecordBox" Tag="Record" Content="Y" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Record controller button" /></StackPanel>
                                 <StackPanel Width="170"><TextBlock Text="Screenshot" Margin="0,0,0,4" /><Button x:Name="ControllerScreenshotBox" Tag="Screenshot" Content="X" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Screenshot controller button" /></StackPanel>
                             </WrapPanel>
-                            <Button Content="Reset controller buttons" Click="ResetControllerButtons_Click" Classes="reset" HorizontalAlignment="Left" Width="164" Padding="2,6" Margin="0,12,0,0" />
+                            <Button Content="Reset controller buttons" Click="ResetControllerButtons_Click" Classes="reset" HorizontalAlignment="Left" MinWidth="164" Padding="2,6" Margin="0,12,0,0" />
                             <TextBlock x:Name="ControllerBindStatus" Classes="secondary optional" Margin="0,8,0,0" />
 
                             <TextBlock Text="Emergency stop" Classes="heading" Margin="0,18,0,8" />
@@ -430,8 +430,8 @@
                                     <TextBlock Text="Toggle shortcut" />
                                     <!-- A key or mouse button, a controller button, or both switch the toggle; right-click one to remove it. -->
                                     <Grid Margin="0,4,0,0" ColumnDefinitions="*,*">
-                                        <Button x:Name="ToggleShortcutBox" Content="Keyboard/Mouse" Click="CaptureToggleKey_Click" PointerReleased="ClearToggleKey_Click" HorizontalAlignment="Stretch" Margin="0,0,3,0" ToolTip.Tip="A key or mouse button that switches this toggle on and off. Right-click to remove it." AutomationProperties.Name="Toggle keyboard or mouse shortcut" />
-                                        <Button Grid.Column="1" x:Name="ToggleControllerBox" Content="Controller" Click="CaptureToggleController_Click" PointerReleased="ClearToggleController_Click" HorizontalAlignment="Stretch" Margin="3,0,0,0" ToolTip.Tip="A controller button that switches this toggle on and off. Right-click to remove it." AutomationProperties.Name="Toggle controller button" />
+                                        <Button x:Name="ToggleShortcutBox" Content="Keyboard/Mouse" Click="CaptureToggleKey_Click" PointerReleased="ClearToggleKey_Click" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0,0,3,0" ToolTip.Tip="A key or mouse button that switches this toggle on and off. Right-click to remove it." AutomationProperties.Name="Toggle keyboard or mouse shortcut" />
+                                        <Button Grid.Column="1" x:Name="ToggleControllerBox" Content="Controller" Click="CaptureToggleController_Click" PointerReleased="ClearToggleController_Click" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="3,0,0,0" ToolTip.Tip="A controller button that switches this toggle on and off. Right-click to remove it." AutomationProperties.Name="Toggle controller button" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -460,19 +460,19 @@
                                                     <DataTemplate><TextBlock Text="{Binding Name}" Margin="14,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="110">
+                                            <DataGridTemplateColumn Width="92">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Hold / Tap" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate><ContentControl Content="{Binding HeldPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="110">
+                                            <DataGridTemplateColumn Width="104">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Hotkey" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate><ContentControl Content="{Binding ShortcutPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="100">
+                                            <DataGridTemplateColumn Width="92">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Toggle" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>
@@ -567,19 +567,19 @@
                                                     <DataTemplate><TextBlock Text="{Binding Name}" Margin="14,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="110">
+                                            <DataGridTemplateColumn Width="96">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Controller" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate><ContentControl Content="{Binding ButtonPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="120">
+                                            <DataGridTemplateColumn Width="96">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Presses" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate><ContentControl Content="{Binding OutputPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="100">
+                                            <DataGridTemplateColumn Width="92">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Bind" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>

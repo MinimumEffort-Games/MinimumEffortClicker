@@ -380,6 +380,11 @@ public partial class MainWindow : Window
     /// </summary>
     internal IEnumerable<string> PreviewStates()
     {
+        // As it looks in use: Desktop as the Click target, F7 for screenshots, an example save folder.
+        foreach (var box in new[] { TargetLabel, ToggleTargetLabel }) { box.ItemsSource = new[] { DesktopChoice }; box.SelectedIndex = 0; }
+        screenshotSettings = new(Hotkey: ShortcutKeys.DefaultScreenshotKey, HotkeyEnabled: true); RefreshScreenshotHotkeyButtons();
+        ScreenshotFolderBox.Text = @"C:\Users\Player\Pictures\ME Clicker";
+        ReasonLabel.Text = "Desktop mode. Choose an action or select a Click target. Nothing is running.";
         var ms = TimeSpan.FromMilliseconds(20);
         quickHistory.Commit(quickHistory.Current with { Steps = [
             QuickActions.Click(PointerButton.Left, QuickClickKind.Single, ms, ms, ms, null),
@@ -392,7 +397,7 @@ public partial class MainWindow : Window
         ModeBox.SelectedIndex = -1;
         ToggleList.ItemsSource = new[] {
             new ToggleRow(Guid.NewGuid(), "Autorun", "1", true, 0x31, InputControl.Key(SequenceKeys.W), "Holds W"),
-            new ToggleRow(Guid.NewGuid(), "Spam click", "M4", false, 5, InputControl.Mouse(PointerButton.Left), "Taps Left mouse") };
+            new ToggleRow(Guid.NewGuid(), "Turbo", "M4 / LB", false, 5, InputControl.Mouse(PointerButton.Left), "Taps LMB", ControllerButton.LeftBumper) };
         ToggleEmptyLabel.Visibility = Visibility.Collapsed;
         Navigate("TogglePage"); yield return "toggles";
         controllerBinds = [new(Guid.NewGuid(), "Jump", ControllerButton.A, InputControl.Key(SequenceKeys.Supported["Space"]), true),

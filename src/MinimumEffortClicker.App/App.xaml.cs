@@ -34,7 +34,7 @@ public partial class App : Application
         StartupMeasurement.Mark("Theme ready");
         SystemParameters.StaticPropertyChanged += OnSystemChanged;
         Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnPreferencesChanged;
-        bool preview = e.Args.Length == 2 && e.Args[0] == "--render-preview";
+        bool preview = e.Args.Length is 2 or 3 && e.Args[0] == "--render-preview";
         if (!preview && SteamMode.RestartThroughSteam()) { Shutdown(); return; }
         if (!preview)
         {
@@ -59,9 +59,12 @@ public partial class App : Application
                 if (!Dispatcher.HasShutdownStarted) Dispatcher.BeginInvoke(window.RestoreFromTray);
             }, null, Timeout.Infinite, false);
         }
-        if (e.Args.Length == 2 && e.Args[0] == "--render-preview")
+        if (preview)
         {
             System.IO.Directory.CreateDirectory(e.Args[1]);
+            // The panels render at 1030 × 1150 (all of each panel), or at a size given as a third argument, for example
+            // 884x845 for store pictures.
+            var (panelWidth, panelHeight) = e.Args.Length == 3 && e.Args[2].Split('x') is [var w, var h] ? (double.Parse(w, System.Globalization.CultureInfo.InvariantCulture), double.Parse(h, System.Globalization.CultureInfo.InvariantCulture)) : (1030d, 1150d);
             void Render(string name, double width, double height, double scale)
             {
                 var content = (FrameworkElement)window.Content;
@@ -87,7 +90,7 @@ public partial class App : Application
                 foreach (var size in new[] { (Name: "normal", Width: 1030, Height: 650, Scale: 1d), (Name: "minimum", Width: 844, Height: 580, Scale: 1d), (Name: "minimum-200", Width: 844, Height: 580, Scale: 2d) })
                     Render($"shell-{theme.ToString().ToLowerInvariant()}-{size.Name}", size.Width, size.Height, size.Scale);
                 // Each editing panel, tall enough to show all of it.
-                foreach (var state in window.PreviewStates()) Render($"{state}-{theme.ToString().ToLowerInvariant()}", 1030, 1150, 1);
+                foreach (var state in window.PreviewStates()) Render($"{state}-{theme.ToString().ToLowerInvariant()}", panelWidth, panelHeight, 1);
             }
             Shutdown();
             return;
