@@ -390,12 +390,20 @@ public partial class MainWindow : Window
         if (Navigation.SelectedItem is ListBoxItem item && int.TryParse(item.Tag?.ToString(), out int page)) ShowPage(page);
     }
     private int currentPage;
+    private bool settingsShown;
     private void ShowPage(int page)
     {
         currentPage = page;
         // Appearance can follow the desktop, which may have switched since; the outline shows what is showing now.
         if (page == 3) ShowThemeChoice();
         for (int i = 0; i < Pages.Children.Count; i++) Pages.Children[i].Visibility = i == page ? Visibility.Visible : Visibility.Collapsed;
+        // The first layout of Settings scrolls its chosen list items into view, which left the page opened half-way
+        // down; once that layout is done it starts at the top.
+        if (page == 3 && !settingsShown)
+        {
+            settingsShown = true;
+            Dispatcher.UIThread.Post(() => SettingsScroll.Offset = default, DispatcherPriority.Background);
+        }
     }
     private void Navigate(int page)
     {

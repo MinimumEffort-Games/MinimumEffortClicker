@@ -32,6 +32,20 @@ public sealed class OverlayAnchorTests
     }
 
     [TestMethod]
+    public void ArrowKeysMoveTheAnchorTheWayTheyPoint()
+    {
+        Assert.AreEqual((0.5, 1.0), OverlayAnchor.Step(1, 1, -1, 0));
+        Assert.AreEqual((0.0, 1.0), OverlayAnchor.Step(0.5, 1, -1, 0));
+        Assert.AreEqual((0.0, 0.5), OverlayAnchor.Step(0, 1, 0, -1));
+        Assert.AreEqual((0.0, 0.0), OverlayAnchor.Step(0, 0, 0, -1)); // Already at the top: stays.
+        // Across the middle: from the top middle, Down goes to the bottom middle.
+        Assert.AreEqual((0.5, 1.0), OverlayAnchor.Step(0.5, 0, 0, 1));
+        Assert.AreEqual((1.0, 0.5), OverlayAnchor.Step(0, 0.5, 1, 0));
+        // From part-way along an edge, the nearest point is the start.
+        Assert.AreEqual((1.0, 0.0), OverlayAnchor.Step(0.6, 0, 1, 0));
+    }
+
+    [TestMethod]
     public void OverlayAnchorIsSavedAndOlderPreferencesGetTheTopRight()
     {
         string directory = Path.Combine(Path.GetTempPath(), "mec-anchor-" + Guid.NewGuid().ToString("N"));

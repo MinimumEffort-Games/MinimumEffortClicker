@@ -38,6 +38,19 @@ public static class OverlayAnchor
         return nearest == Math.Min(x, 1 - x) ? (x < 0.5 ? 0 : 1, Snapped(y)) : (Snapped(x), y < 0.5 ? 0 : 1);
     }
 
+    /// <summary>One arrow-key step from an anchor, in the arrow's direction, through the corners and the edge middles: from
+    /// the top middle, Down crosses to the bottom middle (the centre is not a point on the edge). An anchor between the
+    /// points starts from the nearest one.</summary>
+    public static (double X, double Y) Step(double x, double y, int dx, int dy)
+    {
+        double fromX = Nearest(x), fromY = Nearest(y);
+        if (fromX == 0.5 && fromY == 0.5) fromY = 0; // A drag into the middle: step from the top middle.
+        double toX = Math.Clamp(fromX + 0.5 * Math.Sign(dx), 0, 1), toY = Math.Clamp(fromY + 0.5 * Math.Sign(dy), 0, 1);
+        if (toX == 0.5 && toY == 0.5) (toX, toY) = (Math.Clamp(fromX + Math.Sign(dx), 0, 1), Math.Clamp(fromY + Math.Sign(dy), 0, 1));
+        return (toX, toY);
+    }
+
+    private static double Nearest(double value) => double.IsFinite(value) ? Math.Round(Math.Clamp(value, 0, 1) * 2) / 2 : 1;
     private static double Room(double length, double size, double inset = Inset) => Math.Max(0, length - size - 2 * inset);
     private static double Fraction(double offset, double room, double current)
         => room < 1 || !double.IsFinite(offset) ? current : Math.Clamp(offset / room, -Reach, 1 + Reach);

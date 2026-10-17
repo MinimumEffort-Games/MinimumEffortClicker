@@ -10,7 +10,7 @@ namespace MinimumEffortClicker.App;
 /// <summary>
 /// The Settings picture of the overlay's anchor: a window with the overlay drawn where it sits. A click anywhere on it
 /// pins the overlay to the nearest point of the edge (corners and edge middles snap); while the pointer moves, an outline
-/// shows where it would go. The arrow keys step through the corners and edge middles. An anchor from a drag beside the
+/// shows where it would go. The arrow keys move it the way they point, through the corners and edge middles. An anchor from a drag beside the
 /// window shows the overlay just outside it.
 /// </summary>
 internal sealed class OverlayAnchorPicker : Control
@@ -18,8 +18,6 @@ internal sealed class OverlayAnchorPicker : Control
     public static readonly StyledProperty<IBrush?> FillProperty = AvaloniaProperty.Register<OverlayAnchorPicker, IBrush?>(nameof(Fill), Brushes.Transparent);
     public static readonly StyledProperty<IBrush?> StrokeProperty = AvaloniaProperty.Register<OverlayAnchorPicker, IBrush?>(nameof(Stroke), Brushes.Gray);
     public static readonly StyledProperty<IBrush?> HighlightProperty = AvaloniaProperty.Register<OverlayAnchorPicker, IBrush?>(nameof(Highlight), Brushes.LightGreen);
-    // The eight points the arrow keys step through, clockwise from the top-left corner.
-    private static readonly (double X, double Y)[] Points = [(0, 0), (0.5, 0), (1, 0), (1, 0.5), (1, 1), (0.5, 1), (0, 1), (0, 0.5)];
     private const double Margin_ = 22, Inset = 6, OverlayWidth = 58, OverlayHeight = 16;
     private (double X, double Y) anchor = (1, 0);
     private (double X, double Y)? hover;
@@ -61,12 +59,10 @@ internal sealed class OverlayAnchorPicker : Control
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        int step = e.Key switch { Key.Right or Key.Down => 1, Key.Left or Key.Up => -1, _ => 0 };
-        if (step == 0) return;
+        var (dx, dy) = e.Key switch { Key.Left => (-1, 0), Key.Right => (1, 0), Key.Up => (0, -1), Key.Down => (0, 1), _ => (0, 0) };
+        if (dx == 0 && dy == 0) return;
         e.Handled = true;
-        int current = Array.FindIndex(Points, p => p == anchor);
-        // From an anchor between the points (a click part-way along an edge, or a drag), start at the top-left.
-        Choose(Points[current < 0 ? 0 : (current + step + Points.Length) % Points.Length]);
+        Choose(OverlayAnchor.Step(anchor.X, anchor.Y, dx, dy));
     }
     protected override void OnGotFocus(FocusChangedEventArgs e) { base.OnGotFocus(e); InvalidateVisual(); }
     protected override void OnLostFocus(FocusChangedEventArgs e) { base.OnLostFocus(e); InvalidateVisual(); }

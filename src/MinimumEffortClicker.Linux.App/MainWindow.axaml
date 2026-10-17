@@ -321,7 +321,7 @@
 
                 <!-- Page 3: Settings -->
                 <Grid x:Name="SettingsPage" IsVisible="False">
-                    <ScrollViewer Padding="0,0,16,0" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer x:Name="SettingsScroll" Padding="0,0,16,0" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Text="When closing the window" Classes="heading" />
                             <ToggleButton x:Name="CloseToTrayBox" Classes="choice" Content="Minimize to the top bar" IsChecked="True" HorizontalAlignment="Left" IsCheckedChanged="CloseToTray_Changed" />
