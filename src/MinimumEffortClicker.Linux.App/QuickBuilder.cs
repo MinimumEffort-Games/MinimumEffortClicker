@@ -143,13 +143,13 @@ public partial class MainWindow
         QuickFields.IsEnabled = QuickEditorTools.IsEnabled = QuickListTools.IsEnabled = QuickActionList.IsEnabled = idle;
         LoopBox.IsEnabled = MinimizeOnStartBox.IsEnabled = idle;
         bool stopping = snapshot.ActionsActive || actionsStartPending;
-        RunButton.Content = $"{(stopping ? "Stop" : "Start")} {MacroBindings.KeyLabel(appliedToggleKey)}";
+        RunButton.Content = $"{(stopping ? "Stop" : "Start")} {StartHint}";
         RunButton.SetButtonStyle(stopping ? "RedButton" : "GreenButton");
         Avalonia.Automation.AutomationProperties.SetName(RunButton, stopping ? "Stop Actions" : "Start Actions");
         RunButton.IsEnabled = stopping || !quickOperation && !macroFileBusy && !ioBusy && !screenshotBusy && !quickEditorOpen && !bindingBusy && runtime?.Control.Available == true
             && (runtime.CanResume || quickValid && runtime.CanStartActions);
         QuickRecordButton.IsEnabled = quickRecorder is not null || quickCancellation is not null || idle;
-        QuickRecordButton.Content = $"{ShortcutKeys.Label(appliedRecordKey)} Record/Stop";
+        QuickRecordButton.Content = $"{RecordHint} Record/Stop";
         LoadMacroButton.IsEnabled = idle && !ioBusy;
         MinimizeOnRecordBox.IsEnabled = RecordDelaysBox.IsEnabled = RecordMovementBox.IsEnabled = idle;
         QuickRecordKeyBox.IsEnabled = idle && !recordKeyChanging;

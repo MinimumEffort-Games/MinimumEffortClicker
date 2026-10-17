@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Reads game controllers (Xbox, PlayStation, Switch, Steam Deck) through SDL3 for both apps. Reading only:
+       nothing here sends input. -->
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ppy.SDL3-CS" />
+    <ProjectReference Include="../MinimumEffortClicker.Core/MinimumEffortClicker.Core.csproj" />
+  </ItemGroup>
+</Project>

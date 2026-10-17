@@ -12,5 +12,6 @@
     <PackageVersion Include="MSTest.TestFramework" Version="4.5.1" />
     <PackageVersion Include="Tmds.DBus.Protocol" Version="0.94.1" />
     <PackageVersion Include="Steamworks.NET" Version="2024.8.0" />
+    <PackageVersion Include="ppy.SDL3-CS" Version="2026.1002.1" />
   </ItemGroup>
 </Project>

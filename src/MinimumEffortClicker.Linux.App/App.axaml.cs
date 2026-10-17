@@ -44,7 +44,7 @@ public partial class App : Application
         var content = (Control)window.Content!;
         foreach (var theme in new[] { Appearance.Dark, Appearance.Light })
         foreach (var size in new[] { (Name: "normal", Width: 1030, Height: 650, Scale: 1d), (Name: "minimum", Width: 900, Height: 600, Scale: 1d), (Name: "minimum-200", Width: 900, Height: 600, Scale: 2d) })
-        foreach (var page in new[] { (Name: "actions", Index: 0), (Name: "toggles", Index: 4), (Name: "screenshot", Index: 6), (Name: "settings", Index: 3) })
+        foreach (var page in new[] { (Name: "actions", Index: 0), (Name: "toggles", Index: 4), (Name: "controller-to-key", Index: 7), (Name: "screenshot", Index: 6), (Name: "settings", Index: 3) })
         {
             AppTheme.Apply(theme);
             if (content is Panel root) root.Background = (Avalonia.Media.IBrush)Resources["AppBackground"]!;

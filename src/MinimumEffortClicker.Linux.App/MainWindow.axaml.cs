@@ -138,6 +138,7 @@ public partial class MainWindow : Window
             MinimizeOnRecordBox.IsChecked = choices.MinimizeOnRecord; RecordMovementBox.IsChecked = choices.SimulateMovement;
             // Set before anything can save preferences again, so an early save keeps the remembered toggles.
             rememberedToggles = settings.ActiveToggles ?? [];
+            controllerControls = settings.Controller ?? ControllerControls.Default; ShowControllerButtons();
             runtime.SetClickRateLimit(appliedClickLimit); runtime.KeepAwakeWhileRunning = appliedKeepAwake;
             await runtime.Control.ConfigureAsync(settings.ToggleKey, settings.StopKey);
             if (allowClose || closing) return;
@@ -150,6 +151,8 @@ public partial class MainWindow : Window
             await SetQuickRecordKey();
             await MakeSavedMacrosAvailable();
             await RestoreActiveToggles();
+            StartControllers();
+            await LoadControllerBinds();
             await ConfigureScreenshotHotkey();
             settingsLoaded = true;
             }
@@ -187,6 +190,8 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             trayIcon?.Dispose(); trayIcon = null;
+            SendControllerOutputs(controllerKeys.ReleaseAll().Select(o => (o, false)));
+            gamepads?.Dispose(); gamepads = null;
             timer.Stop(); overlayFollowTimer.Stop(); sessionWatcher.Dispose();
             if (Screens is { } screens) screens.Changed -= DisplaysChanged;
             CancelPowerSchedule(); CloseShutdownNotice();
@@ -252,7 +257,7 @@ public partial class MainWindow : Window
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
-            overlay.Update(snapshot, stopKey, MacroBindings.KeyLabel(appliedToggleKey), ToggleOverlayLines(snapshot), ShortcutKeys.Label(appliedRecordKey), !quickHistory.Current.Steps.Any());
+            overlay.Update(snapshot, StopHint, StartHint, ToggleOverlayLines(snapshot), RecordHint, !quickHistory.Current.Steps.Any());
             bool newlyShown = !overlay.IsVisible;
             if (newlyShown) { overlay.Show(); overlay.KeepAbove(); }
             PositionOverlay(newlyShown);
@@ -466,7 +471,7 @@ public partial class MainWindow : Window
             CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop, showInputAccessNotice,
             Actions: new(LoopBox.IsChecked == true, MinimizeOnStartBox.IsChecked == true, RecordDelaysBox.IsChecked == true,
                 MinimizeOnRecordBox.IsChecked == true, RecordMovementBox.IsChecked == true),
-            ActiveToggles: rememberedToggles);
+            ActiveToggles: rememberedToggles, Controller: controllerControls);
         if (preferencesBusy) return;
         preferencesBusy = true;
         try

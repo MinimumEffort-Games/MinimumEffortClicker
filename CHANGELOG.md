@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- New Controller to Key page: turn any controller button into a key or mouse button, held for as long as the button
+  is held, in whichever window is in front (turbo buttons, autorun, a mouse-button spam). Binds can be switched off
+  and come back when the clicker starts; Stop All lets go of everything.
+- Controllers: Xbox, PlayStation, Switch and Steam Deck controllers (including the Deck's back buttons) work on
+  Windows and Linux. A starts and stops Actions, B stops everything, Y records, X takes a screenshot, in any window
+  like the keys; change or clear them under Settings → Controller. After you use the controller the overlay and
+  buttons show its button names, and the key names again after you type; moving the mouse changes nothing.
+
 ## 0.5.0-preview.35 (2026-10-16)
 
 - Linux is no longer a separate preview: it has the same version and status as the Windows build.

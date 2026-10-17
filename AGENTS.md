@@ -4,7 +4,7 @@ On the main PC, read docs/Handoff/Where-We-Are.md first (local working notes, ke
 Then README.md, CONTRIBUTING.md and docs/RELEASE_STATUS.md.
 
 Windows 11 x64, C#/.NET 10 and WPF. Core/Engine stay independent of WPF/native adapters.
-The four pages (Actions, Toggles, Screenshot, Settings) are the whole product; code that no page can reach is deleted, not kept.
+The five pages (Actions, Toggles, Controller to Key, Screenshot, Settings) are the whole product; code that no page can reach is deleted, not kept.
 Linux (same version and status as Windows): Avalonia app + MinimumEffortClicker.Linux adapters, built from MinimumEffortClicker.Linux.slnx
 with scripts/linux/*.sh. Keep the Windows solution, lock files and behaviour unchanged by Linux work.
 Linux native probes run only in the private headless GNOME Shell (scripts/linux/run-headless-probe.sh).

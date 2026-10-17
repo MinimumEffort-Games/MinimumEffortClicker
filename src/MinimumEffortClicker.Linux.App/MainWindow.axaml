@@ -18,7 +18,7 @@
                 <StackPanel Orientation="Horizontal">
                     <ListBox x:Name="Navigation" Classes="navigation" SelectedIndex="0" Background="Transparent" BorderThickness="0" SelectionChanged="Navigation_Changed" AutomationProperties.Name="Navigation tabs" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
-                        <ListBoxItem Content="Actions" Tag="0" /><ListBoxItem Content="Toggles" Tag="4" /><ListBoxItem Content="Screenshot" Tag="6" /><ListBoxItem Content="Settings" Tag="3" />
+                        <ListBoxItem Content="Actions" Tag="0" /><ListBoxItem Content="Toggles" Tag="4" /><ListBoxItem Content="Controller to Key" Tag="7" /><ListBoxItem Content="Screenshot" Tag="6" /><ListBoxItem Content="Settings" Tag="3" />
                     </ListBox>
                     <Button Click="BrandWebsite_Click" ToolTip.Tip="Minimum Effort website" AutomationProperties.Name="Minimum Effort website" Background="Transparent" BorderThickness="0" Margin="16,0,0,0" Padding="4">
                         <Border Width="110" Height="34" Background="{DynamicResource TextPrimary}">
@@ -333,6 +333,17 @@
                             <TextBlock x:Name="HotkeyStatus" Classes="secondary optional" Margin="0,8,0,0" />
                             <TextBlock x:Name="ScreenshotHotkeyStatus" Classes="secondary optional" />
 
+                            <TextBlock Text="Controller" Classes="heading" Margin="0,18,0,8" />
+                            <TextBlock x:Name="ControllerStatus" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" Margin="0,0,0,6" />
+                            <WrapPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / toggle" /><Button x:Name="ControllerStartBox" Tag="StartStop" Content="A" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Start controller button" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Stop all" /><Button x:Name="ControllerStopBox" Tag="StopAll" Content="B" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Stop all controller button" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" /><Button x:Name="ControllerRecordBox" Tag="Record" Content="Y" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Record controller button" /></StackPanel>
+                                <StackPanel Width="170"><TextBlock Text="Screenshot" /><Button x:Name="ControllerScreenshotBox" Tag="Screenshot" Content="X" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Screenshot controller button" /></StackPanel>
+                            </WrapPanel>
+                            <Button Content="Reset controller buttons" Click="ResetControllerButtons_Click" HorizontalAlignment="Left" Width="170" Margin="0,12,0,0" />
+                            <TextBlock x:Name="ControllerBindStatus" Classes="secondary optional" Margin="0,8,0,0" />
+
                             <TextBlock Text="Emergency stop" Classes="heading" Margin="0,18,0,8" />
                             <ComboBox x:Name="EmergencyStopBox" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" Width="420" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop">
                                 <ComboBoxItem Content="Only Stop All (F9) stops the clicker (default)" /><ComboBoxItem Content="Stop on my input" />
@@ -478,6 +489,82 @@
                             <Image x:Name="ScreenshotPreview" Stretch="Uniform" MaxHeight="210" MaxWidth="480" HorizontalAlignment="Left" />
                             <TextBlock x:Name="ScreenshotLastFile" Classes="secondary" Margin="0,8,0,6" />
                             <Button x:Name="ScreenshotOpenFileButton" Content="Open last screenshot" Click="ScreenshotOpenFile_Click" IsEnabled="False" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Page 7: Controller to Key (its tab sits between Toggles and Screenshot). -->
+                <Grid x:Name="ControllerPage" IsVisible="False" ColumnDefinitions="*,25,*">
+                    <Border Grid.Column="1" Width="1" Background="{DynamicResource Border}" HorizontalAlignment="Center" />
+                    <ScrollViewer Padding="0,0,16,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <TextBlock Text="Create Controller to Key" Classes="heading" />
+                            <Border Classes="card" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2">
+                                <StackPanel>
+                                    <TextBlock Text="Bind name" />
+                                    <TextBox x:Name="ControllerBindNameBox" MaxLength="100" AutomationProperties.Name="Bind name" />
+                                    <TextBlock Text="Key or mouse button to press" Margin="0,8,0,0" />
+                                    <Grid Margin="0,4,0,12" ColumnDefinitions="*,8,*">
+                                        <ComboBox x:Name="ControllerKeyBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="ControllerKeyChoice_Changed" AutomationProperties.Name="Key to press" />
+                                        <ComboBox Grid.Column="2" x:Name="ControllerMouseBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="ControllerMouseChoice_Changed" AutomationProperties.Name="Mouse button to press">
+                                            <ComboBoxItem Content="Select a mouse button…" /><ComboBoxItem Content="Left mouse button" /><ComboBoxItem Content="Right mouse button" /><ComboBoxItem Content="Middle mouse button" /><ComboBoxItem Content="Back mouse button" /><ComboBoxItem Content="Forward mouse button" />
+                                        </ComboBox>
+                                    </Grid>
+                                    <TextBlock Text="Controller binding" />
+                                    <Button x:Name="ControllerBindButtonBox" Content="Press to choose a button…" Classes="needs-choice" Click="CaptureBindButton_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Controller binding" Margin="0,4,0,0" />
+                                    <TextBlock Text="While the controller button is held, the key or mouse button is held, in whichever window is in front. Stop All lets go of everything." Classes="secondary" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Classes="icon" x:Name="SaveControllerBindButton" Click="SaveControllerBind_Click" ToolTip.Tip="Add bind" ToolTip.ShowOnDisabled="True" AutomationProperties.Name="Save bind"><PathIcon Data="{StaticResource IconSave}" /></Button>
+                                <Button Classes="icon" Click="NewControllerBind_Click" ToolTip.Tip="New bind" AutomationProperties.Name="New bind"><PathIcon Data="{StaticResource IconAdd}" /></Button>
+                                <Button Classes="icon" x:Name="DeleteControllerBindButton" Click="DeleteControllerBind_Click" IsEnabled="False" ToolTip.Tip="Remove bind" AutomationProperties.Name="Remove bind"><PathIcon Data="{StaticResource IconDelete}" /></Button>
+                            </WrapPanel>
+                            <TextBlock x:Name="ControllerBindStatusLabel" Classes="secondary optional" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </ScrollViewer>
+                    <ScrollViewer Grid.Column="2" Padding="0,0,16,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <TextBlock Text="Controller to Key List" Classes="heading" />
+                            <Border Classes="card" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2">
+                                <StackPanel>
+                                    <TextBlock x:Name="ControllerBindEmptyLabel" Text="Create your first bind on the left." Classes="secondary" />
+                                    <DataGrid x:Name="ControllerBindList" MinHeight="200" MaxHeight="420" AutoGenerateColumns="False" CanUserReorderColumns="False" CanUserResizeColumns="False" IsReadOnly="True" SelectionMode="Single" SelectionChanged="ControllerBindSelection_Changed" AutomationProperties.Name="Controller to Key binds" x:CompileBindings="False">
+                                        <DataGrid.Styles>
+                                            <Style Selector="DataGridColumnHeader"><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style>
+                                        </DataGrid.Styles>
+                                        <DataGrid.Columns>
+                                            <DataGridTemplateColumn Width="*" MinWidth="80">
+                                                <DataGridTemplateColumn.Header><TextBlock Text="Name" Margin="6,0" /></DataGridTemplateColumn.Header>
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding Name}" Margin="14,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="110">
+                                                <DataGridTemplateColumn.Header><TextBlock Text="Controller" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding Button}" Margin="8,0" HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="120">
+                                                <DataGridTemplateColumn.Header><TextBlock Text="Presses" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding Output}" Margin="8,0" HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="100">
+                                                <DataGridTemplateColumn.Header><TextBlock Text="Bind" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox Content="Active" IsChecked="{Binding Active, Mode=OneWay}" Click="ControllerBindActive_Click" ToolTip.Tip="Active binds press their key while their controller button is held." AutomationProperties.Name="Bind active" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock x:Name="ControllerBindControllerLabel" Classes="secondary" TextWrapping="Wrap" Margin="0,6,0,0" />
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>

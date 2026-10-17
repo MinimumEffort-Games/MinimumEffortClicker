@@ -2,8 +2,9 @@
 
 A free, open-source mouse and keyboard automation app for **Windows 11 x64** and
 **Linux** (GNOME and KDE Plasma, see [Linux](docs/LINUX.md)), with the same pages and version on both.
-Repeat clicks and keys, record editable action lists, wait for colours on screen, create hold/spam toggles
-and save screenshots. Runs locally and offline; no account or subscription is needed to use the app.
+Repeat clicks and keys, record editable action lists, wait for colours on screen, create hold/spam toggles,
+run it from a game controller (Xbox, PlayStation, Switch, Steam Deck) or turn controller buttons into keys, and save
+screenshots. Runs locally and offline; no account or subscription is needed to use the app.
 
 **Public preview, not code-signed.** The app is in early testing with more hardware, displays and desktops still
 to check, so expect rough edges and please report them. Windows may show a SmartScreen warning the first time.

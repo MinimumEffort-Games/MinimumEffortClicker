@@ -74,6 +74,16 @@ In Desktop mode, the area picker (Select area… and the Eyedropper) shows a Mon
 that area of the screen through the helper. With a window as Click target, a run pauses when the
 window goes behind another one and continues by itself once it has been back in front for half a second.
 
+## Controllers and Steam Deck
+
+The app reads game controllers (Xbox, PlayStation, Switch and the Steam Deck, including its four back buttons)
+through SDL3, which ships inside the package. By default A starts and stops Actions, B stops everything, Y records
+and X takes a screenshot; change them under Settings → Controller. Reading a controller needs no extra access.
+
+On a Steam Deck the clicker runs in **Desktop Mode** only; Game Mode is not supported. In Desktop Mode Steam's own
+desktop layout also turns the Deck's buttons into mouse clicks and keys, so the same press can do two things.
+How to switch that off for the buttons you bind here will be written down after the first test on a Deck.
+
 ## Limits
 
 - **GNOME and KDE Plasma only.** Sway, Hyprland and other desktops need a different helper; they are not

@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/MinimumEffortClicker.Core/MinimumEffortClicker.Core.csproj" />
     <Project Path="src/MinimumEffortClicker.Engine/MinimumEffortClicker.Engine.csproj" />
+    <Project Path="src/MinimumEffortClicker.Controllers/MinimumEffortClicker.Controllers.csproj" />
     <Project Path="src/MinimumEffortClicker.Storage/MinimumEffortClicker.Storage.csproj" />
     <Project Path="src/MinimumEffortClicker.Linux/MinimumEffortClicker.Linux.csproj" />
     <Project Path="src/MinimumEffortClicker.Linux.App/MinimumEffortClicker.Linux.App.csproj" />

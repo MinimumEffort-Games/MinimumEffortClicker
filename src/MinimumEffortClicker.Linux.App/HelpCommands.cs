@@ -62,6 +62,14 @@ public partial class MainWindow
             "Toggles only work when a click target is selected. Tick Active to arm a toggle; the toggles you leave active are armed again the next time the app starts. Nothing happens until you press its shortcut while your Click target is in front.",
             "Spam is built for fast tapping. The click limit on the Actions page does not apply to it.",
         ]),
+        ("Controller to Key",
+        [
+            "Turns controller buttons into keys and mouse buttons, in whichever window is in front; no Click target is needed.",
+            "- Name the bind, choose a key or a mouse button (choosing one clears the other), press Controller binding and then the controller button, and save.",
+            "- While the controller button is held, its key or mouse button is held. Two binds may press the same key; it stays down until both buttons are up.",
+            "- Untick Active to keep a bind without using it. Active binds come back when the clicker starts, and press nothing until you press their button.",
+            "- Buttons used under Settings → Controller (A, B, Y, X by default) cannot be bound here; clear them there first. Stop All lets go of everything.",
+        ]),
         ("Screenshot",
         [
             "Saves a PNG of the whole screen or of an area you drag. The clicker hides itself while it captures.",
@@ -77,6 +85,7 @@ public partial class MainWindow
             "- Overlay: a small status box beside the target shows what is running and which keys stop it. Toggles show Ready, or On in blue. Set its opacity and size here, or hide it.",
             "- The overlay's square brings the clicker window back to the front (GNOME shows no taskbar icon while it is hidden or minimised). Its X stops anything running and quits the clicker.",
             "- Keys: F8 starts and stops Actions, F9 stops everything, F10 records. Each needs its own key.",
+            "- Controller: A starts and stops Actions, B stops everything, Y records and X takes a screenshot, in any window, like the keys. Click a button under Controller and press another controller button to change it; right-click to leave a control without one. Xbox, PlayStation, Switch and Steam Deck controllers work, including the Deck's back buttons. The overlay and buttons show the controller's names after you use it and the keys again after you type.",
         ]),
         ("Linux setup",
         [
