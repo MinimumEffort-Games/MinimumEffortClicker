@@ -7,7 +7,7 @@ namespace MinimumEffortClicker.App;
 
 /// <summary>
 /// Chooses a key, or also a mouse button, by clicking it: a keyboard of keycap pictures laid out like a US keyboard,
-/// the keys that have no keycap (F13–F24) as plain buttons, and when asked the labelled mouse beside the keyboard. The
+/// and when asked the labelled mouse beside the keyboard. Keys without a keycap (F13–F24) are not offered. The
 /// current choice has the green outline. Keys the caller cannot use are greyed, with the reason on hover.
 /// </summary>
 internal sealed class KeyPickerWindow : Window
@@ -73,23 +73,6 @@ internal sealed class KeyPickerWindow : Window
             keyboard.Children.Add(mouse);
         }
         panel.Children.Add(keyboard);
-
-        // Keys the clicker can press that have no keycap picture.
-        var others = SequenceKeys.Supported.Keys.Where(k => UiArt.Key(k) is null && unusable(InputControl.Key(SequenceKeys.Supported[k])) is null).ToList();
-        if (others.Count > 0)
-        {
-            panel.Children.Add(new TextBlock { Text = "More keys", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
-            var more = new WrapPanel();
-            foreach (var name in others)
-            {
-                var input = InputControl.Key(SequenceKeys.Supported[name]);
-                var button = new Button { Content = name, Margin = new Thickness(0, 0, 6, 6), MinWidth = 52 };
-                if (input == current) button.SetResourceReference(StyleProperty, "ChosenButton");
-                button.Click += (_, _) => Choose(input);
-                more.Children.Add(button);
-            }
-            panel.Children.Add(more);
-        }
 
         var cancel = new Button { Content = "Cancel", IsCancel = true, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0) };
         cancel.Click += (_, _) => DialogResult = false;
