@@ -1,6 +1,6 @@
 # Release status
 
-Version: **0.5.0-preview.35**, a public preview for Windows 11 x64 (portable ZIP) and Linux x64 (`tar.gz`, GNOME and
+Version: **0.5.0-preview.36**, a public preview for Windows 11 x64 (portable ZIP) and Linux x64 (`tar.gz`, GNOME and
 KDE Plasma on Wayland), macro file schema **17**. Older macro files open and are upgraded on load; nothing is reset.
 
 Both builds come from the same source and the same version. They stay previews until more people have used them on
