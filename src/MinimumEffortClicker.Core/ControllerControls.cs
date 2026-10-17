@@ -3,11 +3,17 @@ namespace MinimumEffortClicker.Core;
 /// <summary>
 /// Which controller button triggers each global control (User, 2026-10-16: A Start/Stop, B Stop All, Y Record,
 /// X Screenshot by default, all rebindable). A control without a button is left out; no button serves two controls.
+/// On a Steam Deck the back buttons are the default (User, 2026-10-17): its desktop layout already uses A, B, X and Y
+/// for Enter, Esc, the keyboard and Space, and almost no game uses the back buttons.
 /// </summary>
 public sealed record ControllerControls(ControllerButton? StartStop = ControllerButton.A, ControllerButton? StopAll = ControllerButton.B,
     ControllerButton? Record = ControllerButton.Y, ControllerButton? Screenshot = ControllerButton.X)
 {
     public static ControllerControls Default => new();
+    /// <summary>L4 Start/Stop, R4 Stop All, L5 Record, R5 Screenshot.</summary>
+    public static ControllerControls SteamDeck => new(ControllerButton.L4, ControllerButton.R4, ControllerButton.L5, ControllerButton.R5);
+    /// <summary>The default for this device.</summary>
+    public static ControllerControls DefaultFor(bool steamDeck) => steamDeck ? SteamDeck : Default;
 
     private IEnumerable<ControllerButton?> All => [StartStop, StopAll, Record, Screenshot];
 

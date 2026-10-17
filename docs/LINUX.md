@@ -78,7 +78,9 @@ window goes behind another one and continues by itself once it has been back in 
 
 The app reads game controllers (Xbox, PlayStation, Switch and the Steam Deck, including its four back buttons)
 through SDL3, which ships inside the package. By default A starts and stops Actions, B stops everything, Y records
-and X takes a screenshot; change them under Settings → Controller. Reading a controller needs no extra access.
+and X takes a screenshot; on a Steam Deck the back buttons do it instead (L4 start/stop, R4 stop all, L5 record, R5
+screenshot), because Steam's desktop layout already uses A, B, X and Y. Change them under Settings → Controller.
+Reading a controller needs no extra access.
 
 On a Steam Deck the clicker runs in **Desktop Mode** only; Game Mode is not supported. In Desktop Mode Steam's own
 desktop layout also turns the Deck's buttons into mouse clicks and keys, so the same press can do two things.

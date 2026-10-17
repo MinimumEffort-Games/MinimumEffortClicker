@@ -19,6 +19,21 @@ public sealed class ControllerControlsTests
     }
 
     [TestMethod]
+    public void OnASteamDeckTheBackButtonsAreTheDefault()
+    {
+        var deck = ControllerControls.DefaultFor(steamDeck: true);
+        Assert.AreEqual(new ControllerControls(ControllerButton.L4, ControllerButton.R4, ControllerButton.L5, ControllerButton.R5), deck);
+        Assert.IsNull(deck.CommandFor(ControllerButton.A));
+        Assert.IsTrue(deck.Valid);
+        Assert.AreEqual(ControllerControls.Default, ControllerControls.DefaultFor(steamDeck: false));
+        // The LCD Deck is "Jupiter", the OLED one "Galileo"; sysfs values end with a newline.
+        Assert.IsTrue(SteamDeckHardware.Is("Valve\n", "Jupiter\n"));
+        Assert.IsTrue(SteamDeckHardware.Is("Valve", "Galileo"));
+        Assert.IsFalse(SteamDeckHardware.Is("Valve", "Index"));
+        Assert.IsFalse(SteamDeckHardware.Is(null, "Jupiter"));
+    }
+
+    [TestMethod]
     public void ChoosingAButtonInUseSwapsSoNoControlIsLost()
     {
         // Stop All takes A: Start/Stop, which had A, gets B.
