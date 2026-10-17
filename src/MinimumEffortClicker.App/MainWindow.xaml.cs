@@ -27,6 +27,8 @@ public partial class MainWindow : Window
     private StatusOverlay? overlay;
     private OverlayOptions overlayOptions = new();
     private bool initialized, closing, allowClose;
+    // The overlay waits for its saved place and lock, so it never shows at the default place first.
+    private bool overlaySettingsLoaded;
     private readonly OperationGate operations = new();
     private int refreshPending;
     private (string State, string Reason)? lastRuntimeStatus;
@@ -122,7 +124,7 @@ public partial class MainWindow : Window
             overlayOptions = settings.OverlayOptions ?? new();
             IdleOverlayBox.IsChecked = overlayOptions.KeepIdle;
             OverlayOpacity.Value = overlayOptions.Opacity; OverlayScale.Value = overlayOptions.Scale;
-            OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY);
+            OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY); overlaySettingsLoaded = true;
             Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
             EmergencyStopBox.SelectedIndex = (int)settings.EmergencyStop; runtime.EmergencyStop = settings.EmergencyStop; EmergencyStop_Changed(this, null!);
@@ -158,7 +160,7 @@ public partial class MainWindow : Window
                 if (!allowClose)
                 {
                     // If loading failed the defaults stand, and closing must still work.
-                    initialized = true; Pages.IsEnabled = true; traySettingsLoaded = true;
+                    initialized = true; Pages.IsEnabled = true; traySettingsLoaded = true; overlaySettingsLoaded = true;
                     if (StartupMeasurement.Enabled)
                     {
                         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
@@ -245,7 +247,7 @@ public partial class MainWindow : Window
         HotkeyStatus.Text = runtime.Control.Available ? "" : runtime.Control.Error;
         timer.Interval = TimeSpan.FromMilliseconds(snapshot.Busy ? 100 : 1000);
         if (snapshot.Busy || shutdownSchedule.Armed) timer.Start(); else timer.Stop();
-        if (!operations.Has(Operation.Screenshot) && (snapshot.Recording || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
+        if (overlaySettingsLoaded && !operations.Has(Operation.Screenshot) && (snapshot.Recording || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
