@@ -16,6 +16,16 @@ public sealed class PlatformTests
     }
 
     [TestMethod]
+    public void TheDecksSilentBuiltInDevicesDoNotCountAsInputAccess()
+    {
+        // Valve's controller (vendor 28DE) and the EC's AT keyboard (BUS_I8042) carry nothing while Steam runs.
+        Assert.IsTrue(EvdevMonitor.DeckBuiltIn(0x03, 0x28DE));
+        Assert.IsTrue(EvdevMonitor.DeckBuiltIn(0x11, 0x0001));
+        Assert.IsFalse(EvdevMonitor.DeckBuiltIn(0x03, 0x046D)); // A USB mouse.
+        Assert.IsFalse(EvdevMonitor.DeckBuiltIn(0x05, 0x05AC)); // A Bluetooth keyboard.
+    }
+
+    [TestMethod]
     public void MainMonitorComesFirstThenLeftToRight()
     {
         // The helper lists GNOME's primary monitor first; it is not at the desktop origin here.

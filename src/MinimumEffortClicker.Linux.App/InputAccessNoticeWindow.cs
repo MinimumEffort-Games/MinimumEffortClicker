@@ -12,11 +12,12 @@ namespace MinimumEffortClicker.App;
 /// </summary>
 public sealed class InputAccessNoticeWindow : DialogWindow
 {
-    private readonly CheckBox showAtStartup = new() { Content = "Show at startup", IsChecked = true, Margin = new Thickness(0, 14, 0, 0) };
+    private readonly Avalonia.Controls.Primitives.ToggleButton showAtStartup = new() { Content = "Show at startup", IsChecked = true, Margin = new Thickness(0, 14, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
     public bool ShowAtStartup => showAtStartup.IsChecked == true;
 
-    public InputAccessNoticeWindow(string needs, bool canAskForPassword, string terminalCommand)
+    public InputAccessNoticeWindow(string needs, bool canAskForPassword, string terminalCommand, string? deckNote = null)
     {
+        showAtStartup.Classes.Add("choice");
         Title = "Input access is off"; Width = 520; SizeToContent = SizeToContent.Height; CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false; FontSize = 14;
         var panel = new StackPanel { Margin = new Thickness(20) };
@@ -27,11 +28,12 @@ public sealed class InputAccessNoticeWindow : DialogWindow
         body.Children.Add(new TextBlock
         {
             Text = canAskForPassword
-                ? "Turn on asks for your password in the system's own window and gives read access to keyboards and mice to the person signed in at this computer only. Settings → Linux setup can turn it off again."
+                ? "Turn on asks for your password in the system's own window and gives read access to keyboards and mice to the person signed in at this computer only. You can turn it on or off, and bring this notice back, any time in Settings → Linux setup."
                 : "This system has no password window for apps, so run this once in a terminal (it asks for your password):",
             TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0)
         });
         if (!canAskForPassword) body.Children.Add(new SelectableTextBlock { Text = terminalCommand, FontFamily = new FontFamily("monospace"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) });
+        if (deckNote is not null) body.Children.Add(new TextBlock { Text = deckNote, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) });
         var card = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), Padding = new Thickness(12), Child = body };
         card.SetResourceReference(Border.BackgroundProperty, "Surface"); card.SetResourceReference(Border.BorderBrushProperty, "Border");
         panel.Children.Add(card);

@@ -23,6 +23,8 @@ public partial class MainWindow
             ? (ours ? "Ready." : "Ready: this system already lets you read the keyboard and mouse, so nothing needs turning on.")
                 + " Recording, Stop on my input, mouse-button shortcuts and hotkeys that work in every app are available."
             : "Off. " + InputAccessNeeds + " Turn on asks for your password in the system's own window.";
+        if (LinuxSetup.IsSteamDeck) InputAccessLabel.Text += "\n\n" + DeckNote;
+        InputAccessNoticeBox.IsChecked = showInputAccessNotice;
         InputAccessCommand.Text = control?.PhysicalInputAvailable == true ? "" : LinuxSetup.InputAccessCommand;
         InputAccessCommand.IsVisible = CopyInputCommandButton.IsVisible = InputAccessTerminalHint.IsVisible = control?.PhysicalInputAvailable != true;
         // Without a system password window (pkexec) only the terminal command works.
@@ -67,8 +69,19 @@ public partial class MainWindow
 
     /// <summary>What physical input access unlocks; the Settings card and the startup notice say the same.</summary>
     private const string InputAccessNeeds = "Recording, Stop on my input, mouse-button shortcuts, hotkeys that work in every app and holding a hotkey to run need read access to your keyboard and mouse. Everything else works without it.";
+    /// <summary>
+    /// What a Steam Deck can and cannot record: Steam reads the Deck's controls itself and types and clicks through the
+    /// desktop, where no app may listen, so only an external mouse or keyboard reaches the recorder.
+    /// </summary>
+    private const string DeckNote = "On a Steam Deck the Deck's own trackpads, buttons and on-screen keyboard can't be recorded: Steam types and clicks for them in a way no app can see. A USB or Bluetooth mouse or keyboard can be recorded after Turn on. Actions set up by hand (Set Location), toggles, Controller to Key and the back-button shortcuts all work. Steam's desktop layout also puts the back buttons on Shift, Windows, Page Up and Page Down; change that in Steam → Settings → Controller → Desktop layout if it gets in the way.";
     private bool showInputAccessNotice = true;
 
+    /// <summary>The Settings switch for the startup notice, so a notice turned off there or in the notice can come back.</summary>
+    private void InputAccessNotice_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (!initialized || InputAccessNoticeBox.IsChecked == showInputAccessNotice) return;
+        showInputAccessNotice = InputAccessNoticeBox.IsChecked == true; PersistPreferences();
+    }
     private void InputAccessOn_Click(object? sender, RoutedEventArgs e) => _ = SetInputAccessAsync(on: true);
     private void InputAccessOff_Click(object? sender, RoutedEventArgs e) => _ = SetInputAccessAsync(on: false);
 
@@ -103,9 +116,9 @@ public partial class MainWindow
     private async Task ShowInputAccessNoticeAsync()
     {
         if (!showInputAccessNotice || runtime is null || runtime.Control.PhysicalInputAvailable || allowClose || closing) return;
-        var notice = new InputAccessNoticeWindow(InputAccessNeeds, LinuxSetup.SystemPasswordPrompt is not null, LinuxSetup.InputAccessCommand) { OwnerWindow = this };
+        var notice = new InputAccessNoticeWindow(InputAccessNeeds, LinuxSetup.SystemPasswordPrompt is not null, LinuxSetup.InputAccessCommand, LinuxSetup.IsSteamDeck ? DeckNote : null) { OwnerWindow = this };
         bool turnOn = notice.ShowDialog() == true;
-        if (notice.ShowAtStartup != showInputAccessNotice) { showInputAccessNotice = notice.ShowAtStartup; PersistPreferences(); }
+        if (notice.ShowAtStartup != showInputAccessNotice) { showInputAccessNotice = notice.ShowAtStartup; InputAccessNoticeBox.IsChecked = showInputAccessNotice; PersistPreferences(); }
         if (turnOn) await SetInputAccessAsync(on: true);
     }
 

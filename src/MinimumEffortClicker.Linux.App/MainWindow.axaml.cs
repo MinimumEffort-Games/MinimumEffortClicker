@@ -122,7 +122,7 @@ public partial class MainWindow : Window
             ResizeClicksBox.SelectedIndex = settings.ScaleClickPositions ? 0 : 1;
             CloseToTrayBox.IsChecked = settings.CloseToTray;
             trayNoticeShown = settings.TrayNoticeShown;
-            showInputAccessNotice = settings.InputAccessNotice;
+            showInputAccessNotice = settings.InputAccessNotice; InputAccessNoticeBox.IsChecked = showInputAccessNotice;
             traySettingsLoaded = true;
             ((App)Application.Current!).Appearance = (Appearance)settings.Appearance;
             AppTheme.Apply((Appearance)settings.Appearance);

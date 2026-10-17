@@ -43,7 +43,7 @@ public sealed class EvdevMonitor : IDisposable
         {
             int fd = Native.open(path, Native.ORdOnly | Native.ONonBlock | Native.OCloExec);
             if (fd < 0) continue;
-            try { if (Classify(fd) is { Keyboard: true }) return true; }
+            try { if (!DeckBuiltIn(fd) && Classify(fd) is { Keyboard: true }) return true; }
             finally { Native.close(fd); }
         }
         return false;
@@ -73,7 +73,7 @@ public sealed class EvdevMonitor : IDisposable
                 if (devices.ContainsKey(path)) continue;
                 int fd = Native.open(path, Native.ORdOnly | Native.ONonBlock | Native.OCloExec);
                 if (fd < 0) continue;
-                if (Classify(fd) is not { } kind || !kind.Keyboard && !kind.Mouse) { Native.close(fd); continue; }
+                if (DeckBuiltIn(fd) || Classify(fd) is not { } kind || !kind.Keyboard && !kind.Mouse) { Native.close(fd); continue; }
                 devices[path] = fd;
                 // Seed held keys/buttons so a key already down at startup is still known as physical.
                 var state = new byte[96];
@@ -96,6 +96,20 @@ public sealed class EvdevMonitor : IDisposable
         bool mouse = Has(LinuxKeys.ButtonLeft) && (types[0] & (1 << EvRel | 1 << EvAbs)) != 0;
         return (keyboard, mouse);
     }
+    /// <summary>
+    /// On a Steam Deck the built-in keyboard and mouse devices (Valve's controller and the EC's AT keyboard) stay silent
+    /// while Steam runs: Steam reads the controls itself and types and clicks through the desktop, out of reach of
+    /// /dev/input. They are left out, so input access counts only devices that carry real input, such as a USB or
+    /// Bluetooth mouse or keyboard.
+    /// </summary>
+    private static bool DeckBuiltIn(int fd)
+    {
+        if (!LinuxSetup.IsSteamDeck) return false;
+        var id = new byte[8]; // struct input_id: bus type, vendor, product, version
+        return Native.ioctl(fd, Ioc(0x02, id.Length), id) >= 0 && DeckBuiltIn(BitConverter.ToUInt16(id, 0), BitConverter.ToUInt16(id, 2));
+    }
+    internal static bool DeckBuiltIn(ushort bus, ushort vendor) => vendor == 0x28DE || bus == 0x11; // Valve, or BUS_I8042
+
     private static nuint Ioc(int number, int size) => (nuint)((2u << 30) | ((uint)size << 16) | ('E' << 8) | (uint)number);
 
     private unsafe void Loop()

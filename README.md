@@ -53,7 +53,9 @@ Wayland. Extract it and run `./install.sh`. On GNOME, log out and back in once s
 Clicker helper extension; on KDE Plasma it works straight away.
 Recording, Stop on my input and hotkeys in every app also need input access: press **Turn on** in the app (it asks
 for your password in the system window once). Full steps, what the helper can do and current limits are in
-[docs/LINUX.md](docs/LINUX.md). On a Steam Deck the app runs in Desktop Mode.
+[docs/LINUX.md](docs/LINUX.md). Steam Deck support is limited: the app runs in Desktop Mode, and recording sees only
+an external mouse or keyboard, not the Deck's own controls; setting up clicks by hand works
+([details](docs/LINUX.md#steam-deck-limited-support)).
 
 ## Trust and limitations
 
