@@ -273,7 +273,6 @@ public partial class MainWindow
         ShowConditionColour();
     }
     private void ConditionField_Changed(object sender, TextChangedEventArgs e) { if (initialized && !loadingQuick) ShowConditionColour(); }
-    private void ConditionCalibrate_Changed(object sender, RoutedEventArgs e) { if (initialized && !loadingQuick) ShowConditionColour(); }
 
     private bool TryConditionColour(out int rgb) =>
         int.TryParse(ConditionRgbBox.Text.Trim().TrimStart('#'), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out rgb) && rgb is >= 0 and <= 0xFFFFFF
@@ -283,7 +282,7 @@ public partial class MainWindow
 
     /// <summary>
     /// The wait as the panel's fields describe it. A selected area keeps the window size and DPI it was picked at, and
-    /// playback adapts it like a click; coordinates typed with Calibrate ticked are measured on the Click target as it is now.
+    /// playback adapts it like a click; coordinates typed before any area was selected are measured on the Click target as it is now.
     /// </summary>
     private ConditionDefinition ReadQuickCondition()
     {
@@ -310,7 +309,8 @@ public partial class MainWindow
         int width = WholeNumber(ConditionWidthBox, 1, 256, "Width and height must be 1–256 pixels.");
         int height = WholeNumber(ConditionHeightBox, 1, 256, "Width and height must be 1–256 pixels.");
         ClientPoint origin;
-        if (ConditionCalibrateBox.IsChecked == true || quickAreaOrigin is null)
+        // Typed numbers mean the picture the area was selected on; with no area selected yet, the window as it is now.
+        if (quickAreaOrigin is null)
         {
             var frame = (runtime ?? throw new InvalidOperationException("The clicker is still starting.")).GetTargetFrame();
             // Desktop mode keeps areas in absolute screen pixels so they work on any monitor.
@@ -341,7 +341,6 @@ public partial class MainWindow
         ConditionToleranceBox.Text = (condition?.Tolerance ?? 8).ToString(CultureInfo.CurrentCulture);
         QuickScanIntervalBox.Text = condition is null ? "500" : Ms(condition.Policy.SampleInterval);
         ConditionStableBox.Text = (condition?.Policy.StableSamples ?? 1).ToString(CultureInfo.CurrentCulture);
-        ConditionCalibrateBox.IsChecked = region is null;
     }
 
     private async void SelectConditionArea_Click(object sender, RoutedEventArgs e) => await PickConditionArea(colourOnly: false);
@@ -386,7 +385,7 @@ public partial class MainWindow
                     if (ConditionKindBox.SelectedIndex < 0) ConditionKindBox.SelectedIndex = 0;
                     if (!colourOnly || new[] { ConditionXBox, ConditionYBox, ConditionWidthBox, ConditionHeightBox }.All(b => string.IsNullOrWhiteSpace(b.Text)))
                     {
-                        quickAreaOrigin = chosen.Origin; ConditionCalibrateBox.IsChecked = false;
+                        quickAreaOrigin = chosen.Origin;
                         ConditionXBox.Text = chosen.Origin.X.ToString(CultureInfo.CurrentCulture); ConditionYBox.Text = chosen.Origin.Y.ToString(CultureInfo.CurrentCulture);
                         ConditionWidthBox.Text = chosen.Width.ToString(CultureInfo.CurrentCulture); ConditionHeightBox.Text = chosen.Height.ToString(CultureInfo.CurrentCulture);
                     }
