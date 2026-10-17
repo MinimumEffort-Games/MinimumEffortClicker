@@ -147,6 +147,8 @@ public sealed class DesktopControl : IDisposable
             bool success = Available;
             for (int i = 0; success && i < copy.Length; i++)
             {
+                // A toggle with only a controller button has no key to grab; the controller route triggers it.
+                if (!copy[i].HasKey) continue;
                 success = recordingKey != copy[i].Key && screenshotKey != copy[i].Key && CanUse(copy[i].Key);
                 if (!success) break;
                 var latch = new TriggerLatch(); latch.Reset(IsKeyDown(copy[i].Key));
@@ -155,7 +157,7 @@ public sealed class DesktopControl : IDisposable
             if (!success) macroTriggers.Clear();
             Regrab();
             // Without evdev, a GNOME accelerator is the only route: a key GNOME already uses cannot work.
-            if (success && evdev is null && copy.Any(b => !grabbed.ContainsValue(b.Key)))
+            if (success && evdev is null && copy.Any(b => b.HasKey && !grabbed.ContainsValue(b.Key)))
             { macroTriggers.Clear(); Regrab(); success = false; }
             return Task.FromResult(success);
         }

@@ -428,7 +428,11 @@
                                         </StackPanel>
                                     </Grid>
                                     <TextBlock Text="Toggle shortcut" />
-                                    <Button x:Name="ToggleShortcutBox" Content="Choose a key…" Click="CaptureToggleKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Toggle shortcut" Margin="0,4,0,0" />
+                                    <!-- A key or mouse button, a controller button, or both switch the toggle; right-click one to remove it. -->
+                                    <Grid Margin="0,4,0,0" ColumnDefinitions="*,*">
+                                        <Button x:Name="ToggleShortcutBox" Content="Keyboard/Mouse" Click="CaptureToggleKey_Click" PointerReleased="ClearToggleKey_Click" HorizontalAlignment="Stretch" Margin="0,0,3,0" ToolTip.Tip="A key or mouse button that switches this toggle on and off. Right-click to remove it." AutomationProperties.Name="Toggle keyboard or mouse shortcut" />
+                                        <Button Grid.Column="1" x:Name="ToggleControllerBox" Content="Controller" Click="CaptureToggleController_Click" PointerReleased="ClearToggleController_Click" HorizontalAlignment="Stretch" Margin="3,0,0,0" ToolTip.Tip="A controller button that switches this toggle on and off. Right-click to remove it." AutomationProperties.Name="Toggle controller button" />
+                                    </Grid>
                                 </StackPanel>
                             </Border>
                             <WrapPanel Margin="0,6,0,0">

@@ -131,6 +131,7 @@ public partial class MainWindow
             return $"{ControllerButtons.Label(button)} is {ControlName(command)} under Settings → Controller. Choose another button, or clear it there.";
         if (controllerBinds.FirstOrDefault(b => b.Button == button && b.Id != editingControllerBind) is { } other)
             return $"{ControllerButtons.Label(button)} already presses \"{other.Name}\".";
+        if (ToggleUsing(button) is { } toggle) return $"{ControllerButtons.Label(button)} switches the toggle \"{ToggleName(toggle)}\". Choose another button, or remove it from that toggle.";
         if (editingControllerBind is null && controllerBinds.Count >= ControllerKeyBinds.MaxBinds) return $"At most {ControllerKeyBinds.MaxBinds} binds.";
         return null;
     }
@@ -158,6 +159,8 @@ public partial class MainWindow
                 ? $"{ControllerButtons.Label(pressed)} is {ControlName(command)} under Settings → Controller. Press another button, or clear it there first."
             : controllerBinds.FirstOrDefault(b => b.Button == pressed && b.Id != editingControllerBind) is { } other
                 ? $"{ControllerButtons.Label(pressed)} already presses \"{other.Name}\". Press another button."
+            : ToggleUsing(pressed) is { } toggle
+                ? $"{ControllerButtons.Label(pressed)} switches the toggle \"{ToggleName(toggle)}\". Press another button, or remove it from that toggle first."
             : null, selectedBindButton);
         if (button is not { } chosen) return;
         selectedBindButton = chosen;

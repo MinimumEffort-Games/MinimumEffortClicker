@@ -62,7 +62,8 @@ public partial class MainWindow
         try { return MinimumEffortClicker.Linux.DesktopRuntime.InputFromVirtualKey(key); } catch (ArgumentException) { return null; }
     }
     private void ShowHeldInput() => ToggleHeldKeyBox.Content = UiArt.InputContent(selectedHeldInput, InputLabel(selectedHeldInput));
-    private void ShowToggleShortcut() => ToggleShortcutBox.Content = UiArt.InputContent(ShortcutInput(selectedToggleKey), ShortcutKeys.Label(selectedToggleKey));
+    private void ShowToggleShortcut() => ToggleShortcutBox.Content = selectedToggleKey == 0 ? "Keyboard/Mouse" : UiArt.InputContent(ShortcutInput(selectedToggleKey), ShortcutKeys.Label(selectedToggleKey));
+    private void ClearToggleKey_Click(object? sender, Avalonia.Input.PointerReleasedEventArgs e) { if (e.InitialPressMouseButton != Avalonia.Input.MouseButton.Right) return; selectedToggleKey = 0; ShowToggleShortcut(); e.Handled = true; }
     private async void ResetGlobalKeys_Click(object sender, RoutedEventArgs e)
     {
         if (runtime is null || bindingBusy || recordKeyChanging || quickOperation || screenshotBusy || ioBusy) return;

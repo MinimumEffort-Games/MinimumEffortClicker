@@ -333,7 +333,12 @@
     <ListBox x:Name="ToggleModeBox" Style="{StaticResource ChoiceList}" VerticalAlignment="Top" SelectedIndex="0" SelectionChanged="ToggleMode_Changed" Margin="0,4,10,0" AutomationProperties.Name="Toggle behavior"><ListBoxItem Content="Hold" Padding="10,6"/><ListBoxItem Content="Spam" Padding="10,6" ToolTip="Taps the key or button as fast as its interval allows. Spam is deliberately not limited by the Actions click cap."/></ListBox>
     <StackPanel Grid.Column="1" x:Name="ToggleIntervalPanel" Visibility="Collapsed"><TextBlock x:Name="ToggleIntervalLabel" Text="100 ms · 10 taps/sec"/><Slider x:Name="ToggleIntervalSlider" Minimum="10" Maximum="1000" Value="100" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="100" ValueChanged="ToggleInterval_Changed" AutomationProperties.Name="Spam interval in milliseconds"/><TextBlock Text="Shorter interval = faster. Shared limit: 100 taps/sec." Style="{StaticResource Secondary}" FontSize="12"/></StackPanel>
    </Grid>
-   <TextBlock Text="Toggle shortcut"/><Button x:Name="ToggleShortcutBox" Content="Choose a key…" Click="CaptureToggleKey_Click" AutomationProperties.Name="Toggle shortcut" Margin="0,4,0,0"/>
+   <TextBlock Text="Toggle shortcut"/>
+   <!-- A key or mouse button, a controller button, or both switch the toggle; right-click one to remove it. -->
+   <Grid Margin="0,4,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+    <Button x:Name="ToggleShortcutBox" Content="Keyboard/Mouse" Click="CaptureToggleKey_Click" MouseRightButtonUp="ClearToggleKey_Click" Margin="0,0,3,0" ToolTip="A key or mouse button that switches this toggle on and off. Right-click to remove it." AutomationProperties.Name="Toggle keyboard or mouse shortcut"/>
+    <Button Grid.Column="1" x:Name="ToggleControllerBox" Content="Controller" Click="CaptureToggleController_Click" MouseRightButtonUp="ClearToggleController_Click" Margin="3,0,0,0" ToolTip="A controller button that switches this toggle on and off. Right-click to remove it." AutomationProperties.Name="Toggle controller button"/>
+   </Grid>
   </StackPanel></Border>
   <WrapPanel Margin="0,6,0,0"><WrapPanel.Resources><Style TargetType="Button" BasedOn="{StaticResource StandardButton}"><Setter Property="Width" Value="34"/><Setter Property="Height" Value="34"/><Setter Property="Padding" Value="0"/></Style></WrapPanel.Resources>
    <Button x:Name="SaveToggleButton" Click="SaveToggle_Click" ToolTip="Add toggle" AutomationProperties.Name="Save toggle"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="16" Text="&#xE74E;"/></Button>

@@ -67,7 +67,8 @@ public partial class MainWindow
         try { return DesktopRuntime.InputFromVirtualKey(key); } catch (ArgumentException) { return null; }
     }
     private void ShowHeldInput() => ToggleHeldKeyBox.Content = UiArt.InputContent(selectedHeldInput, InputLabel(selectedHeldInput));
-    private void ShowToggleShortcut() => ToggleShortcutBox.Content = UiArt.InputContent(ShortcutInput(selectedToggleKey), ShortcutKeys.Label(selectedToggleKey));
+    private void ShowToggleShortcut() => ToggleShortcutBox.Content = selectedToggleKey == 0 ? "Keyboard/Mouse" : UiArt.InputContent(ShortcutInput(selectedToggleKey), ShortcutKeys.Label(selectedToggleKey));
+    private void ClearToggleKey_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) { selectedToggleKey = 0; ShowToggleShortcut(); e.Handled = true; }
     private async void ResetGlobalKeys_Click(object sender, RoutedEventArgs e)
     {
         if (runtime is null || !operations.Idle || operations.Has(Operation.RecordKey)) return;

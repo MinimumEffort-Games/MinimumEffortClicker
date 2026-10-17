@@ -477,6 +477,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         lock (gate) if (success && !disposed) armedHelpers = copy;
         return success;
     }
+    /// <summary>A toggle's controller button was pressed: the same as tapping its keyboard or mouse shortcut.</summary>
+    public void TriggerToggle(Guid id) => MacroTriggered(id, TriggerCommand.Toggle, false);
     private void MacroTriggered(Guid id, TriggerCommand command, bool holdTrigger)
     {
         if (command == TriggerCommand.None) return;

@@ -232,6 +232,8 @@ public sealed class DesktopControl : IDisposable
             for (int i = 0; success && i < copy.Length; i++)
             {
                 int id = i + 100; // Keep macro IDs separate from control/record/screenshot IDs 1,2,40,41.
+                // A toggle with only a controller button has no key to register; the controller route triggers it.
+                if (!copy[i].HasKey) continue;
                 success = recordingKey != copy[i].Key && screenshotKey != copy[i].Key && RegisterShortcut(id, copy[i].Key);
                 if (!success) break;
                 var latch = new TriggerLatch();

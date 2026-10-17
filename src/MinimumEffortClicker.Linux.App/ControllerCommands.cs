@@ -41,6 +41,8 @@ public partial class MainWindow
         // While a button is being chosen, the press chooses and does nothing else.
         if (down && capturingButton) { Dispatcher.BeginInvoke(() => controllerCapture?.Press(button)); return; }
         if (down && controllerControls.CommandFor(button) is { } command) runtime?.Control.RunControllerCommand(command);
+        // A toggle's controller button does what tapping its shortcut does.
+        if (down && armedToggleButtons.TryGetValue(button, out var toggle)) runtime?.TriggerToggle(toggle);
         RouteControllerButton(button, down);
     }
 
@@ -82,6 +84,8 @@ public partial class MainWindow
         foreach (var command in Enum.GetValues<ControllerCommand>())
             bound.Add((ControlName(command), controllerControls.ButtonFor(command)));
         foreach (var bind in controllerBinds) bound.Add(($"{bind.Name} (presses {OutputLabel(bind.Output)})", bind.Button));
+        foreach (var toggle in SavedToggles)
+            if (macroBindings.TryGetValue(toggle.Id, out var binding) && binding.Controller is { } pad) bound.Add(($"{ToggleName(toggle)} (toggle)", pad));
         return bound;
     }
 
@@ -102,6 +106,8 @@ public partial class MainWindow
         var button = CaptureControllerButton($"Controller button for {ControlName(command)}", pressed =>
             controllerBinds.FirstOrDefault(b => b.Button == pressed) is { } bind
                 ? $"{ControllerButtons.Label(pressed)} presses \"{bind.Name}\" under Controller to Key. Press another button, or remove that bind first."
+                : ToggleUsing(pressed) is { } toggle
+                ? $"{ControllerButtons.Label(pressed)} switches the toggle \"{ToggleName(toggle)}\". Press another button, or remove it from that toggle first."
                 : null, controllerControls.ButtonFor(command));
         if (button is not { } chosen) return;
         var previous = controllerControls;
@@ -111,6 +117,16 @@ public partial class MainWindow
         ShowControllerButtons(); PersistPreferences(); RefreshStatus(); ShowControllerBindReady();
         static string Label(ControllerButton? b) => b is { } x ? ControllerButtons.Label(x) : "no button";
     }
+
+    /// <summary>
+    /// What a controller button already does, in words, or null when it is free: a control under Settings → Controller,
+    /// a Controller to Key bind or a toggle. The bind or toggle being edited does not count.
+    /// </summary>
+    private string? ControllerButtonUse(ControllerButton button, Guid? exceptBind = null, Guid? exceptToggle = null) =>
+        controllerControls.CommandFor(button) is { } command ? $"{ControllerButtons.Label(button)} is {ControlName(command)} under Settings → Controller."
+        : controllerBinds.FirstOrDefault(b => b.Button == button && b.Id != exceptBind) is { } bind ? $"{ControllerButtons.Label(button)} presses \"{bind.Name}\" under Controller to Key."
+        : ToggleUsing(button, exceptToggle) is { } toggle ? $"{ControllerButtons.Label(button)} switches the toggle \"{ToggleName(toggle)}\"."
+        : null;
 
     private static string ControlName(ControllerCommand command) => command switch
     {
@@ -134,8 +150,8 @@ public partial class MainWindow
         var reset = ControllerControls.Default;
         var kept = new List<string>();
         foreach (var command in Enum.GetValues<ControllerCommand>())
-            if (reset.ButtonFor(command) is { } b && controllerBinds.Any(bind => bind.Button == b))
-            { reset = reset.With(command, null); kept.Add($"{ControllerButtons.Label(b)} stays with Controller to Key, so {ControlName(command)} has none"); }
+            if (reset.ButtonFor(command) is { } b && (controllerBinds.Any(bind => bind.Button == b) || ToggleUsing(b) is not null))
+            { reset = reset.With(command, null); kept.Add($"{ControllerButtons.Label(b)} stays with {(ToggleUsing(b) is { } toggle ? $"the toggle \"{ToggleName(toggle)}\"" : "Controller to Key")}, so {ControlName(command)} has none"); }
         controllerControls = reset;
         ControllerBindStatus.Text = "Controller buttons reset: A Start / toggle, B Stop all, Y Record, X Screenshot." + (kept.Count > 0 ? " " + string.Join("; ", kept) + "." : "");
         ShowControllerButtons(); PersistPreferences(); RefreshStatus(); ShowControllerBindReady();

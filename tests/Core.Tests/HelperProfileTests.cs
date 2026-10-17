@@ -317,6 +317,30 @@ public sealed class HelperProfileTests
     }
 
     [TestMethod]
+    public void ToggleCanUseAControllerButtonInsteadOfOrBesideAKey()
+    {
+        var pad = new MacroBinding(Guid.NewGuid(), 0, false, ControllerButton.LeftBumper);
+        var both = new MacroBinding(Guid.NewGuid(), 0x70, false, ControllerButton.RightBumper);
+        MacroBindings.Validate([pad, both], 0x77, 0x78);
+        var store = new LocalBindings(directory); store.Save([pad, both]);
+        CollectionAssert.AreEqual(new[] { pad, both }, store.Load().ToArray());
+        // Neither a key nor a controller button, or the same controller button twice, is refused.
+        Assert.ThrowsExactly<ArgumentException>(() => MacroBindings.Validate([pad with { Controller = null }], 0x77, 0x78));
+        Assert.ThrowsExactly<ArgumentException>(() => MacroBindings.Validate([pad, both with { Controller = ControllerButton.LeftBumper }], 0x77, 0x78));
+        // Two controller-only toggles do not clash over their missing key.
+        MacroBindings.Validate([pad, pad with { MacroId = Guid.NewGuid(), Controller = ControllerButton.A }], 0x77, 0x78);
+    }
+
+    [TestMethod]
+    public void BindingsSavedBeforeControllerButtonsStillLoad()
+    {
+        Directory.CreateDirectory(directory);
+        var id = Guid.NewGuid();
+        File.WriteAllText(Path.Combine(directory, "bindings.json"), $$"""{"Version":1,"Bindings":[{"MacroId":"{{id}}","Key":112,"HoldTrigger":false}]}""");
+        Assert.AreEqual(new MacroBinding(id, 0x70, false), new LocalBindings(directory).Load().Single());
+    }
+
+    [TestMethod]
     public void ConflictingMacroBindingsAreRejected()
     {
         var first = new MacroBinding(Guid.NewGuid(), 0x70, false);
