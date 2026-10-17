@@ -1,7 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.5.0-preview.36 (2026-10-17)
 
+- New look: pictures for keys, controller buttons and action types, a mouse picture to pick mouse buttons on and a
+  controller picture to pick controller buttons on, and a new app icon. Most choices are buttons with a green outline
+  instead of checkboxes and dropdowns; number fields change with the mouse wheel or their arrows (Shift for steps of
+  10). Mouse buttons are called LMB, RMB, MMB, M4 and M5 everywhere.
+- Key presses: Single, Double or Hold, with Ctrl, Shift and Alt as keycap toggles; a press of 500 ms or more is a hold,
+  so the separate Hold key is gone.
+- Toggles can be switched by a controller button as well as a key or mouse button (Keyboard/Mouse and Controller
+  halves of the toggle shortcut, either or both). Older toggle files load unchanged.
+- The status overlay can sit anywhere: Settings → Overlay → Overlay Anchor Point pins it to any spot along the edge of
+  the Click target window (or the screen with Desktop), and the padlock on the overlay unlocks it so you can drag it.
+  It keeps its place next to the window as the window moves. Older settings keep it top right, locked.
+- The screenshot key is F7 by default and shows on Take Screenshot.
+- Linux: "Minimize to tray" (the top bar on GNOME, the system tray on KDE); Settings opens at the top.
 - New Controller to Key page: turn any controller button into a key or mouse button, held for as long as the button
   is held, in whichever window is in front (turbo buttons, autorun, a mouse-button spam). Binds can be switched off
   and come back when the clicker starts; Stop All lets go of everything.
