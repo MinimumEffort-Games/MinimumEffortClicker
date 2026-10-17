@@ -48,7 +48,7 @@
                 <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
                 <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem" BasedOn="{StaticResource StandardListItem}"><Setter Property="Padding" Value="18,8"/><Setter Property="Margin" Value="0,0,6,0"/></Style></ListBox.ItemContainerStyle>
                 <ListBoxItem Content="Actions" Tag="QuickPage"/><ListBoxItem Content="Toggles" Tag="TogglePage"/><ListBoxItem Content="Controller to Key" Tag="ControllerPage"/><ListBoxItem Content="Screenshot" Tag="ScreenshotPage"/><ListBoxItem Content="Settings" Tag="SettingsPage"/>
-            </ListBox><Button Click="BrandWebsite_Click" ToolTip="Minimum Effort website" AutomationProperties.Name="Minimum Effort website" Background="Transparent" BorderThickness="0" Margin="16,0,0,0" Padding="4"><Border Width="110" Height="34" Background="{DynamicResource TextPrimary}"><Border.OpacityMask><ImageBrush ImageSource="Assets/Logo.png" Viewbox="0,0.24,1,0.42" ViewboxUnits="RelativeToBoundingBox" Stretch="Uniform"/></Border.OpacityMask></Border></Button><Button Content="Help" Click="Help_Click" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Help"/></StackPanel><CheckBox Grid.Column="1" x:Name="OverlayBox" Content="Show overlay" IsChecked="True" VerticalAlignment="Center" Checked="Overlay_Changed" Unchecked="Overlay_Changed" Margin="16,0,0,0"/></Grid>
+            </ListBox><Button Click="BrandWebsite_Click" ToolTip="Minimum Effort website" AutomationProperties.Name="Minimum Effort website" Background="Transparent" BorderThickness="0" Margin="16,0,0,0" Padding="4"><Border Width="110" Height="34" Background="{DynamicResource TextPrimary}"><Border.OpacityMask><ImageBrush ImageSource="Assets/Logo.png" Viewbox="0,0.24,1,0.42" ViewboxUnits="RelativeToBoundingBox" Stretch="Uniform"/></Border.OpacityMask></Border></Button><Button Content="Help" Click="Help_Click" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Help"/></StackPanel><ToggleButton Grid.Column="1" x:Name="OverlayBox" Style="{StaticResource ChoiceToggle}" Content="Show overlay" IsChecked="True" VerticalAlignment="Center" Checked="Overlay_Changed" Unchecked="Overlay_Changed" Margin="16,0,0,0" ToolTip="The small status window that shows what the clicker is doing."/></Grid>
         </Border>
         <Grid Grid.Row="1" Margin="16,12,16,12">
             <Grid.RowDefinitions>
@@ -133,7 +133,7 @@
                               <Button x:Name="PingLocationButton" Width="100" Height="{Binding ActualHeight, ElementName=QuickXBox}" MinHeight="0" Padding="4,0" Margin="8,4,0,8" VerticalAlignment="Top" Content="Ping location" Click="PingLocation_Click"/>
                             </WrapPanel>
                           </StackPanel>
-<StackPanel x:Name="MotionFields" Visibility="Collapsed"><CheckBox x:Name="VaryPositionBox" Content="Randomize click location offset"/><TextBlock Text="Maximum offset (pixels, 0–25)"/><TextBox x:Name="PositionOffsetBox" Style="{StaticResource NumberBox}" app:Spin.Step="1" app:Spin.Minimum="0" app:Spin.Maximum="25" Text="3" AutomationProperties.Name="Click position variation"/></StackPanel>
+<StackPanel x:Name="MotionFields" Visibility="Collapsed"><ToggleButton x:Name="VaryPositionBox" Style="{StaticResource ChoiceToggle}" Content="Randomize click location offset" HorizontalAlignment="Left" Margin="0,6,0,6"/><TextBlock Text="Maximum offset (pixels, 0–25)"/><TextBox x:Name="PositionOffsetBox" Style="{StaticResource NumberBox}" app:Spin.Step="1" app:Spin.Minimum="0" app:Spin.Maximum="25" Text="3" AutomationProperties.Name="Click position variation"/></StackPanel>
                           <StackPanel x:Name="KeyFields" Visibility="Collapsed">
                             <TextBlock Text="Key"/>
                             <WrapPanel Margin="0,4,0,8" RenderOptions.BitmapScalingMode="HighQuality">
@@ -271,7 +271,8 @@
                 <Grid x:Name="SettingsPage" Visibility="Collapsed">
                  <ScrollViewer Padding="0,0,16,0" VerticalScrollBarVisibility="Auto"><StackPanel>
                   <TextBlock Text="When closing the window" Style="{StaticResource Heading}"/>
-                  <CheckBox x:Name="CloseToTrayBox" Content="Minimize to taskbar - If unchecked clicking X closes the app." IsChecked="True" Checked="CloseToTray_Changed" Unchecked="CloseToTray_Changed"/>
+                  <ToggleButton x:Name="CloseToTrayBox" Style="{StaticResource ChoiceToggle}" Content="Minimize to taskbar" IsChecked="True" HorizontalAlignment="Left" Checked="CloseToTray_Changed" Unchecked="CloseToTray_Changed"/>
+                  <TextBlock Text="On: clicking X keeps the clicker running in the taskbar. Off: clicking X closes it." Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                   <TextBlock Text="Appearance" Style="{StaticResource Heading}" Margin="0,18,0,8"/>
                   <WrapPanel>
                    <Button Click="LightTheme_Click" ToolTip="Light mode" AutomationProperties.Name="Light mode"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="20" Text="&#xE706;"/></Button>
@@ -282,7 +283,7 @@
                   <ListBox x:Name="ResizeClicksBox" Style="{StaticResource ChoiceList}" SelectedIndex="0" SelectionChanged="ResizeClicks_Changed" HorizontalAlignment="Left" AutomationProperties.Name="Click positions after resizing"><ListBoxItem Content="Scale click positions with the window (default)" Padding="10,6"/><ListBoxItem Content="Keep fixed click positions" Padding="10,6"/></ListBox>
                   <TextBlock Text="Applies to saved clicks on the next Start or Test. Scaling follows the same proportional position; it does not recognise buttons. Colour areas and drags still need recalibration." Style="{StaticResource Secondary}" TextWrapping="Wrap"/>
                   <TextBlock Text="Status overlay" Style="{StaticResource Heading}" Margin="0,18,0,8"/>
-                  <CheckBox x:Name="IdleOverlayBox" Content="Keep an idle indicator visible" Checked="OverlayOptions_Changed" Unchecked="OverlayOptions_Changed"/>
+                  <ToggleButton x:Name="IdleOverlayBox" Style="{StaticResource ChoiceToggle}" Content="Show overlay when idle" HorizontalAlignment="Left" Margin="0,0,0,8" Checked="OverlayOptions_Changed" Unchecked="OverlayOptions_Changed" ToolTip="Keeps the status overlay on screen while nothing runs and the clicker is minimized, so you can see it is there."/>
                   <TextBlock Text="Opacity"/><Slider x:Name="OverlayOpacity" Width="300" HorizontalAlignment="Left" Minimum="0.4" Maximum="1" Value="0.94" ValueChanged="OverlayOptions_Changed" AutomationProperties.Name="Overlay opacity"/>
                   <TextBlock Text="Size"/><Slider x:Name="OverlayScale" Width="300" HorizontalAlignment="Left" Minimum="0.75" Maximum="1.5" Value="1" ValueChanged="OverlayOptions_Changed" AutomationProperties.Name="Overlay size"/>
 
