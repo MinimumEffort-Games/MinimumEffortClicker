@@ -28,13 +28,17 @@ udevadm trigger --subsystem-match=input --action=change
 if [[ ${REMOVING:-} == 1 ]]; then
   # Without the rule no new access is granted, but access the rule already gave stays on each device until it is
   # plugged in again or the computer restarts. Take it back now from keyboards, mice and touchpads; game
-  # controllers keep theirs (the system grants those itself).
+  # controllers keep theirs, and so does any device another rule still grants to the session (SteamOS does that
+  # for the Steam Deck's own keyboard and controller): that access was never ours to take.
   udevadm settle
   if command -v setfacl >/dev/null; then
     for node in /dev/input/event*; do
       props="$(udevadm info --query=property --name="$node" 2>/dev/null)" || continue
       grep -qE '^ID_INPUT_(KEYBOARD|MOUSE|TOUCHPAD)=1$' <<<"$props" || continue
       grep -qE '^ID_INPUT_JOYSTICK=' <<<"$props" && continue
+      # CURRENT_TAGS are the tags of the rules as they are now (older udev only has TAGS).
+      tags="$(grep -E '^CURRENT_TAGS=' <<<"$props" || grep -E '^TAGS=' <<<"$props" || true)"
+      [[ $tags == *:uaccess:* ]] && continue
       setfacl --remove-all "$node"
     done
     echo "Read access to keyboards, mice and touchpads is taken back."

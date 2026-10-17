@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Steam Deck: the controller shortcuts default to the back buttons (L4 start/stop, L5 stop all, R4 record, R5
+  screenshot), since Steam's desktop layout already uses A, B, X and Y. Reset controller buttons sets them.
+- Linux: recording works on every keyboard layout; it failed when stopped on a layout without a Windows code.
+- Linux: on systems that already give access to the keyboard and mouse (SteamOS), Linux setup says so and no longer
+  offers Turn off, which could have removed that access.
+
+- Steam Deck: limited support, now said in the app, Help and docs. Recording sees only a USB or Bluetooth mouse or
+  keyboard; the Deck's own trackpads, buttons and on-screen keyboard can't be recorded. Linux setup no longer counts
+  the Deck's silent built-in devices as input access, so Turn on is offered for an external mouse or keyboard.
+- Linux: Settings, Linux setup has a switch to show the input access notice at startup again; the notice says it can
+  be changed there any time.
+- Settings, Emergency stop names the stop that works now (the key, or the controller button after controller input).
 ## 0.5.0-preview.36 (2026-10-17)
 
 - New look: pictures for keys, controller buttons and action types, a mouse picture to pick mouse buttons on and a

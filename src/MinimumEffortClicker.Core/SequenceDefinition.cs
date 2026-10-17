@@ -198,7 +198,7 @@ public static class SequenceCompiler
     private static SequencePlan CompileSteps(SequenceDefinition definition, IReadOnlyList<NamedPoint>? points)
     {
         var namedPoints = NamedPoint.Index(points);
-        if (definition.KeyboardLayout is { } layout && (layout.Length != 8 || !layout.All(Uri.IsHexDigit))) throw new ArgumentException("Invalid keyboard-layout context.");
+        if (definition.KeyboardLayout is { } layout && !KeyboardLayoutId.Valid(layout)) throw new ArgumentException("Invalid keyboard-layout context.");
         if (definition.Steps is null || definition.Steps.Count > MaximumActions) throw new ArgumentException("Sequence exceeds 10,000 actions.");
         var events = new List<ScheduledInput>(); var ids = new HashSet<Guid>();
         var conditions = new List<ScheduledCondition>(); var timings = new List<ScheduledTiming>();

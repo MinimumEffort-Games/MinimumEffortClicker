@@ -9,7 +9,18 @@ namespace MinimumEffortClicker.App;
 public partial class MainWindow
 {
     private GamepadListener? gamepads;
-    private ControllerControls controllerControls = ControllerControls.Default;
+    /// <summary>Running on a Steam Deck: its controller shortcuts default to the back buttons.</summary>
+    private static readonly bool OnSteamDeck = ReadSteamDeck();
+    private static bool ReadSteamDeck()
+    {
+        try
+        {
+            using var bios = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\BIOS");
+            return SteamDeckHardware.Is(bios?.GetValue("SystemManufacturer") as string, bios?.GetValue("SystemProductName") as string);
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or System.IO.IOException) { return false; }
+    }
+    private ControllerControls controllerControls = ControllerControls.DefaultFor(OnSteamDeck);
     // The hints show the controller's buttons after controller input and the keyboard's after keyboard input. The
     // mouse never switches them: on a Steam Deck the mouse and the controller are used together.
     private volatile bool controllerHints;
@@ -146,13 +157,15 @@ public partial class MainWindow
     private void ResetControllerButtons_Click(object sender, RoutedEventArgs e)
     {
         // A default button that a Controller to Key bind uses stays with that bind; its control is left without one.
-        var reset = ControllerControls.Default;
+        var reset = ControllerControls.DefaultFor(OnSteamDeck);
+        string defaults = $"{ControllerButtons.Label(reset.StartStop!.Value)} Start / toggle, {ControllerButtons.Label(reset.StopAll!.Value)} Stop all, "
+            + $"{ControllerButtons.Label(reset.Record!.Value)} Record, {ControllerButtons.Label(reset.Screenshot!.Value)} Screenshot";
         var kept = new List<string>();
         foreach (var command in Enum.GetValues<ControllerCommand>())
             if (reset.ButtonFor(command) is { } b && (controllerBinds.Any(bind => bind.Button == b) || ToggleUsing(b) is not null))
             { reset = reset.With(command, null); kept.Add($"{ControllerButtons.Label(b)} stays with {(ToggleUsing(b) is { } toggle ? $"the toggle \"{ToggleName(toggle)}\"" : "Controller to Key")}, so {ControlName(command)} has none"); }
         controllerControls = reset;
-        ControllerBindStatus.Text = "Controller buttons reset: A Start / toggle, B Stop all, Y Record, X Screenshot." + (kept.Count > 0 ? " " + string.Join("; ", kept) + "." : "");
+        ControllerBindStatus.Text = $"Controller buttons reset: {defaults}." + (kept.Count > 0 ? " " + string.Join("; ", kept) + "." : "");
         ShowControllerButtons(); PersistPreferences(); RefreshStatus(); ShowControllerBindReady();
     }
 }

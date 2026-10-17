@@ -135,7 +135,7 @@ public partial class MainWindow : Window
             MinimizeOnRecordBox.IsChecked = choices.MinimizeOnRecord; RecordMovementBox.IsChecked = choices.SimulateMovement;
             // Set before anything can save preferences again, so an early save keeps the remembered toggles.
             rememberedToggles = settings.ActiveToggles ?? [];
-            controllerControls = settings.Controller ?? ControllerControls.Default; ShowControllerButtons();
+            controllerControls = settings.Controller ?? ControllerControls.DefaultFor(OnSteamDeck); ShowControllerButtons();
             runtime.SetClickRateLimit(appliedClickLimit); runtime.KeepAwakeWhileRunning = appliedKeepAwake;
             await runtime.Control.ConfigureAsync(settings.ToggleKey, settings.StopKey);
             if (allowClose || closing) return;
@@ -212,6 +212,8 @@ public partial class MainWindow : Window
     {
         if (runtime is null || allowClose) return;
         statusRefreshCount++;
+        // The Stop All choice names the stop that works now: the key, or the controller button after controller input.
+        if (StopAllOnlyItem.Content as string != "Stop All " + StopHint) StopAllOnlyItem.Content = "Stop All " + StopHint;
         var snapshot = runtime.Snapshot;
         AppLog.RunState(snapshot);
         if (playbackAway is { } away)

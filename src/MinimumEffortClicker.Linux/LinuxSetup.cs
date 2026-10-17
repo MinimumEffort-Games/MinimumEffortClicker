@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MinimumEffortClicker.Core;
 
 namespace MinimumEffortClicker.Linux;
 
@@ -14,6 +15,13 @@ public static class LinuxSetup
     public static bool IsKde => Desktop.Split(':').Any(d => d.Equals("KDE", StringComparison.OrdinalIgnoreCase));
     /// <summary>What the helper for this desktop is called in status lines.</summary>
     public static string HelperName => IsKde ? "KDE helper" : "GNOME helper";
+    /// <summary>Running on a Steam Deck (its controller shortcuts default to the back buttons).</summary>
+    public static bool IsSteamDeck { get; } = SteamDeckHardware.Is(ReadDmi("sys_vendor"), ReadDmi("product_name"));
+    private static string? ReadDmi(string name)
+    {
+        try { return File.ReadAllText("/sys/class/dmi/id/" + name); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
 
     public static string SessionSummary => $"Session: {(SessionType == "wayland" ? "Wayland" : SessionType == "x11" ? "X11" : SessionType)} · Desktop: {Desktop.Replace(':', ' ')}";
 
@@ -126,6 +134,11 @@ public static class LinuxSetup
     /// instead of adding the account to the input group. Null when the script is missing.
     /// </summary>
     public static string? InputAccessRemoveCommand => InputRuleScriptPath is { } script ? $"sudo bash '{script}' --remove" : null;
+    /// <summary>
+    /// True when the rule setup-input-access.sh installs is there. Some systems (SteamOS) already let the person at the
+    /// computer read the keyboard and mouse; there is then nothing of ours to turn off.
+    /// </summary>
+    public static bool InputRuleInstalled => File.Exists("/etc/udev/rules.d/70-minimum-effort-clicker-input.rules");
 
     /// <summary>
     /// The system's own password window for apps (polkit's pkexec), the one software updates use. Null on a system without

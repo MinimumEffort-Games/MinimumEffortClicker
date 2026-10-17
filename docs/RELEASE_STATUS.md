@@ -24,7 +24,8 @@ a test.
 ## Steam
 
 A Steam version with Steam Cloud and Workshop sharing is prepared (see [STEAM.md](STEAM.md)). The store page is not
-public yet. On Steam Deck the app runs in Desktop Mode; Game Mode is not supported.
+public yet. Steam Deck support is limited: the app runs in Desktop Mode (not Game Mode), and recording sees only an
+external mouse or keyboard, not the Deck's own controls (see [LINUX.md](LINUX.md#steam-deck-limited-support)).
 
 ## Signing
 

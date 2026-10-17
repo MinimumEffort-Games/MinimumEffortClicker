@@ -78,11 +78,24 @@ window goes behind another one and continues by itself once it has been back in 
 
 The app reads game controllers (Xbox, PlayStation, Switch and the Steam Deck, including its four back buttons)
 through SDL3, which ships inside the package. By default A starts and stops Actions, B stops everything, Y records
-and X takes a screenshot; change them under Settings → Controller. Reading a controller needs no extra access.
+and X takes a screenshot; on a Steam Deck the back buttons do it instead (L4 start/stop, L5 stop all, R4 record, R5
+screenshot), because Steam's desktop layout already uses A, B, X and Y. Change them under Settings → Controller.
+Reading a controller needs no extra access.
 
-On a Steam Deck the clicker runs in **Desktop Mode** only; Game Mode is not supported. In Desktop Mode Steam's own
-desktop layout also turns the Deck's buttons into mouse clicks and keys, so the same press can do two things.
-How to switch that off for the buttons you bind here will be written down after the first test on a Deck.
+### Steam Deck: limited support
+
+The clicker runs on a Steam Deck in **Desktop Mode** (Game Mode is not supported), tested on SteamOS 3.8 with
+KDE Plasma 6.4. Everything works except recording with the Deck's own controls:
+
+- **Recording sees only a USB or Bluetooth mouse or keyboard** (after Turn on). The Deck's trackpads, buttons and
+  on-screen keyboard can't be recorded: Steam reads them itself and types and clicks through the desktop in a way no
+  app is allowed to watch, and no setting or group membership changes that. The same goes for Stop on my input and
+  mouse-button shortcuts with the Deck's controls.
+- **Set clicks up by hand instead:** Set Location and Ping on the Actions page, keys, waits, Loop and Once all work,
+  as do toggles, Controller to Key, screenshots, the overlay and the back-button shortcuts.
+- **Back buttons:** Steam's desktop layout puts L4, L5, R4 and R5 on Shift, Windows, Page Up and Page Down, so a back
+  button also sends that key on the desktop. Change or switch them off in Steam, Settings, Controller, Desktop layout
+  ("Enable Back Grip Buttons") if it gets in the way; the clicker still sees the buttons.
 
 ## Limits
 
