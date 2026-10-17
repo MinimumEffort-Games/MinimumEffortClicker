@@ -81,11 +81,16 @@ public partial class MainWindow
     /// <summary>
     /// Keys from a Workshop action are sent only with a window as Click target: then they reach that window alone, and the
     /// run pauses when anything else comes to the front. With Desktop as target they would go to whatever is in front.
+    /// Never to a terminal or command line, where a few letters and Enter would run a command.
     /// </summary>
     private bool WorkshopKeysBlocked(SequenceDefinition sequence)
     {
-        if (runtime?.IsDesktopMode != true || !WorkshopMacros.HasWorkshopKeys(sequence, Ledger.OriginSteps())) return false;
-        ReasonLabel.Text = "This list has key presses from a Workshop macro. Select the window it is for as Click target first; its keys then only reach that window.";
+        if (runtime is null || !WorkshopMacros.HasWorkshopKeys(sequence, Ledger.OriginSteps())) return false;
+        if (runtime.IsDesktopMode)
+            ReasonLabel.Text = "This list has key presses from a Workshop macro. Select the window it is for as Click target first; its keys then only reach that window.";
+        else if (runtime.TargetIsTerminal)
+            ReasonLabel.Text = "This list has key presses from a Workshop macro, and the Click target is a terminal or command line. Workshop keys never go to one: choose the window the macro is for.";
+        else return false;
         return true;
     }
 

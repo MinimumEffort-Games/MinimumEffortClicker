@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Workshop: key presses from a Workshop macro never go to a terminal or command line (cmd, PowerShell, Windows Terminal
+  and others). With one as Click target the list does not start.
 - Steam Deck: the controller shortcuts default to the back buttons (L4 start/stop, L5 stop all, R4 record, R5
   screenshot), since Steam's desktop layout already uses A, B, X and Y. Reset controller buttons sets them.
 - Linux: recording works on every keyboard layout; it failed when stopped on a layout without a Windows code.
