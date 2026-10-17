@@ -299,10 +299,9 @@ function Trim-Image([string]$file, [string]$target, [int]$max, [switch]$LargestS
 }
 Trim-Image 'mouse.png' 'devices/mouse.png' 192 -LargestShape
 Trim-Image 'keyboard.png' 'devices/keyboard.png' 384 -LargestShape
-# The overlay's buttons: the padlock, closed and open (also on the Settings lock toggle), bring the clicker back (the
-# four corners) and quit (the X).
-Trim-Image 'lock-locked.png' 'overlay/locked.png' 96 -LargestShape
-Trim-Image 'lock-unlocked.png' 'overlay/unlocked.png' 96 -LargestShape
+# The overlay's buttons: the padlock, closed (left of the sheet) and open (right; both also on the Settings lock
+# toggle), bring the clicker back (the four corners) and quit (the X).
+Split-Sheet 'lock-sheet.png' @('locked', 'unlocked') 2 'overlay' 96
 Trim-Image 'overlay-show.png' 'overlay/show.png' 96
 Trim-Image 'overlay-quit.png' 'overlay/quit.png' 96
 foreach ($icon in Get-ChildItem (Join-Path $source 'actions') -Filter *.png) { Trim-Image "actions/$($icon.Name)" "actions/$($icon.Name)" 128 }
