@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Windows: each click or key press in the Action List has a "× times" field: it runs that many times in a row (1–9,999)
+  each time the list gets to it, so a thousand clicks are one row. Once / Repeating still decides the later loops.
+- Windows: the Click target chosen last is selected again at the next start when its window is open. Choosing a Click
+  target puts the overlay back on the Overlay Anchor Point from Settings.
+- Windows: Settings, Window, Keep on top keeps the clicker in front of other windows.
+- Windows: a controller button for Pause / Unpause, View (Back) by default; an older setup that already used View
+  keeps it there. "Start / toggle" is now called "Start / Stop".
+- Windows: the Actions editor's number fields line up with the buttons and the location row above them.
 - New default keys side by side: F6 Stop All, F7 Pause / Unpause, F8 Start / Stop, F9 Screenshot, F10 Record. Keys you
   already saved stay as they are; Reset keybinds gives the new defaults. If an older setup already uses F7, Pause takes
   the first free key.

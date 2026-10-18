@@ -92,6 +92,14 @@ public partial class MainWindow
         if (initialized) PersistPreferences();
     }
 
+    /// <summary>Keep on top (User, 2026-10-18): the clicker stays in front of other windows. Start, tests and recordings
+    /// still minimise it when they are set to.</summary>
+    private void KeepOnTop_Changed(object sender, RoutedEventArgs e)
+    {
+        Topmost = KeepOnTopBox.IsChecked == true;
+        if (initialized) PersistPreferences();
+    }
+
     private void ExitApplication()
     {
         if (allowClose || closing) return;

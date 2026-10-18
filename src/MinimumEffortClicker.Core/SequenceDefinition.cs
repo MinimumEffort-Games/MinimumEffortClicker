@@ -16,6 +16,27 @@ public sealed record SequenceStep(Guid Id, string Name, bool Enabled, StepKind K
     /// Optional in schema 17 files: a missing value means Repeating.
     /// </summary>
     public bool Once { get; init; }
+    /// <summary>
+    /// How many times in a row a click or key action runs each time the list reaches it, so a thousand clicks are one
+    /// row instead of a thousand. Optional in schema 17 files: a missing value means one.
+    /// </summary>
+    public int Times { get; init; } = 1;
+    public const int MaximumTimes = 9999;
+    /// <summary>Clicks and key presses can run several times in a row. A scroll has its own notch count; pauses, waits
+    /// and screenshots are not inputs.</summary>
+    public bool CanRunSeveralTimes
+    {
+        get
+        {
+            InputKind[] kinds = Kind switch
+            {
+                StepKind.Input when Control is { } control => [control.Kind],
+                StepKind.TimedGroup => (Children ?? []).Select(c => c.Control.Kind).ToArray(),
+                _ => Array.Empty<InputKind>()
+            };
+            return kinds.Any(k => k is InputKind.MouseButton or InputKind.ScanCode) && !kinds.Any(k => k is InputKind.Scroll or InputKind.HorizontalScroll);
+        }
+    }
     public static SequenceStep Input(string name, InputControl control, TimeSpan duration) =>
         new(Guid.NewGuid(), name, true, StepKind.Input, duration, control, null);
     public static SequenceStep Wait(TimeSpan duration) => new(Guid.NewGuid(), "Wait", true, StepKind.Wait, duration, null, null);
@@ -40,7 +61,11 @@ public sealed record SequenceRepetition(int Count = 1, TimeSpan DelayBetweenLoop
         : Count == 0 ? "until stopped" : Count == 1 ? "once" : $"{Count:N0} loops";
 }
 public sealed record ScheduledInput(TimeSpan Offset, Guid ActionId, InputControl Control, bool Down, ClientPoint? Position = null, string Name = "Input", int StepIndex = 0, bool LeaveCursorFree = false, int ClickCount = 1)
-{ public ClickMotion? Motion { get; init; } public TimeSpan PauseBefore { get; init; } public IReadOnlyList<int> PauseSteps { get; init; } = []; public int PauseAfterStep { get; init; } = -1; }
+{
+    public ClickMotion? Motion { get; init; } public TimeSpan PauseBefore { get; init; } public IReadOnlyList<int> PauseSteps { get; init; } = []; public int PauseAfterStep { get; init; } = -1;
+    /// <summary>The row in the Action List. StepIndex counts every run of an action that runs several times in a row.</summary>
+    public int ListStep { get; init; }
+}
 public sealed record ScheduledScreenshot(TimeSpan Offset, int StepIndex, string Name);
 
 /// <summary>Compiler-owned immutable snapshot. No native handles or UI state.</summary>
@@ -195,6 +220,39 @@ public static class SequenceCompiler
         }
         return plan;
     }
+    /// <summary>Most inputs one loop may send when actions run several times in a row (rows × times, parts included).</summary>
+    public const int MaximumRunInputs = 100000;
+    /// <summary>
+    /// The list as it runs: an action that runs several times in a row becomes that many back-to-back runs, each with its
+    /// own random timing and offset. Later runs get ids derived from the row's, so every run stays traceable and unique.
+    /// </summary>
+    private static IEnumerable<(SequenceStep Step, int ListStep, int Run, string Label)> RunsInOrder(IReadOnlyList<SequenceStep> steps)
+    {
+        int inputs = 0;
+        foreach (var step in steps)
+            if (step is { Enabled: true, Times: > 1 } && (inputs += step.Times * Math.Max(1, step.Children?.Count ?? 1)) > MaximumRunInputs)
+                throw new ArgumentException($"With its repeat counts the list sends more than {MaximumRunInputs:N0} inputs per loop. Lower a repeat count.");
+        for (int row = 0; row < steps.Count; row++)
+        {
+            var step = steps[row];
+            int times = step?.Times ?? 1;
+            if (times is < 1 or > SequenceStep.MaximumTimes || times > 1 && !step!.CanRunSeveralTimes)
+                throw new ArgumentException($"Only a click or key action can run several times in a row, 1–{SequenceStep.MaximumTimes:N0} times.");
+            // A skipped row sends nothing, so it is checked once.
+            int runs = step is { Enabled: true } ? times : 1;
+            for (int run = 0; run < runs; run++)
+                yield return run == 0
+                    ? (step!, row, 0, runs > 1 ? $"{step!.Name} (1/{runs})" : step?.Name ?? "")
+                    : (step! with { Id = RunId(step!.Id, run), Children = step.Children?.Select(c => c with { Id = RunId(c.Id, run) }).ToArray() }, row, run, $"{step.Name} ({run + 1}/{runs})");
+        }
+        static Guid RunId(Guid id, int run)
+        {
+            Span<byte> bytes = stackalloc byte[16];
+            id.TryWriteBytes(bytes);
+            BitConverter.TryWriteBytes(bytes[12..], unchecked(BitConverter.ToInt32(bytes[12..]) ^ run * 0x5BD1E995));
+            return new Guid(bytes);
+        }
+    }
     private static SequencePlan CompileSteps(SequenceDefinition definition, IReadOnlyList<NamedPoint>? points)
     {
         var namedPoints = NamedPoint.Index(points);
@@ -203,15 +261,17 @@ public static class SequenceCompiler
         var events = new List<ScheduledInput>(); var ids = new HashSet<Guid>();
         var conditions = new List<ScheduledCondition>(); var timings = new List<ScheduledTiming>();
         var screenshots = new List<ScheduledScreenshot>();
-        int stepIndex = -1; int imageBytes = 0;
+        int stepIndex = -1, listRow = 0; int imageBytes = 0;
         TimeSpan cursor = TimeSpan.Zero; int actions = 0; TimeSpan pauseBefore = TimeSpan.Zero; var pauseSteps = new List<int>(); int pauseAfterStep = -1;
-        foreach (var step in definition.Steps)
+        foreach (var (step, listStep, run, label) in RunsInOrder(definition.Steps))
         {
-            stepIndex++;
+            stepIndex++; listRow = listStep;
             if (step is null || step.Id == Guid.Empty || !ids.Add(step.Id) || string.IsNullOrWhiteSpace(step.Name) || step.Name.Length > 100
                 || step.Notes is null || step.Notes.Length > 4000 || !Enum.IsDefined(step.Kind) || step.Duration < TimeSpan.Zero || step.Duration > MaximumDuration)
                 throw new ArgumentException("Invalid or duplicate sequence action.");
-            if (++actions > MaximumActions) throw new ArgumentException("Sequence exceeds 10,000 actions.");
+            // The 10,000 limit counts rows and their parts once; the runs of a repeated row are bounded by RunsInOrder.
+            bool firstRun = run == 0;
+            if (firstRun && ++actions > MaximumActions) throw new ArgumentException("Sequence exceeds 10,000 actions.");
             if (step.Kind != StepKind.Condition && step.Condition is not null) throw new ArgumentException("Only a condition step may contain a condition.");
             if (step.Kind == StepKind.TimedGroup && step.Children is { } groupChildren && groupChildren.Any(c => c is null))
                 throw new ArgumentException("Invalid or oversized timed group.");
@@ -242,17 +302,17 @@ public static class SequenceCompiler
                     break;
                 case StepKind.Input:
                     if (step.Control is not { } control || step.Children is not null) throw new ArgumentException("Invalid input action.");
-                    Add(step.Id, control, cursor, step.Duration, Resolve(step.Position, step.TargetId), step.EndPosition, step.Name);
+                    Add(step.Id, control, cursor, step.Duration, Resolve(step.Position, step.TargetId), step.EndPosition, label);
                     break;
                 case StepKind.TimedGroup:
                     if (step.Control is not null || step.Children is null || step.Children.Count == 0 || step.Position is not null || step.EndPosition is not null || step.TargetId is not null) throw new ArgumentException("Invalid timed group.");
                     foreach (var child in step.Children)
                     {
-                        if (++actions > MaximumActions || child is null || child.Id == Guid.Empty || !ids.Add(child.Id)
+                        if (firstRun && ++actions > MaximumActions || child is null || child.Id == Guid.Empty || !ids.Add(child.Id)
                             || child.Offset < TimeSpan.Zero || child.Duration < TimeSpan.Zero
                             || child.Offset > step.Duration || child.Duration > step.Duration - child.Offset)
                             throw new ArgumentException("Invalid or oversized timed group.");
-                        Add(child.Id, child.Control, cursor + child.Offset, child.Duration, Resolve(child.Position, child.TargetId), child.EndPosition, step.Name, child.ClickCount);
+                        Add(child.Id, child.Control, cursor + child.Offset, child.Duration, Resolve(child.Position, child.TargetId), child.EndPosition, label, child.ClickCount);
                     }
                     break;
             }
@@ -349,8 +409,8 @@ public static class SequenceCompiler
                 || endPosition is not null && (input.Kind != InputKind.MouseButton || position is null
                     || position.Space != endPosition.Space || !position.Matches(endPosition.Width, endPosition.Height, endPosition.Dpi)))
                 throw new ArgumentException("Input action has an invalid control or duration.");
-            events.Add(new(at, id, input, true, position, name, stepIndex, ClickCount: clickCount));
-            if (!instant) events.Add(new(at + duration, id, input, false, endPosition, name, stepIndex));
+            events.Add(new(at, id, input, true, position, name, stepIndex, ClickCount: clickCount) { ListStep = listRow });
+            if (!instant) events.Add(new(at + duration, id, input, false, endPosition, name, stepIndex) { ListStep = listRow });
         }
     }
 }

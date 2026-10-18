@@ -470,7 +470,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                         else if (!sink.TrySend(new(item.Control, InputEdge.Down, position, item.ClickCount)))
                         {
                             if (PauseForRefusedDown()) retry = true;
-                            else { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return; }
+                            else { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.ListStep + 1}: {item.Name}"; return; }
                         }
                         else
                         {
@@ -479,7 +479,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                             run.Sent++;
                         }
                     }
-                    else if (!Release(run, item.Control, position)) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return; }
+                    else if (!Release(run, item.Control, position)) { run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.ListStep + 1}: {item.Name}"; return; }
                     if (!retry) { Publish(run, item.Name); origin += clock.Elapsed - before; }
                 }
                 if (retry) continue;
@@ -522,7 +522,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                 if (!sink.TrySend(new(new(InputKind.PointerMove, 0), InputEdge.Down, point)))
                 {
                     if (PauseForRefusedDown()) { part--; continue; }
-                    run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.StepIndex + 1}: {item.Name}"; return false;
+                    run.Outcome = ClickRunOutcome.InputRejected; run.Error = $"Action {item.ListStep + 1}: {item.Name}"; return false;
                 }
                 run.Sent++;
             }

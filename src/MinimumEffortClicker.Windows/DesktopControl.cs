@@ -439,6 +439,7 @@ public sealed class DesktopControl : IDisposable
                 if (command == ControllerCommand.StartStop) DispatchTrigger(trigger.RegisteredHotkey(HoldTrigger));
                 else if (command == ControllerCommand.Record) RecordingRequested?.Invoke();
                 else if (command == ControllerCommand.Screenshot) ScreenshotRequested?.Invoke();
+                else if (command == ControllerCommand.Pause) PauseRequested?.Invoke();
                 return true;
             });
         }

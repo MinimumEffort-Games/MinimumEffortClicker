@@ -32,6 +32,8 @@ public partial class MainWindow
     {
         /// <summary>The row's Repeating (0) / Once (1) dropdown.</summary>
         public int RepeatIndex => Step.Once ? 1 : 0;
+        /// <summary>The "× times in a row" field, shown for clicks and key presses only.</summary>
+        public Visibility TimesVisibility => Step.CanRunSeveralTimes ? Visibility.Visible : Visibility.Collapsed;
         /// <summary>A wait whose area belongs to the other kind of Click target: tinted red with a "Reselect Area" tag.</summary>
         public Visibility ReselectVisibility => Reselect ? Visibility.Visible : Visibility.Collapsed;
         /// <summary>The mouse for clicks and scrolls, the keyboard for key presses, nothing for pauses, waits and
@@ -213,6 +215,8 @@ public partial class MainWindow
         ScreenshotActionFields.Visibility = ModeBox.SelectedIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
         ConditionAdvancedFields.Visibility = ConditionFields.Visibility = ModeBox.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         ComplexFields.Visibility = complex ? Visibility.Visible : Visibility.Collapsed;
+        // The pause field lines up with the fields above it: the location row for a scroll, the Randomize buttons otherwise.
+        AfterBox.SetBinding(WidthProperty, new System.Windows.Data.Binding(nameof(ActualWidth)) { Source = ModeBox.SelectedIndex == 5 ? LocationRow : RandomTimingBox });
         // Blue Add Action adds a new action; green Save Changes changes the selected one, so it is always clear which.
         AddActionButton.Content = editingQuick is null ? "Add Action" : "Save Changes";
         AddActionButton.SetResourceReference(StyleProperty, editingQuick is null ? "BlueButton" : "GreenButton");
@@ -453,6 +457,8 @@ public partial class MainWindow
         string enteredName = ActionNameBox.Text.Trim();
         bool automatic = useGeneratedName || enteredName.Length == 0 || editingQuick is not null && enteredName == editingQuick.Name && enteredName == originalQuickDefaultName;
         step = step with { Id = editingQuick?.Id ?? step.Id, Name = automatic ? step.Name : enteredName, Enabled = editingQuick?.Enabled ?? true, Notes = editingQuick?.Notes ?? "", Once = editingQuick?.Once ?? false };
+        // An action changed into a scroll, pause or wait runs once; a click or key keeps its "× times".
+        step = step with { Times = step.CanRunSeveralTimes ? editingQuick?.Times ?? 1 : 1 };
         step = ApplyListOptions(new([step])).Steps[0];
         SequenceCompiler.Compile(quickHistory.Current with { Steps = [step], Repetition = new() }, quickPoints);
         return step;
@@ -519,7 +525,9 @@ public partial class MainWindow
         ShowTestSelectedButton();
         if (loadingQuick || QuickActionList.SelectedItem is not QuickRow row) return;
         TestResultLabel.Text = "";
-        var s = row.Step; editingQuick = s; loadingQuick = true;
+        // The live draft, not the row's copy: a "× times" edit changes the draft without rebuilding the rows.
+        var s = row.Index < quickHistory.Current.Steps.Count && quickHistory.Current.Steps[row.Index].Id == row.Step.Id ? quickHistory.Current.Steps[row.Index] : row.Step;
+        editingQuick = s; loadingQuick = true;
         try
         {
             RandomTimingBox.IsChecked = s.Timing?.MaximumPressDuration is not null || s.Timing?.MaximumPause is not null || s.Timing?.MaximumInterval is not null;
@@ -607,6 +615,42 @@ public partial class MainWindow
             RefreshQuickList(QuickActionList.SelectedIndex, preserveEditor: true);
             ReasonLabel.Text = once ? $"Action {row.Index + 1} runs once: with Loop on, only in the first loop." : $"Action {row.Index + 1} repeats in every loop.";
         });
+    }
+    // The draft the last "× times" edit produced: further digits or arrow steps on the same row amend it, so one change
+    // of the number is one undo step.
+    private (Guid Step, SequenceDefinition Draft)? lastTimesEdit;
+    /// <summary>
+    /// The row's "× times" field: the action runs that many times in a row each time the list reaches it. Committed
+    /// while typing without rebuilding the list, so the field keeps the focus.
+    /// </summary>
+    private void QuickTimes_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (loadingQuick || sender is not TextBox { DataContext: QuickRow row } box) return;
+        var steps = quickHistory.Current.Steps.ToArray();
+        if (row.Index >= steps.Length || steps[row.Index].Id != row.Step.Id) return;
+        if (runtime?.Snapshot.Busy == true || operations.Has(Operation.Quick)) { box.Text = steps[row.Index].Times.ToString(CultureInfo.CurrentCulture); return; }
+        if (!int.TryParse(box.Text.Trim(), NumberStyles.Integer, CultureInfo.CurrentCulture, out int times) || times is < 1 or > SequenceStep.MaximumTimes || times == steps[row.Index].Times) return;
+        var step = steps[row.Index] with { Times = times };
+        steps[row.Index] = step;
+        try
+        {
+            var next = quickHistory.Current with { Steps = steps };
+            if (lastTimesEdit is { } last && last.Step == step.Id && ReferenceEquals(last.Draft, quickHistory.Current)) quickHistory.Amend(next);
+            else quickHistory.Commit(next);
+        }
+        catch (ArgumentException ex) { ReasonLabel.Text = ex.Message; return; }
+        lastTimesEdit = (step.Id, quickHistory.Current);
+        if (editingQuick?.Id == step.Id) editingQuick = editingQuick with { Times = times };
+        QuickUndoButton.IsEnabled = quickHistory.CanUndo; QuickRedoButton.IsEnabled = quickHistory.CanRedo;
+        ReasonLabel.Text = times == 1 ? $"Action {row.Index + 1} runs once each time the list reaches it." : $"Action {row.Index + 1} runs {times:N0} times in a row each time the list reaches it.";
+        Config_Changed(this, new RoutedEventArgs());
+    }
+    /// <summary>Leaving the field with an empty or out-of-range number shows the saved count again.</summary>
+    private void QuickTimes_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: QuickRow row } box) return;
+        var steps = quickHistory.Current.Steps;
+        if (row.Index < steps.Count && steps[row.Index].Id == row.Step.Id) box.Text = steps[row.Index].Times.ToString(CultureInfo.CurrentCulture);
     }
     private void QuickUp_Click(object sender, RoutedEventArgs e) => MoveQuick(-1);
     private void QuickDown_Click(object sender, RoutedEventArgs e) => MoveQuick(1);

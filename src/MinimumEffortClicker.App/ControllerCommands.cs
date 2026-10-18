@@ -84,11 +84,12 @@ public partial class MainWindow
         ControllerStopBox.Content = Label(controllerControls.StopAll);
         ControllerRecordBox.Content = Label(controllerControls.Record);
         ControllerScreenshotBox.Content = Label(controllerControls.Screenshot);
+        ControllerPauseBox.Content = Label(controllerControls.Pause);
     }
 
     private static ControllerCommand CommandOf(object sender) => Enum.Parse<ControllerCommand>((string)((Button)sender).Tag);
 
-    /// <summary>Everything bound now, for the capture window: the four controls, then the Controller to Key binds.</summary>
+    /// <summary>Everything bound now, for the capture window: the global controls, then the Controller to Key binds and toggles.</summary>
     private IReadOnlyList<(string What, ControllerButton? Button)> BoundControllerButtons()
     {
         var bound = new List<(string, ControllerButton?)>();
@@ -113,7 +114,7 @@ public partial class MainWindow
     private void CaptureControllerButton_Click(object sender, RoutedEventArgs e)
     {
         var command = CommandOf(sender);
-        // The four controls may swap buttons among themselves; a button a Controller to Key bind uses stays with it.
+        // The global controls may swap buttons among themselves; a button a Controller to Key bind uses stays with it.
         var button = CaptureControllerButton($"Controller button for {ControlName(command)}", pressed =>
             controllerBinds.FirstOrDefault(b => b.Button == pressed) is { } bind
                 ? $"{ControllerButtons.Label(pressed)} presses \"{bind.Name}\" under Controller to Key. Press another button, or remove that bind first."
@@ -141,9 +142,20 @@ public partial class MainWindow
 
     private static string ControlName(ControllerCommand command) => command switch
     {
-        ControllerCommand.StartStop => "Start / toggle", ControllerCommand.StopAll => "Stop all",
+        ControllerCommand.StartStop => "Start / Stop", ControllerCommand.StopAll => "Stop all", ControllerCommand.Pause => "Pause / Unpause",
         ControllerCommand.Record => "Record Macro / Stop", _ => "Screenshot"
     };
+
+    /// <summary>
+    /// Settings from before the Pause button give it View. When a Controller to Key bind or a toggle already uses View,
+    /// that keeps it and Pause starts without a button, so one press never does two things.
+    /// </summary>
+    private void SettleControllerPause()
+    {
+        if (controllerControls.Pause is not { } pause || !controllerBinds.Any(b => b.Button == pause) && ToggleUsing(pause) is null) return;
+        controllerControls = controllerControls with { Pause = null };
+        ShowControllerButtons(); PersistPreferences();
+    }
 
     private void ClearControllerButton_Click(object sender, MouseButtonEventArgs e)
     {
@@ -158,7 +170,7 @@ public partial class MainWindow
     {
         // A default button that a Controller to Key bind uses stays with that bind; its control is left without one.
         var reset = ControllerControls.DefaultFor(OnSteamDeck);
-        string defaults = $"{ControllerButtons.Label(reset.StartStop!.Value)} Start / toggle, {ControllerButtons.Label(reset.StopAll!.Value)} Stop all, "
+        string defaults = $"{ControllerButtons.Label(reset.StartStop!.Value)} Start / Stop, {ControllerButtons.Label(reset.StopAll!.Value)} Stop all, {ControllerButtons.Label(reset.Pause!.Value)} Pause, "
             + $"{ControllerButtons.Label(reset.Record!.Value)} Record, {ControllerButtons.Label(reset.Screenshot!.Value)} Screenshot";
         var kept = new List<string>();
         foreach (var command in Enum.GetValues<ControllerCommand>())

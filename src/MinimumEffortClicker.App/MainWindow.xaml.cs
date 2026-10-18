@@ -126,7 +126,7 @@ public partial class MainWindow : Window
             IdleOverlayBox.IsChecked = overlayOptions.KeepIdle;
             OverlayOpacity.Value = overlayOptions.Opacity; OverlayScale.Value = overlayOptions.Scale;
             OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY); overlaySettingsLoaded = true;
-            Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
+            KeepOnTopBox.IsChecked = settings.MainTopmost; Topmost = settings.MainTopmost;
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
             // A file from before the Pause key may hold its default on another control; Pause then takes the first free key.
             selectedPauseKey = ShortcutKeys.FreePauseKey(settings.PauseKey, [settings.ToggleKey, settings.StopKey, settings.RecordKey, .. settings.Screenshots is { HotkeyEnabled: true } shot ? new[] { shot.Hotkey } : []]);
@@ -138,7 +138,7 @@ public partial class MainWindow : Window
             LoopBox.IsChecked = choices.Loop; MinimizeOnStartBox.IsChecked = choices.MinimizeOnStart; RecordDelaysBox.IsChecked = choices.RecordPauses;
             MinimizeOnRecordBox.IsChecked = choices.MinimizeOnRecord; RecordMovementBox.IsChecked = choices.SimulateMovement;
             // Set before anything can save preferences again, so an early save keeps the remembered toggles.
-            rememberedToggles = settings.ActiveToggles ?? [];
+            rememberedToggles = settings.ActiveToggles ?? []; lastTarget = settings.LastTarget;
             controllerControls = settings.Controller ?? ControllerControls.DefaultFor(OnSteamDeck); ShowControllerButtons();
             runtime.SetClickRateLimit(appliedClickLimit); runtime.KeepAwakeWhileRunning = appliedKeepAwake;
             await runtime.Control.ConfigureAsync(settings.ToggleKey, settings.StopKey);
@@ -148,12 +148,13 @@ public partial class MainWindow : Window
             runtime.Control.HoldTrigger = false; stopKey = ShortcutKeys.Label(settings.StopKey);
             initialized = true; Config_Changed(this, new RoutedEventArgs()); RefreshStatus();
             if (loaded.Warning is not null) ReasonLabel.Text = loaded.Warning;
-            RefreshTargetChoices();
+            RefreshTargetChoices(); RestoreLastTarget();
             await SetQuickRecordKey();
             await MakeSavedMacrosAvailable();
             await RestoreActiveToggles();
             StartControllers();
             await LoadControllerBinds();
+            SettleControllerPause();
             SyncWorkshopMacros();
             await ConfigureScreenshotHotkey();
             await ConfigurePauseHotkey();
@@ -505,11 +506,11 @@ public partial class MainWindow : Window
     {
         if (!initialized) return;
         pendingPreferences = new(1, ThemeBox.SelectedIndex, appliedToggleKey,
-            appliedStopKey, appliedHoldTrigger, OverlayBox.IsChecked == true, overlayOptions, false, appliedClickLimit, appliedKeepAwake, ResizeClicksBox.SelectedIndex == 0,
+            appliedStopKey, appliedHoldTrigger, OverlayBox.IsChecked == true, overlayOptions, KeepOnTopBox.IsChecked == true, appliedClickLimit, appliedKeepAwake, ResizeClicksBox.SelectedIndex == 0,
             CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop,
             Actions: new(LoopBox.IsChecked == true, MinimizeOnStartBox.IsChecked == true, RecordDelaysBox.IsChecked == true,
                 MinimizeOnRecordBox.IsChecked == true, RecordMovementBox.IsChecked == true),
-            ActiveToggles: rememberedToggles, Controller: controllerControls, PauseKey: appliedPauseKey);
+            ActiveToggles: rememberedToggles, Controller: controllerControls, PauseKey: appliedPauseKey, LastTarget: lastTarget);
         if (operations.Has(Operation.Preferences)) return;
         operations.Begin(Operation.Preferences);
         try

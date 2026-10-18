@@ -51,4 +51,42 @@ public sealed class QuickActionsTests
         Assert.ThrowsExactly<ArgumentException>(() => QuickActions.Click(PointerButton.Left, QuickClickKind.Double, Ms(20), Ms(-1), Ms(230)));
         Assert.ThrowsExactly<ArgumentException>(() => QuickActions.Click(PointerButton.Left, QuickClickKind.Single, Ms(20), Ms(80), Ms(-1)));
     }
+    [TestMethod]
+    public void AnActionThatRunsSeveralTimesSendsBackToBackRunsUnderItsOwnRow()
+    {
+        var click = QuickActions.Click(PointerButton.Left, QuickClickKind.Single, Ms(20), Ms(80), Ms(30)) with { Times = 3 };
+        var key = QuickActions.Keys([0x11], Ms(10), Ms(0), false);
+        var plan = SequenceCompiler.Compile(new([click, key]));
+        CollectionAssert.AreEqual(new[] { 0d, 20d, 50d, 70d, 100d, 120d, 150d, 160d }, plan.Inputs.Select(i => i.Offset.TotalMilliseconds).ToArray());
+        CollectionAssert.AreEqual(new[] { 0, 0, 0, 0, 0, 0, 1, 1 }, plan.Inputs.Select(i => i.ListStep).ToArray());
+        Assert.AreEqual(4, plan.Inputs.Select(i => i.StepIndex).Distinct().Count());
+        Assert.AreEqual(3, plan.Inputs.Where(i => i.Down && i.ListStep == 0).Select(i => i.ActionId).Distinct().Count());
+        Assert.AreEqual("Left click (2/3)", plan.Inputs[2].Name);
+        Assert.AreEqual(Ms(160), plan.Duration);
+    }
+    [TestMethod]
+    public void OnlyClicksAndKeysRunSeveralTimesAndTheCountIsBounded()
+    {
+        var scroll = QuickActions.Scroll(ScrollDirection.Down, 3, Ms(30), Ms(0)) with { Times = 2 };
+        Assert.IsFalse(scroll.CanRunSeveralTimes);
+        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([scroll])));
+        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([QuickActions.Pause(Ms(10)) with { Times = 2 }])));
+        var click = QuickActions.Click(PointerButton.Left, QuickClickKind.Single, Ms(1), Ms(0), Ms(0));
+        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([click with { Times = 0 }])));
+        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new([click with { Times = SequenceStep.MaximumTimes + 1 }])));
+        Assert.AreEqual(2 * SequenceStep.MaximumTimes, SequenceCompiler.Compile(new([click with { Times = SequenceStep.MaximumTimes }])).Inputs.Count);
+        // Rows that each run 9,999 times add up; one loop stays within the input budget.
+        var many = Enumerable.Range(0, 11).Select(_ => SequenceEdits.CopyWithNewIds([click with { Times = SequenceStep.MaximumTimes }])[0]).ToArray();
+        Assert.ThrowsExactly<ArgumentException>(() => SequenceCompiler.Compile(new(many)));
+        // A skipped row sends nothing, whatever its count.
+        Assert.AreEqual(0, SequenceCompiler.Compile(new(many.Select(s => s with { Enabled = false }).ToArray())).Inputs.Count);
+    }
+    [TestMethod]
+    public void AOnceActionRunsAllItsTimesInTheFirstLoopOnly()
+    {
+        var click = QuickActions.Click(PointerButton.Left, QuickClickKind.Single, Ms(10), Ms(0), Ms(10)) with { Times = 4, Once = true };
+        var plan = SequenceCompiler.Compile(new([click, QuickActions.Pause(Ms(50))], Repetition: new(0)));
+        Assert.AreEqual(4, plan.Inputs.Count(i => i.Down));
+        Assert.AreEqual(0, plan.LaterLoops!.Inputs.Count);
+    }
 }
