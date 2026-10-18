@@ -16,7 +16,8 @@ if (Test-Path -LiteralPath (Join-Path $buildPath 'steam_appid.txt')) { throw 'Re
 $work = Join-Path $ProjectRoot 'artifacts/steam'
 New-Item -ItemType Directory -Force -Path (Join-Path $work 'output') | Out-Null
 $vdf = Join-Path $work "app_build_$appId.vdf"
-$quote = { param($text) '"' + ($text -replace '\', '\' -replace '"', '\"') + '"' }
+# VDF strings escape a backslash as \\ and a quote as \" (the pattern is a regular expression, so its backslash is doubled).
+$quote = { param($text) '"' + ($text -replace '\\', '\\' -replace '"', '\"') + '"' }
 @"
 "AppBuild"
 {
