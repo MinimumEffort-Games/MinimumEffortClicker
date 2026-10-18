@@ -17,7 +17,8 @@ internal sealed class ScreenshotSelectionWindow : DialogWindow
         WindowDecorations = WindowDecorations.None; CanResize = false;
         // The main window is hidden, so keep this task reachable from the dash.
         ShowInTaskbar = true; Topmost = true; Background = Brushes.Black;
-        Width = bounds.Width / Math.Max(1, DesktopScaling); Height = bounds.Height / Math.Max(1, DesktopScaling);
+        // The bounds are in the desktop helper's units; with display scaling X11 pixels are larger by DesktopPixels.Factor.
+        Width = bounds.Width * DesktopPixels.Factor / Math.Max(1, DesktopScaling); Height = bounds.Height * DesktopPixels.Factor / Math.Max(1, DesktopScaling);
         Cursor = new Cursor(StandardCursorType.Cross);
         var canvas = new Canvas { Background = new ImageBrush(image) { Stretch = Stretch.Fill } };
         Content = canvas;
@@ -61,7 +62,7 @@ internal sealed class ScreenshotSelectionWindow : DialogWindow
         };
         Opened += (_, _) =>
         {
-            Position = new PixelPoint(bounds.X, bounds.Y);
+            Position = DesktopPixels.ToWindow(bounds.X, bounds.Y);
             // One monitor: full screen also covers GNOME's top bar. Several monitors keep the spanning window.
             if (Screens.ScreenCount == 1) WindowState = WindowState.FullScreen;
             Activate(); Focus();
