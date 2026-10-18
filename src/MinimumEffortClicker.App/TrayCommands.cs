@@ -8,6 +8,14 @@ public partial class MainWindow
     private bool exitRequested, trayNoticeShown, startupLoaded, traySettingsLoaded;
     private bool trayHidePending;
     private TrayNoticeWindow? trayNotice;
+    // Coming back from minimised or the tray returns to the size the user had, maximised included.
+    private WindowState shownState = WindowState.Normal;
+
+    protected override void OnStateChanged(EventArgs e)
+    {
+        if (WindowState != WindowState.Minimized) shownState = WindowState;
+        base.OnStateChanged(e);
+    }
 
     private void InitializeTray()
     {
@@ -30,7 +38,7 @@ public partial class MainWindow
         if (trayNotice is not null) { trayNotice.Activate(); return; }
         if (trayHidePending) return;
         Show();
-        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        if (WindowState == WindowState.Minimized) WindowState = shownState;
         Activate();
         RefreshStatus();
     }

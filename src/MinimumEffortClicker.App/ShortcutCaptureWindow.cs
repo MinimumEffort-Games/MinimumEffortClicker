@@ -23,7 +23,8 @@ internal sealed class ShortcutCaptureWindow : Window
             if (!ShortcutKeys.Supported(key)) { hint.Text = "That key cannot be used here. Press another key or click Cancel."; return; }
             SelectedKey = key; DialogResult = true;
         }
-        PreviewKeyDown += (_, e) => { e.Handled = true; if (!e.IsRepeat) Select(KeyInterop.VirtualKeyFromKey(e.Key == Key.System ? e.SystemKey : e.Key)); };
+        // Escape cancels, like in every other dialog, so it is never captured as a shortcut.
+        PreviewKeyDown += (_, e) => { e.Handled = true; if (e.Key == Key.Escape) DialogResult = false; else if (!e.IsRepeat) Select(KeyInterop.VirtualKeyFromKey(e.Key == Key.System ? e.SystemKey : e.Key)); };
         PreviewMouseDown += (_, e) =>
         {
             // The explicit cancel control is excluded from mouse binding capture.

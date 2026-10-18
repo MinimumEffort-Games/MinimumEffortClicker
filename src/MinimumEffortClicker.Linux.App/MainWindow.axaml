@@ -464,7 +464,7 @@
                                                     <DataTemplate><TextBlock Text="{Binding Name}" Margin="14,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="92">
+                                            <DataGridTemplateColumn Width="112">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Hold / Tap" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate><ContentControl Content="{Binding HeldPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
@@ -571,7 +571,7 @@
                                                     <DataTemplate><TextBlock Text="{Binding Name}" Margin="14,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="96">
+                                            <DataGridTemplateColumn Width="112">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Controller" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate><ContentControl Content="{Binding ButtonPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>

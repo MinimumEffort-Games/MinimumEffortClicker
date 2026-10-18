@@ -24,7 +24,8 @@ internal sealed class ShortcutCaptureWindow : DialogWindow
             SelectedKey = key; DialogResult = true;
         }
         // Tunnel, so buttons and access keys never see the captured key first.
-        AddHandler(KeyDownEvent, (_, e) => { e.Handled = true; Select(VirtualKey(e.PhysicalKey)); }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        // Escape cancels, like in every other dialog, so it is never captured as a shortcut.
+        AddHandler(KeyDownEvent, (_, e) => { e.Handled = true; if (e.PhysicalKey == PhysicalKey.Escape) DialogResult = false; else Select(VirtualKey(e.PhysicalKey)); }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         AddHandler(PointerPressedEvent, (_, e) =>
         {
             // The explicit cancel control is excluded from mouse binding capture.
