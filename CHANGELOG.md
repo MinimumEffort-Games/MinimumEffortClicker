@@ -2,14 +2,16 @@
 
 ## Unreleased
 
-- Windows: Report a bug, next to Help. It saves a zip (your text, app and system details, the end of the log, and
+- Report a bug, next to Help. It saves a zip (your text, app and system details, the end of the log, and
   optionally a picture of the clicker and the Action List; user name and computer name replaced) and opens a new
   GitHub issue with the text filled in. The app sends nothing itself. After a close that was not normal, the next
   start offers a report.
-- Windows: Look recording for first- and third-person games. While a game holds the cursor, Record keeps the mouse
+- Look recording for first- and third-person games. While a game holds the cursor, Record keeps the mouse
   movement as Look actions (relative movement, about 60 steps a second), so playback turns the camera the same way.
   Clicks made then keep no screen spot, so they never move the cursor. Selecting a Look shows its length and turn;
   its pause after and name can be changed.
+  Linux reads the movement from the mouse itself (input access) and plays it through the desktop helper; on GNOME
+  the helper has to be installed again (version 1.1, Settings, Linux setup).
 - Each click or key press in the Action List has a "× times" field: it runs that many times in a row (1–9,999)
   each time the list gets to it, so a thousand clicks are one row. Once / Repeating still decides the later loops.
 - The Click target chosen last is selected again at the next start when its window is open. Choosing a Click

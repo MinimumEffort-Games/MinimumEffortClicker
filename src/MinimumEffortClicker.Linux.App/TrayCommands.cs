@@ -125,6 +125,7 @@ public partial class MainWindow
 
     internal void PrepareSessionExit()
     {
+        EndSession();
         exitRequested = true;
         runtime?.Stop("Stopped: the desktop session is ending.");
         screenshotCancellation?.Cancel();

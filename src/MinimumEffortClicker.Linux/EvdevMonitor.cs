@@ -2,7 +2,8 @@ using System.Runtime.InteropServices;
 
 namespace MinimumEffortClicker.Linux;
 
-public enum EvdevEventKind { Key, Motion, Wheel, HorizontalWheel }
+/// <remarks>RelativeMotion is a mouse moving by counts (REL_X / REL_Y); Motion is a touchpad or tablet reporting where it is.</remarks>
+public enum EvdevEventKind { Key, Motion, Wheel, HorizontalWheel, RelativeMotion }
 public readonly record struct EvdevEvent(EvdevEventKind Kind, int Code, int Value);
 
 /// <summary>
@@ -167,7 +168,7 @@ public sealed class EvdevMonitor : IDisposable
         }
         else if (type == EvRel)
         {
-            if (code is RelX or RelY && value != 0) Observed?.Invoke(new(EvdevEventKind.Motion, code, value));
+            if (code is RelX or RelY && value != 0) Observed?.Invoke(new(EvdevEventKind.RelativeMotion, code, value));
             else if (code == RelWheel && value != 0) Observed?.Invoke(new(EvdevEventKind.Wheel, code, value));
             else if (code == RelHWheel && value != 0) Observed?.Invoke(new(EvdevEventKind.HorizontalWheel, code, value));
         }

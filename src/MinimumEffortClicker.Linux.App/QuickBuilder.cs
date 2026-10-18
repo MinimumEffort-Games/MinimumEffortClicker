@@ -200,8 +200,10 @@ public partial class MainWindow
     }
     private void ShowQuickFields()
     {
-        bool complex = editingQuick is not null && ModeBox.SelectedIndex < 0;
-        ActionFields.Visibility = ModeBox.SelectedIndex >= 0 || complex ? Visibility.Visible : Visibility.Collapsed;
+        bool look = editingQuick is not null && ModeBox.SelectedIndex < 0 && QuickActions.ReadLook(editingQuick) is not null;
+        bool complex = editingQuick is not null && ModeBox.SelectedIndex < 0 && !look;
+        ActionFields.Visibility = ModeBox.SelectedIndex >= 0 || complex || look ? Visibility.Visible : Visibility.Collapsed;
+        LookFields.Visibility = look ? Visibility.Visible : Visibility.Collapsed;
         MouseFields.Visibility = ModeBox.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
         ScrollFields.Visibility = ModeBox.SelectedIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
         LocationFields.Visibility = ModeBox.SelectedIndex is 0 or 5 ? Visibility.Visible : Visibility.Collapsed;
@@ -210,7 +212,7 @@ public partial class MainWindow
         KeyFields.Visibility = ModeBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         RandomFields.Visibility = ModeBox.SelectedIndex is 0 or 1 or 2 ? Visibility.Visible : Visibility.Collapsed;
         PressFields.Visibility = ModeBox.SelectedIndex is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
-        AfterFields.Visibility = ModeBox.SelectedIndex is 0 or 1 or 5 ? Visibility.Visible : Visibility.Collapsed;
+        AfterFields.Visibility = ModeBox.SelectedIndex is 0 or 1 or 5 || look ? Visibility.Visible : Visibility.Collapsed;
         MotionFields.Visibility = ModeBox.SelectedIndex == 0 && !useCursorLocation ? Visibility.Visible : Visibility.Collapsed;
         DoubleFields.Visibility = ModeBox.SelectedIndex == 0 && ClickKindBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         PauseFields.Visibility = ModeBox.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
@@ -218,14 +220,15 @@ public partial class MainWindow
         ConditionAdvancedFields.Visibility = ConditionFields.Visibility = ModeBox.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         ComplexFields.Visibility = complex ? Visibility.Visible : Visibility.Collapsed;
         // The pause field lines up with the fields above it: the location row for a scroll, the Randomize buttons otherwise.
-        AfterBox.Bind(WidthProperty, new Avalonia.Data.Binding("Bounds.Width") { Source = ModeBox.SelectedIndex == 5 ? LocationRow : RandomTimingBox });
+        // A Look action shows neither, so its pause field takes the panel's width like the name.
+        AfterBox.Bind(WidthProperty, new Avalonia.Data.Binding("Bounds.Width") { Source = look ? LookFields : ModeBox.SelectedIndex == 5 ? LocationRow : RandomTimingBox });
         // Blue Add Action adds a new action; green Save Changes changes the selected one, so it is always clear which.
         AddActionButton.Content = editingQuick is null ? "Add Action" : "Save Changes";
         AddActionButton.Classes.Set("blue", editingQuick is null); AddActionButton.Classes.Set("green", editingQuick is not null);
         PressLabel.Text = ClickKindBox.SelectedIndex == 2 && ModeBox.SelectedIndex == 0 ? "Hold duration (ms)" : "Press duration (ms)";
         ShowTimingOptions();
         Location_Changed(this, new RoutedEventArgs());
-        ActionHint.Text = complex ? "Edit the recorded inputs below. Their overlap is preserved." : ModeBox.SelectedIndex switch
+        ActionHint.Text = look ? "Recorded mouse movement for a game that holds the cursor (Look)." : complex ? "Edit the recorded inputs below. Their overlap is preserved." : ModeBox.SelectedIndex switch
         { 0 => "Click at your cursor or a saved location.", 1 => "Press a key, with optional modifiers or a longer hold.", 2 => "Wait before the next action.", 3 => "Continue when a colour appears or disappears.", 4 => "Save a fullscreen PNG of all monitors.", 5 => "Turn the mouse wheel at your cursor or a saved location.", _ => "Choose an action to see its settings." };
         if (ModeBox.SelectedIndex == 3) ShowConditionColour(); else RefreshAddAction();
     }
@@ -451,6 +454,7 @@ public partial class MainWindow
                 step = QuickActions.Scroll((ScrollDirection)ScrollDirectionBox.SelectedIndex, notches, Milliseconds(ScrollGapBox), after, useCursorLocation ? null : ReadQuickPoint()); break;
             default:
                 if (editingQuick is null) throw new ArgumentException("Choose an action first.");
+                if (QuickActions.ReadLook(editingQuick) is not null) { step = QuickActions.WithLookPause(editingQuick, OptionalPause(AfterBox)); break; }
                 if (!QuickChildrenGrid.CommitEdit(DataGridEditingUnit.Cell, true) || !QuickChildrenGrid.CommitEdit(DataGridEditingUnit.Row, true)) throw new ArgumentException("Finish editing the input row first.");
                 var children = quickChildren.Select(c => c.Original with { Control = quickInputs[c.Input], Offset = TimeSpan.FromMilliseconds(double.Parse(c.Offset, CultureInfo.CurrentCulture)), Duration = TimeSpan.FromMilliseconds(double.Parse(c.Duration, CultureInfo.CurrentCulture)), Position = c.Original.Position is { } p ? p with { X = int.Parse(c.X), Y = int.Parse(c.Y) } : null }).ToArray();
                 step = editingQuick.Kind == StepKind.Input ? editingQuick with { Duration = Milliseconds(ComplexDurationBox), Control = children[0].Control, Position = children[0].Position }
@@ -507,7 +511,7 @@ public partial class MainWindow
         loadingQuick = false; Location_Changed(sender, e); ShowQuickFields(); ShowConditionColour();
     }
     private QuickRow[] QuickRows(IEnumerable<SequenceStep> steps) => steps.Select((s, i) =>
-        new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : QuickActions.ReadScroll(s) is { } scroll ? ScrollSummary(scroll) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
+        new QuickRow(i, s, $"{i + 1}. {s.Name}" + (s.Enabled ? "" : " (skipped)"), s.Condition is { } c ? ConditionSummary(c) : QuickActions.ReadScroll(s) is { } scroll ? ScrollSummary(scroll) : QuickActions.ReadLook(s) is { } look ? LookSummary(look) : TimingSummary(s) + (s.Children is { Count: > 1 } children ? $" · {children.Count} inputs" : ""),
             s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } colour ? ColourBrush(colour.Color) : Brushes.Transparent,
             s.Condition is { Kind: ConditionKind.PixelColor or ConditionKind.RegionColor or ConditionKind.ColorDisappears } ink ? ColourText(ink.Color) : (IBrush)this.FindResource("TextPrimary")!,
             PickedForOtherTarget(s.Condition?.Region))).ToArray();
@@ -555,7 +559,9 @@ public partial class MainWindow
             {
                 var actions = s.Kind == StepKind.Input ? new[] { new TimedAction(Guid.NewGuid(), TimeSpan.Zero, s.Control!.Value, s.Duration, s.Position, s.EndPosition, s.TargetId) } : s.Children?.ToArray() ?? [];
                 bool uncomplicated = actions.Length > 0 && actions.All(c => c.TargetId is null && (c.EndPosition is null || c.EndPosition == c.Position));
-                if (QuickActions.ReadScroll(s) is { } scroll)
+                // A Look action shows its own summary; its many steps never go into the recorded-inputs table.
+                if (QuickActions.ReadLook(s) is { } look) { ModeBox.SelectedIndex = -1; AfterBox.Text = Ms(look.After); LookLabel.Text = LookSummary(look); }
+                else                 if (QuickActions.ReadScroll(s) is { } scroll)
                 {
                     ModeBox.SelectedIndex = 5; ScrollDirectionBox.SelectedIndex = (int)scroll.Direction;
                     ScrollNotchesBox.Text = scroll.Notches.ToString(CultureInfo.CurrentCulture); ScrollGapBox.Text = Ms(scroll.Gap);

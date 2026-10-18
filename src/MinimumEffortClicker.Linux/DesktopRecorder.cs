@@ -3,7 +3,8 @@ using MinimumEffortClicker.Core;
 
 namespace MinimumEffortClicker.Linux;
 
-public sealed record RecordingChannels(bool Keyboard = true, bool MouseButtons = false, bool Scroll = false, bool PointerPath = false);
+/// <param name="Look">Mouse movement while a game holds the cursor, recorded as relative Look steps (User, 2026-10-18).</param>
+public sealed record RecordingChannels(bool Keyboard = true, bool MouseButtons = false, bool Scroll = false, bool PointerPath = false, bool Look = false);
 
 /// <summary>Explicit bounded capture. No global history exists before Start or after Stop.</summary>
 public sealed class DesktopRecorder : IDisposable
@@ -22,6 +23,18 @@ public sealed class DesktopRecorder : IDisposable
     private readonly Dictionary<InputControl, ClientPoint> clickPositions = [];
     private readonly HashSet<InputControl> ignoredClicks = [];
     private readonly HashSet<InputControl> dragged = [];
+    // Buttons pressed while a game held the cursor: recorded without a spot, also when released after it lets go.
+    private readonly HashSet<InputControl> heldButtons = [];
+    // Look movement collected into one step per LookStep, so a 1,000 Hz mouse is not a thousand inputs a second.
+    private static readonly TimeSpan LookStep = TimeSpan.FromMilliseconds(16);
+    private TimeSpan? lookStart;
+    private int lookX, lookY;
+    // Linux has no shared cursor state to ask: the cursor counts as held when the mouse moves but the pointer stays put,
+    // because the game locks or recentres it.
+    private int countsSinceCheck;
+    private (int X, int Y)? pointerAtCheck;
+    private long heldCheckedAt;
+    private bool heldNow;
     // Copy of the captured edges per segment, so the UI can show actions while recording continues.
     private readonly List<(TimeSpan Start, TimeSpan? End, List<RecordedEdge> Edges)> live = [(TimeSpan.Zero, null, [])];
     private int liveVersion;
@@ -41,6 +54,7 @@ public sealed class DesktopRecorder : IDisposable
             throw new InvalidOperationException("Recording needs physical input access. Open Settings → Linux setup and run the one-time command.");
         runtime.Control.PhysicalChanged += Capture;
         runtime.Control.MouseObserved += CaptureMouse;
+        if (this.channels.Look) runtime.Control.RawMouseMoved += CaptureLook;
         try
         {
             runtime.BeginCapture(Stop, Pause);
@@ -48,7 +62,7 @@ public sealed class DesktopRecorder : IDisposable
             if (Volatile.Read(ref ended) == 0)
             { Volatile.Write(ref active, 1); }
         }
-        catch { runtime.Control.PhysicalChanged -= Capture; runtime.Control.MouseObserved -= CaptureMouse; throw; }
+        catch { runtime.Control.PhysicalChanged -= Capture; runtime.Control.MouseObserved -= CaptureMouse; runtime.Control.RawMouseMoved -= CaptureLook; throw; }
     }
     private void CaptureMouse(PhysicalMouse sample)
     {
@@ -61,6 +75,17 @@ public sealed class DesktopRecorder : IDisposable
         bool movement = sample.Control.Kind == InputKind.PointerMove;
         if (sample.Control.Kind == InputKind.MouseButton && !channels.MouseButtons || sample.Control.Kind is InputKind.Scroll or InputKind.HorizontalScroll && !channels.Scroll) return;
         var at = Stopwatch.GetElapsedTime(origin);
+        // While a game holds the cursor its position means nothing: pointer movement is recorded as Look, and clicks keep no
+        // spot, so playback clicks where the game has the cursor instead of moving it (which would turn the camera).
+        bool held = channels.Look && heldNow;
+        if (held && movement) return;
+        if (sample.Control.Kind == InputKind.MouseButton && (held && sample.Down && !mouseHolds.Contains(sample.Control) || !sample.Down && heldButtons.Contains(sample.Control)))
+        {
+            if (!runtime.CaptureTargetAvailable) { Pause("Target lost focus. Resume recording explicitly when ready."); return; }
+            if (sample.Down) heldButtons.Add(sample.Control); else heldButtons.Remove(sample.Control);
+            if (!Append(new(at, sample.Control, sample.Down))) Pause("Recording reached its event limit. Finish with the recording hotkey to retain the bounded draft.");
+            return;
+        }
         // Ignore free pointer movement; retain only button-held drag paths.
         if (movement && (!channels.PointerPath || mouseHolds.Count == 0)) return;
         // Do not turn interacting with the clicker into a macro that opens/stops itself.
@@ -110,9 +135,52 @@ public sealed class DesktopRecorder : IDisposable
     }
     private bool Append(RecordedEdge edge)
     {
+        // Movement collected so far comes first, so the edges stay in time order.
+        FlushLook();
+        return AppendEdge(edge);
+    }
+    private bool AppendEdge(RecordedEdge edge)
+    {
         if (!buffer.TryAppend(edge)) return false;
         var segment = live[^1]; segment.Edges.Add(edge with { At = edge.At - segment.Start });
         Interlocked.Increment(ref liveVersion); return true;
+    }
+    private void CaptureLook(int dx, int dy)
+    {
+        lock (captureGate) CaptureLookCore(dx, dy);
+    }
+    private void CaptureLookCore(int dx, int dy)
+    {
+        if (Volatile.Read(ref ended) != 0 || Volatile.Read(ref active) == 0) return;
+        var at = Stopwatch.GetElapsedTime(origin);
+        MeasureHeld(dx, dy);
+        // Free pointer movement on the desktop is not a look, and a window target has to be in front.
+        if (!heldNow || !runtime.CaptureTargetAvailable) { FlushLook(); return; }
+        if (lookStart is { } start && at - start >= LookStep) FlushLook();
+        lookStart ??= at;
+        lookX = Math.Clamp(lookX + dx, short.MinValue, short.MaxValue); lookY = Math.Clamp(lookY + dy, short.MinValue, short.MaxValue);
+    }
+    /// <summary>Writes the movement collected since the step began as one Look step, timed at its start.</summary>
+    private void FlushLook()
+    {
+        if (lookStart is not { } start) return;
+        int x = lookX, y = lookY; lookStart = null; lookX = lookY = 0;
+        if ((x != 0 || y != 0) && !AppendEdge(new(start, InputControl.Look(x, y), true)))
+            Pause("Recording reached its event limit. Finish with the recording hotkey to retain the bounded draft.");
+    }
+    /// <summary>
+    /// Every 50 ms: the cursor is held when the mouse moved at least 12 counts but the pointer moved less than a third of
+    /// that. Free pointer movement follows the mouse closely; a locked or recentred cursor barely moves.
+    /// </summary>
+    private void MeasureHeld(int dx, int dy)
+    {
+        countsSinceCheck += Math.Abs(dx) + Math.Abs(dy);
+        long now = Stopwatch.GetTimestamp();
+        if (heldCheckedAt != 0 && Stopwatch.GetElapsedTime(heldCheckedAt, now) < TimeSpan.FromMilliseconds(50)) return;
+        var pointer = runtime.Control.PointerNow();
+        if (pointerAtCheck is { } before && countsSinceCheck >= 12)
+            heldNow = (Math.Abs(pointer.X - before.X) + Math.Abs(pointer.Y - before.Y)) * 3 < countsSinceCheck;
+        pointerAtCheck = pointer; countsSinceCheck = 0; heldCheckedAt = now;
     }
     /// <summary>
     /// Actions captured so far, normalized like the final draft. Holds still down end now; the final
@@ -139,7 +207,9 @@ public sealed class DesktopRecorder : IDisposable
     private void StopCore(string reason)
     {
         if (Interlocked.Exchange(ref ended, 1) != 0) return;
+        FlushLook();
         buffer.Close(Stopwatch.GetElapsedTime(origin));
+        if (channels.Look) runtime.Control.RawMouseMoved -= CaptureLook;
         runtime.Control.PhysicalChanged -= Capture;
         runtime.Control.MouseObserved -= CaptureMouse;
         runtime.EndCapture(reason);
@@ -150,8 +220,9 @@ public sealed class DesktopRecorder : IDisposable
         lock (captureGate)
         {
             if (Volatile.Read(ref ended) != 0 || Interlocked.Exchange(ref active, 0) == 0) return;
+            FlushLook();
             var at = Stopwatch.GetElapsedTime(origin); buffer.Pause(at);
-            live[^1] = live[^1] with { End = at }; Interlocked.Increment(ref liveVersion); mouseHolds.Clear(); clickPositions.Clear(); dragged.Clear(); ignoredClicks.Clear();
+            live[^1] = live[^1] with { End = at }; Interlocked.Increment(ref liveVersion); mouseHolds.Clear(); clickPositions.Clear(); dragged.Clear(); ignoredClicks.Clear(); heldButtons.Clear();
             runtime.CapturePaused(reason + " Interrupted holds end at this boundary; review before playback.");
         }
     }

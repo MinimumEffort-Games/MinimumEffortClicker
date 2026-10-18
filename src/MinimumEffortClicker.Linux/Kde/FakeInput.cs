@@ -10,6 +10,7 @@ namespace MinimumEffortClicker.Linux.Kde;
 internal interface IInputDevice
 {
     void MoveTo(double x, double y);
+    void MoveBy(double dx, double dy);
     void SetButton(uint code, bool pressed);
     void Scroll(uint axis, double value);
     void SetKey(int evdev, bool pressed);
@@ -21,7 +22,7 @@ internal sealed unsafe class FakeInput : IInputDevice, IDisposable
     private const string Library = "libwayland-client.so.0";
     private const string InterfaceName = "org_kde_kwin_fake_input";
     private const uint WantedVersion = 4; // keyboard_key arrived in version 4.
-    private const uint Authenticate = 0, Button = 2, Axis = 3, PointerMotionAbsolute = 9, KeyboardKey = 10;
+    private const uint Authenticate = 0, PointerMotion = 1, Button = 2, Axis = 3, PointerMotionAbsolute = 9, KeyboardKey = 10;
 
     private static readonly IntPtr FakeInputInterface = BuildInterface();
     private IntPtr display, registry, fakeInput, listener;
@@ -70,6 +71,8 @@ internal sealed unsafe class FakeInput : IInputDevice, IDisposable
 
     /// <summary>Moves the pointer to a logical desktop position.</summary>
     public void MoveTo(double x, double y) => Send(PointerMotionAbsolute, Fixed(x), Fixed(y));
+    /// <summary>Moves the pointer by a relative step; games that hold the cursor read it as camera movement.</summary>
+    public void MoveBy(double dx, double dy) => Send(PointerMotion, Fixed(dx), Fixed(dy));
     /// <summary>Linux button code (BTN_LEFT 0x110 ...).</summary>
     public void SetButton(uint code, bool pressed) => Send(Button, code, pressed ? 1 : 0);
     /// <summary>Axis 0 vertical, 1 horizontal, in Wayland axis units; positive scrolls down or right.</summary>

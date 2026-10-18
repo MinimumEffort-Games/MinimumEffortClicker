@@ -49,6 +49,8 @@ public interface IDesktopHelper : IDisposable
     bool ActivateWindow(ulong id);
 
     void PointerMove(double x, double y);
+    /// <summary>Relative pointer movement, the way first- and third-person games read the mouse (Look actions).</summary>
+    void PointerMoveBy(double dx, double dy);
     /// <summary>Button numbers 1 left, 2 middle, 3 right, 8 back, 9 forward.</summary>
     void PointerButton(uint button, bool pressed);
     /// <summary>Direction 0 up, 1 down, 2 left, 3 right; steps are wheel notches.</summary>

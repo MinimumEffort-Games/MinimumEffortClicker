@@ -4,5 +4,5 @@
     "description": "Lets Minimum Effort Clicker read the pointer position, list windows, capture screen areas and send clicks and keys on GNOME Wayland. Only the clicker programs listed in ~/.config/me-clicker-helper/allowed-clients may use it.",
     "shell-version": ["46", "47", "48", "49", "50"],
     "url": "https://github.com/MinimumEffort-Games/MinimumEffortClicker",
-    "version-name": "1.0"
+    "version-name": "1.1"
 }

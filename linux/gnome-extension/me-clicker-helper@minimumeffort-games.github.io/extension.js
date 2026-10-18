@@ -24,7 +24,8 @@ Gio._promisify(Shell.Screenshot, 'composite_to_stream');
 const BUS_NAME = 'io.github.MinimumEffortGames.ClickerHelper';
 const OBJECT_PATH = '/io/github/MinimumEffortGames/ClickerHelper';
 const ERROR_PREFIX = 'io.github.MinimumEffortGames.ClickerHelper.Error';
-const API_VERSION = 1;
+// 2 added PointerMoveBy (relative movement for Look actions in games that hold the cursor).
+const API_VERSION = 2;
 const MAX_CAPTURE_PIXELS = 32 * 1024 * 1024;
 
 const INTERFACE = `
@@ -66,6 +67,7 @@ const INTERFACE = `
     </method>
     <method name="ActivateWindow"><arg type="t" direction="in" name="id"/><arg type="b" direction="out" name="ok"/></method>
     <method name="PointerMove"><arg type="d" direction="in" name="x"/><arg type="d" direction="in" name="y"/></method>
+    <method name="PointerMoveBy"><arg type="d" direction="in" name="dx"/><arg type="d" direction="in" name="dy"/></method>
     <method name="PointerButton"><arg type="u" direction="in" name="button"/><arg type="b" direction="in" name="pressed"/></method>
     <method name="Scroll"><arg type="u" direction="in" name="direction"/><arg type="u" direction="in" name="steps"/></method>
     <method name="Key"><arg type="u" direction="in" name="evdevCode"/><arg type="b" direction="in" name="pressed"/></method>
@@ -347,6 +349,12 @@ class Helper {
     PointerMoveAsync([x, y], invocation) {
         this._handle(invocation, () => {
             this._pointer.notify_absolute_motion(GLib.get_monotonic_time(), x, y);
+        });
+    }
+
+    PointerMoveByAsync([dx, dy], invocation) {
+        this._handle(invocation, () => {
+            this._pointer.notify_relative_motion(GLib.get_monotonic_time(), dx, dy);
         });
     }
 

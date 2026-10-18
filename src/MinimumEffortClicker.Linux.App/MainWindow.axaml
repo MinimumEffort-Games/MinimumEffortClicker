@@ -26,6 +26,7 @@
                         </Border>
                     </Button>
                     <Button Content="Help" Click="Help_Click" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Help" />
+                    <Button Content="Report a bug" Click="BugReport_Click" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip.Tip="Saves a report as a zip and opens a new GitHub issue with it filled in." AutomationProperties.Name="Report a bug" />
                 </StackPanel>
                 <ToggleButton Grid.Column="1" x:Name="OverlayBox" Classes="choice" Content="Show overlay" IsChecked="True" VerticalAlignment="Center" IsCheckedChanged="Overlay_Changed" Margin="16,0,0,0" ToolTip.Tip="The small status window that shows what the clicker is doing." />
             </Grid>
@@ -135,6 +136,11 @@
                                                     <ToggleButton x:Name="ShiftBox" Classes="choice keycap" ToolTip.Tip="Shift: held with the key" AutomationProperties.Name="Shift"><Image Source="/Assets/Ui/keys/left-shift.png" Width="36" Height="36" RenderOptions.BitmapInterpolationMode="HighQuality" /></ToggleButton>
                                                     <ToggleButton x:Name="AltBox" Classes="choice keycap" ToolTip.Tip="Alt: held with the key" AutomationProperties.Name="Alt"><Image Source="/Assets/Ui/keys/left-alt.png" Width="36" Height="36" RenderOptions.BitmapInterpolationMode="HighQuality" /></ToggleButton>
                                                 </WrapPanel>
+                                            </StackPanel>
+                                            <StackPanel x:Name="LookFields" IsVisible="False">
+                                                <TextBlock Text="Look" FontWeight="SemiBold" />
+                                                <TextBlock x:Name="LookLabel" TextWrapping="Wrap" Margin="0,2,0,4" />
+                                                <TextBlock Text="Mouse movement recorded while the game held the cursor. Playback turns the camera the same way, as long as the game's mouse sensitivity is the same. Record it again to change the movement." Classes="secondary" TextWrapping="Wrap" Margin="0,0,0,8" />
                                             </StackPanel>
                                             <StackPanel x:Name="PressFields" IsVisible="False"><TextBlock x:Name="PressLabel" Text="Press duration (ms)" /><TextBox x:Name="PressBox" Width="{Binding #RandomTimingBox.Bounds.Width}" HorizontalAlignment="Left" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="20" AutomationProperties.Name="Press duration in milliseconds" /></StackPanel>
                                             <StackPanel x:Name="DoubleFields" IsVisible="False"><TextBlock Text="Gap between the two clicks (ms)" /><TextBox x:Name="DoubleGapBox" Width="{Binding #RandomTimingBox.Bounds.Width}" HorizontalAlignment="Left" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="60000" Text="80" AutomationProperties.Name="Double click gap" /></StackPanel>

@@ -15,6 +15,9 @@ public sealed class GnomeHelper : IDesktopHelper
     public const string ObjectPath = "/io/github/MinimumEffortGames/ClickerHelper";
     public const string InterfaceName = "io.github.MinimumEffortGames.ClickerHelper1";
     public const uint RequiredVersion = 1;
+    /// <summary>The helper API that added relative movement for Look actions.</summary>
+    public const uint LookVersion = 2;
+    private uint version;
     private static readonly TimeSpan CallTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan CaptureTimeout = TimeSpan.FromSeconds(10);
     private readonly DBusConnection connection;
@@ -43,6 +46,7 @@ public sealed class GnomeHelper : IDesktopHelper
             var helper = new GnomeHelper(connection);
             uint version = helper.Call("GetVersion", null, null, (m, _) => m.GetBodyReader().ReadUInt32());
             if (version < RequiredVersion) throw new HelperException("The ME Clicker GNOME helper is out of date. Install it again from Settings.") { NotInstalled = true };
+            helper.version = version;
             helper.Subscribe();
             return helper;
         }
@@ -119,6 +123,12 @@ public sealed class GnomeHelper : IDesktopHelper
     public bool ActivateWindow(ulong id) => Call("ActivateWindow", "t", (ref MessageWriter w) => w.WriteUInt64(id), (m, _) => m.GetBodyReader().ReadBool());
 
     public void PointerMove(double x, double y) => Send("PointerMove", "dd", (ref MessageWriter w) => { w.WriteDouble(x); w.WriteDouble(y); });
+    public void PointerMoveBy(double dx, double dy)
+    {
+        // Older helpers (API 1) have no relative movement; everything else still works with them.
+        if (version < LookVersion) throw new HelperException("Look actions need the newer GNOME helper. Install it again from Settings, Linux setup.");
+        Send("PointerMoveBy", "dd", (ref MessageWriter w) => { w.WriteDouble(dx); w.WriteDouble(dy); });
+    }
     public void PointerButton(uint button, bool pressed) => Send("PointerButton", "ub", (ref MessageWriter w) => { w.WriteUInt32(button); w.WriteBool(pressed); });
     public void Scroll(uint direction, uint steps) => Send("Scroll", "uu", (ref MessageWriter w) => { w.WriteUInt32(direction); w.WriteUInt32(steps); });
     public void Key(int evdev, bool pressed) => Send("Key", "ub", (ref MessageWriter w) => { w.WriteUInt32((uint)evdev); w.WriteBool(pressed); });

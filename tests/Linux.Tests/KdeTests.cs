@@ -11,6 +11,7 @@ public sealed class KdeTests
     {
         public List<string> Sent { get; } = [];
         public void MoveTo(double x, double y) => Sent.Add($"move {x} {y}");
+        public void MoveBy(double dx, double dy) => Sent.Add($"look {dx} {dy}");
         public void SetButton(uint code, bool pressed) => Sent.Add($"button {code:x} {(pressed ? "down" : "up")}");
         public void Scroll(uint axis, double value) => Sent.Add($"scroll {axis} {value}");
         public void SetKey(int evdev, bool pressed) => Sent.Add($"key {evdev} {(pressed ? "down" : "up")}");
@@ -48,6 +49,17 @@ public sealed class KdeTests
         Assert.AreEqual("ok", KdeInputGuard.Handle(device, "k 17 0", buttons, keys, locked: true));
         Assert.AreEqual("ok", KdeInputGuard.Handle(device, "r", buttons, keys, locked: true));
         CollectionAssert.AreEqual(new[] { "key 17 up" }, device.Sent);
+    }
+
+    [TestMethod]
+    public void ALookStepIsARelativeMoveAndWaitsWhileTheScreenIsLocked()
+    {
+        var device = new RecordingDevice();
+        HashSet<uint> buttons = []; HashSet<int> keys = [];
+        Assert.AreEqual("locked", KdeInputGuard.Handle(device, "l 5 -3", buttons, keys, locked: true));
+        Assert.AreEqual(0, device.Sent.Count);
+        Assert.AreEqual("ok", KdeInputGuard.Handle(device, "l -12 7", buttons, keys, locked: false));
+        CollectionAssert.AreEqual(new[] { "look -12 7" }, device.Sent);
     }
 
     [TestMethod]
