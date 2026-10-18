@@ -103,7 +103,7 @@ public partial class MainWindow
         string helper = runtime?.Control.Helper is null ? $"{LinuxSetup.HelperName} not connected" : $"{LinuxSetup.HelperName} connected";
         return string.Join(Environment.NewLine,
             $"- App: Minimum Effort Clicker {version} (Linux)",
-            $"- System: {Distribution()}, {Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP") ?? "unknown desktop"} on {Environment.GetEnvironmentVariable("XDG_SESSION_TYPE") ?? "unknown session"}, {RuntimeInformation.OSDescription}{(LinuxSetup.IsSteamDeck ? ", Steam Deck" : "")}",
+            $"- System: {Distribution()}, {Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP") ?? "unknown desktop"} on {Environment.GetEnvironmentVariable("XDG_SESSION_TYPE") ?? "unknown session"}, kernel {Environment.OSVersion.Version}{(LinuxSetup.IsSteamDeck ? ", Steam Deck" : "")}",
             $"- Input access: {(runtime?.Control.PhysicalInputAvailable == true ? "on" : "off")}; {helper}",
             $"- Monitors: {monitors}; X11 pixels per desktop unit {DesktopPixels.Factor:0.##}",
             $"- Click target: {target}",

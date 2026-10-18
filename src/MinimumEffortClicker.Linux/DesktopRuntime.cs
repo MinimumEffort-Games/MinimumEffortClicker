@@ -850,7 +850,10 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             if (!TargetAvailable) return RejectInput("The Click target is unavailable or no longer in front. Bring it forward and start again.");
             if (cancellation?.IsCancellationRequested != false || !Control.Available) return RejectInput("Playback was stopped or its input controls became unavailable.");
             if (activeLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)) return RejectInput("The foreground keyboard layout differs from this recording.");
-            if (transition.Control.Kind != InputKind.ScanCode)
+            // A look goes wherever the game holds the cursor: there is no spot or window under it to check, and skipping those
+            // desktop queries keeps fast turns close to their recorded timing.
+            if (transition.Control.Kind == InputKind.Look) { }
+            else if (transition.Control.Kind != InputKind.ScanCode)
             {
                 TargetClientFrame frame;
                 try { frame = GetTargetFrame(); } catch (InvalidOperationException) { return false; }
@@ -947,7 +950,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 default: return false;
             }
         }
-        catch (HelperException) { return false; }
+        // The helper says why (for example that Look needs a newer GNOME helper); the run stops with that reason.
+        catch (HelperException ex) { return RejectInput(ex.Message); }
     }
 
     public bool IsOwnPoint(int screenX, int screenY, bool includeOverlay = true)

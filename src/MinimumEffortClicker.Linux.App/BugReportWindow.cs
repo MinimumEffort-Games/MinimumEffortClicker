@@ -61,13 +61,14 @@ internal sealed class BugReportWindow : DialogWindow
         create.Click += (_, _) => Create();
         buttons.Children.Add(cancel); buttons.Children.Add(create);
         panel.Children.Add(buttons);
-        Content = panel;
+        // On a small screen the open preview would push the buttons off it; the report then scrolls inside the window.
+        Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         screenshot.IsEnabled = parts.Screenshot is not null;
         actionList.IsEnabled = parts.SaveActionList is not null;
         happened.Text = text ?? "";
         happened.TextChanged += (_, _) => { create.IsEnabled = (happened.Text ?? "").Trim().Length > 0; RefreshPreview(); };
         expected.TextChanged += (_, _) => RefreshPreview();
-        Opened += (_, _) => { RefreshPreview(); create.IsEnabled = (happened.Text ?? "").Trim().Length > 0; happened.Focus(); happened.CaretIndex = happened.Text?.Length ?? 0; };
+        Opened += (_, _) => { if (Screens.ScreenFromWindow(this) is { } screen) MaxHeight = screen.WorkingArea.Height / screen.Scaling - 40; RefreshPreview(); create.IsEnabled = (happened.Text ?? "").Trim().Length > 0; happened.Focus(); happened.CaretIndex = happened.Text?.Length ?? 0; };
     }
 
     private static ToggleButton Choice(string text, bool on, string tip)

@@ -6,6 +6,7 @@
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource AppBackground}" Foreground="{DynamicResource TextPrimary}"
         FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="20">
         <TextBlock Text="Report a bug" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4"/>
         <TextBlock Text="This saves a report as a zip file and opens a new GitHub issue with your text filled in. Drag the zip into the issue before you submit it. The clicker itself sends nothing." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,12"/>
@@ -38,4 +39,5 @@
                     BorderBrush="{DynamicResource SuccessBorder}" Foreground="{DynamicResource ColourButtonText}"/>
         </Grid>
     </StackPanel>
+    </ScrollViewer>
 </Window>

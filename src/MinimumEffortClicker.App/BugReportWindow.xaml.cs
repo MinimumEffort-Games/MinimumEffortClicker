@@ -26,6 +26,8 @@ public partial class BugReportWindow : Window
     {
         this.parts = parts; this.folder = folder;
         InitializeComponent();
+        // On a small screen the open preview would push the buttons off it; the report then scrolls inside the window.
+        MaxHeight = SystemParameters.WorkArea.Height - 40;
         ScreenshotBox.IsEnabled = parts.Screenshot is not null;
         ActionListBox.IsEnabled = parts.SaveActionList is not null;
         HappenedBox.Text = happened ?? "";
