@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Linux: a desktop helper that answers too slowly (a busy KWin or GNOME Shell) no longer closes the app while the
+  overlay is being placed, for example when closing the clicker to the tray; the overlay keeps its place instead.
 - Workshop: key presses from a Workshop macro never go to a terminal or command line (cmd, PowerShell, Windows Terminal
   and others). With one as Click target the list does not start.
 - Steam Deck: the controller shortcuts default to the back buttons (L4 start/stop, L5 stop all, R4 record, R5
