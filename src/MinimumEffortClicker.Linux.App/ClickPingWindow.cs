@@ -82,7 +82,9 @@ internal sealed class ClickPingWindow : Window
     /// <summary>Shows the ring at a desktop point; failures are ignored because the ring is only a hint.</summary>
     public static void At(int desktopX, int desktopY, Color colour, int times = 1)
     {
-        try { var ring = new ClickPingWindow(desktopX, desktopY, colour, times); ring.Show(); ring.Centre(); }
+        // The point comes from the desktop helper; the ring is an X11 window (DesktopPixels).
+        var at = DesktopPixels.ToWindow(desktopX, desktopY);
+        try { var ring = new ClickPingWindow(at.X, at.Y, colour, times); ring.Show(); ring.Centre(); }
         catch (Exception) { }
     }
 }

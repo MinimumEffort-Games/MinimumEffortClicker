@@ -29,9 +29,18 @@ public partial class MainWindow
         RestoreFromTray();
         runtime?.ActivateOwnWindow(Title ?? "");
     }
+    /// <summary>Measures how many X11 pixels one desktop-helper unit is (display scaling with Xwayland at full resolution).</summary>
+    private void MeasureDesktopPixels()
+    {
+        if (runtime is null) return;
+        try { DesktopPixels.Measure(runtime.DesktopFrame().Width); }
+        catch (InvalidOperationException) { }
+        catch (HelperException) { }
+    }
     private void DisplaysChanged(object? sender, EventArgs e)
     {
         CancelScreenshot("Display changed");
+        MeasureDesktopPixels();
         if (!Dispatcher.HasShutdownStarted) Dispatcher.BeginInvoke(() => overlay?.Constrain());
     }
     private void OverlayOptions_Changed(object sender, RoutedEventArgs e)

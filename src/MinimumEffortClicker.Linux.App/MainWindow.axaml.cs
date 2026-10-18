@@ -159,6 +159,7 @@ public partial class MainWindow : Window
             await SetQuickRecordKey();
             await MakeSavedMacrosAvailable();
             await RestoreActiveToggles();
+            MeasureDesktopPixels();
             StartControllers();
             await LoadControllerBinds();
             await ConfigureScreenshotHotkey();

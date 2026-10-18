@@ -72,7 +72,9 @@ internal sealed class AreaPingWindow : Window
     /// <summary>Shows the outline around a desktop rectangle; failures are ignored because it is only a hint.</summary>
     public static void Around(int left, int top, int width, int height, Color colour, int times = 1)
     {
-        try { new AreaPingWindow(left, top, width, height, colour, times).Show(); }
+        // The area comes from the desktop helper; the outline is an X11 window (DesktopPixels).
+        var at = DesktopPixels.ToWindow(left, top);
+        try { new AreaPingWindow(at.X, at.Y, DesktopPixels.ToWindow(width), DesktopPixels.ToWindow(height), colour, times).Show(); }
         catch (InvalidOperationException) { }
     }
 }

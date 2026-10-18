@@ -252,6 +252,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     /// at that place on the screen: then it does not follow the target. Either way it is kept on the monitor's work area.</summary>
     public void PlaceOn(double left, double top, double width, double height)
     {
+        // The frame comes from the desktop helper; the overlay is an X11 window, placed in X11 pixels (DesktopPixels).
+        left *= DesktopPixels.Factor; top *= DesktopPixels.Factor; width *= DesktopPixels.Factor; height *= DesktopPixels.Factor;
         target = (left, top, width, height);
         if (dragging) return; // The drag owns the position until it settles.
         var size = PixelFrame;

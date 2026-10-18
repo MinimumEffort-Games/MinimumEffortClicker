@@ -14,6 +14,20 @@ internal static class X11Windows
     private static readonly object gate = new();
     private static nint display;
 
+    /// <summary>The width of the X11 screen in X11 pixels, or null without an X display.</summary>
+    public static int? ScreenWidth()
+    {
+        try
+        {
+            lock (gate)
+            {
+                if (display == 0) display = XOpenDisplay(null);
+                return display == 0 ? null : XDisplayWidth(display, XDefaultScreen(display));
+            }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return null; }
+    }
+
     /// <summary>Gives the window an empty input region so clicks pass to the app beneath it.</summary>
     public static bool SetClickThrough(Window window, bool clickThrough)
     {
@@ -142,6 +156,8 @@ internal static class X11Windows
     [DllImport("libX11.so.6")] private static extern int XFlush(nint display);
     [DllImport("libX11.so.6")] private static extern nint XInternAtom(nint display, string name, bool onlyIfExists);
     [DllImport("libX11.so.6")] private static extern nint XDefaultRootWindow(nint display);
+    [DllImport("libX11.so.6")] private static extern int XDefaultScreen(nint display);
+    [DllImport("libX11.so.6")] private static extern int XDisplayWidth(nint display, int screen);
     [DllImport("libX11.so.6")] private static extern int XSendEvent(nint display, nint window, bool propagate, nint mask, ref ClientMessage message);
     [DllImport("libXext.so.6")] private static extern void XShapeCombineRectangles(nint display, nint window, int kind, int x, int y, nint rectangles, int count, int operation, int ordering);
     [DllImport("libXext.so.6", EntryPoint = "XShapeCombineRectangles")] private static extern void XShapeCombineRectangles(nint display, nint window, int kind, int x, int y, XRectangle[] rectangles, int count, int operation, int ordering);
