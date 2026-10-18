@@ -369,6 +369,7 @@ public sealed class DesktopControl : IDisposable
         else if (toggle == TriggerCommand.Stop) ActionStopRequested?.Invoke();
         if (command == ControllerCommand.Record) RecordingRequested?.Invoke();
         if (command == ControllerCommand.Screenshot) ScreenshotRequested?.Invoke();
+        if (command == ControllerCommand.Pause) PauseRequested?.Invoke();
     }
     private void ShortcutEdge(int key, bool down)
     {

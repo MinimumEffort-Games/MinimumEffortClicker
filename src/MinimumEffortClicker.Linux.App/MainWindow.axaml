@@ -101,9 +101,9 @@
                                                     <ListBoxItem Grid.Column="2" Grid.Row="1" Padding="2" Margin="2" ToolTip.Tip="Right" AutomationProperties.Name="Right"><Image Source="/Assets/Ui/keys/right.png" Width="34" Height="34" RenderOptions.BitmapInterpolationMode="HighQuality" /></ListBoxItem>
                                                 </ListBox>
                                                 <TextBlock Text="Notches (1–100)" />
-                                                <TextBox x:Name="ScrollNotchesBox" local:Spin.Step="1" local:Spin.Minimum="1" local:Spin.Maximum="100" Text="3" AutomationProperties.Name="Scroll notches" ToolTip.Tip="One notch is one click of the mouse wheel." />
+                                                <TextBox x:Name="ScrollNotchesBox" Width="{Binding #LocationRow.Bounds.Width}" HorizontalAlignment="Left" local:Spin.Step="1" local:Spin.Minimum="1" local:Spin.Maximum="100" Text="3" AutomationProperties.Name="Scroll notches" ToolTip.Tip="One notch is one click of the mouse wheel." />
                                                 <TextBlock Text="Time between notches (ms)" />
-                                                <TextBox x:Name="ScrollGapBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="60000" Text="30" AutomationProperties.Name="Time between scroll notches" />
+                                                <TextBox x:Name="ScrollGapBox" Width="{Binding #LocationRow.Bounds.Width}" HorizontalAlignment="Left" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="60000" Text="30" AutomationProperties.Name="Time between scroll notches" />
                                             </StackPanel>
                                             <StackPanel x:Name="LocationFields" IsVisible="False">
                                                 <TextBlock x:Name="ClickLocationHeader" Text="Click Location" FontWeight="SemiBold" Margin="0,0,0,4" />
@@ -112,7 +112,7 @@
                                                     <Button x:Name="CursorLocationButton" Margin="0,0,6,0" Content="Cursor location" Click="CursorLocation_Click" Classes="chosen" />
                                                     <Button x:Name="SetLocationButton" Content="Set Location…" Click="PickQuickPoint_Click" />
                                                 </WrapPanel>
-                                                <WrapPanel Margin="0,6,0,0">
+                                                <WrapPanel x:Name="LocationRow" Margin="0,6,0,0" HorizontalAlignment="Left">
                                                     <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,4,0" />
                                                     <TextBox x:Name="QuickXBox" Width="100" local:Spin.Step="1" local:Spin.Minimum="-100000" local:Spin.Maximum="100000" VerticalContentAlignment="Center" AutomationProperties.Name="Click X coordinate" ToolTip.Tip="Desktop pixels, or pixels from the selected window's top-left client corner." />
                                                     <TextBlock Text="Y" VerticalAlignment="Center" Margin="4,0,4,0" />
@@ -121,9 +121,9 @@
                                                 </WrapPanel>
                                             </StackPanel>
                                             <StackPanel x:Name="MotionFields" IsVisible="False">
-                                                <ToggleButton x:Name="VaryPositionBox" Classes="choice" Content="Randomize click location offset" HorizontalAlignment="Left" Margin="0,6,0,6" />
+                                                <ToggleButton x:Name="VaryPositionBox" Classes="choice" Content="Randomize click location offset" Width="{Binding #RandomTimingBox.Bounds.Width}" HorizontalAlignment="Left" Margin="0,6,0,6" />
                                                 <TextBlock Text="Maximum offset (pixels, 0–25)" />
-                                                <TextBox x:Name="PositionOffsetBox" local:Spin.Step="1" local:Spin.Minimum="0" local:Spin.Maximum="25" Text="3" AutomationProperties.Name="Click position variation" />
+                                                <TextBox x:Name="PositionOffsetBox" Width="{Binding #RandomTimingBox.Bounds.Width}" HorizontalAlignment="Left" local:Spin.Step="1" local:Spin.Minimum="0" local:Spin.Maximum="25" Text="3" AutomationProperties.Name="Click position variation" />
                                             </StackPanel>
                                             <StackPanel x:Name="KeyFields" IsVisible="False">
                                                 <TextBlock Text="Key" />
@@ -136,9 +136,9 @@
                                                     <ToggleButton x:Name="AltBox" Classes="choice keycap" ToolTip.Tip="Alt: held with the key" AutomationProperties.Name="Alt"><Image Source="/Assets/Ui/keys/left-alt.png" Width="36" Height="36" RenderOptions.BitmapInterpolationMode="HighQuality" /></ToggleButton>
                                                 </WrapPanel>
                                             </StackPanel>
-                                            <StackPanel x:Name="PressFields" IsVisible="False"><TextBlock x:Name="PressLabel" Text="Press duration (ms)" /><TextBox x:Name="PressBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="20" AutomationProperties.Name="Press duration in milliseconds" /></StackPanel>
-                                            <StackPanel x:Name="DoubleFields" IsVisible="False"><TextBlock Text="Gap between the two clicks (ms)" /><TextBox x:Name="DoubleGapBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="60000" Text="80" AutomationProperties.Name="Double click gap" /></StackPanel>
-                                            <StackPanel x:Name="AfterFields" IsVisible="False"><TextBlock x:Name="AfterLabel" Text="Pause after this action (ms)" /><TextBox x:Name="AfterBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="20" AutomationProperties.Name="Pause after action" /></StackPanel>
+                                            <StackPanel x:Name="PressFields" IsVisible="False"><TextBlock x:Name="PressLabel" Text="Press duration (ms)" /><TextBox x:Name="PressBox" Width="{Binding #RandomTimingBox.Bounds.Width}" HorizontalAlignment="Left" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="20" AutomationProperties.Name="Press duration in milliseconds" /></StackPanel>
+                                            <StackPanel x:Name="DoubleFields" IsVisible="False"><TextBlock Text="Gap between the two clicks (ms)" /><TextBox x:Name="DoubleGapBox" Width="{Binding #RandomTimingBox.Bounds.Width}" HorizontalAlignment="Left" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="60000" Text="80" AutomationProperties.Name="Double click gap" /></StackPanel>
+                                            <StackPanel x:Name="AfterFields" IsVisible="False"><TextBlock x:Name="AfterLabel" Text="Pause after this action (ms)" /><TextBox x:Name="AfterBox" HorizontalAlignment="Left" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="20" AutomationProperties.Name="Pause after action" /></StackPanel>
                                             <StackPanel x:Name="ScreenshotActionFields" IsVisible="False">
                                                 <TextBlock Text="Pause after saving (ms)" />
                                                 <TextBox x:Name="ScreenshotPauseBox" local:Spin.Step="100" local:Spin.Minimum="1000" local:Spin.Maximum="3600000" Text="1000" AutomationProperties.Name="Pause after saving screenshot" />
@@ -194,8 +194,8 @@
                                                     <ToggleButton x:Name="RandomTimingBox" Classes="choice" HorizontalAlignment="Left" Margin="0,0,0,6" Content="Randomize press and pause timing" ToolTip.Tip="Choose a fresh duration between each minimum and maximum on every execution." IsCheckedChanged="TimingOptions_Changed" />
                                                     <StackPanel x:Name="RandomRanges" IsVisible="False">
                                                         <TextBlock Text="Use the values above as minimums." Classes="secondary" />
-                                                        <StackPanel x:Name="MaximumPressFields"><TextBlock Text="Maximum press duration (ms)" /><TextBox x:Name="MaxPressBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="40" AutomationProperties.Name="Maximum press duration" /></StackPanel>
-                                                        <TextBlock x:Name="MaxAfterLabel" Text="Maximum pause after (ms)" /><TextBox x:Name="MaxAfterBox" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="80" AutomationProperties.Name="Maximum pause or interval" />
+                                                        <StackPanel x:Name="MaximumPressFields"><TextBlock Text="Maximum press duration (ms)" /><TextBox x:Name="MaxPressBox" Width="{Binding #RandomTimingBox.Bounds.Width}" HorizontalAlignment="Left" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="40" AutomationProperties.Name="Maximum press duration" /></StackPanel>
+                                                        <TextBlock x:Name="MaxAfterLabel" Text="Maximum pause after (ms)" /><TextBox x:Name="MaxAfterBox" Width="{Binding #RandomTimingBox.Bounds.Width}" HorizontalAlignment="Left" local:Spin.Step="10" local:Spin.Minimum="0" local:Spin.Maximum="3600000" Text="80" AutomationProperties.Name="Maximum pause or interval" />
                                                     </StackPanel>
                                                 </StackPanel>
                                                 <TextBlock Text="Name (optional)" />
@@ -249,7 +249,7 @@
                                                     <Grid ColumnDefinitions="*,Auto,Auto" Margin="6,4">
                                                         <StackPanel VerticalAlignment="Center">
                                                             <WrapPanel>
-                                                                <TextBlock Text="{Binding Title}" Foreground="{Binding Foreground}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                                <TextBlock Text="{Binding Title}" Foreground="{Binding Foreground}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" /><StackPanel Orientation="Horizontal" IsVisible="{Binding TimesVisible}" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip.Tip="How many times in a row this action runs each time the list reaches it (1–9,999). Once / Repeating below still decides whether it runs in later loops."><TextBlock Text="×" Foreground="{Binding Foreground}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,5,0" /><TextBox local:Spin.Step="1" local:Spin.Minimum="1" local:Spin.Maximum="9999" Width="84" Text="{Binding Step.Times, Mode=OneWay}" TextChanged="QuickTimes_Changed" LostFocus="QuickTimes_LostFocus" AutomationProperties.Name="Times in a row" /></StackPanel>
                                                                 <Border Background="{DynamicResource StopFill}" BorderBrush="{DynamicResource StopBorder}" BorderThickness="1" CornerRadius="3" Padding="5,0" Margin="6,1,0,1" IsVisible="{Binding Reselect}" ToolTip.Tip="This area was picked for another Click target. Select the row, then Select area again.">
                                                                     <TextBlock Text="Reselect Area" Foreground="{DynamicResource ColourButtonText}" FontWeight="SemiBold" FontSize="12" />
                                                                 </Border>
@@ -323,7 +323,10 @@
                 <Grid x:Name="SettingsPage" IsVisible="False">
                     <ScrollViewer x:Name="SettingsScroll" Padding="0,0,16,0" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <TextBlock Text="When closing the window" Classes="heading" />
+                            <TextBlock Text="Window" Classes="heading" />
+                            <ToggleButton x:Name="KeepOnTopBox" Classes="choice" Content="Keep on top" HorizontalAlignment="Left" IsCheckedChanged="KeepOnTop_Changed" AutomationProperties.Name="Keep on top" />
+                            <TextBlock Text="On: the clicker stays in front of other windows. Start, Test and Record still minimize it when they are set to." Classes="secondary" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            <TextBlock Text="When closing the window" Classes="heading" Margin="0,18,0,8" />
                             <ToggleButton x:Name="CloseToTrayBox" Classes="choice" Content="Minimize to tray" IsChecked="True" HorizontalAlignment="Left" IsCheckedChanged="CloseToTray_Changed" />
                             <TextBlock Text="On: clicking X keeps the clicker running in the system tray (the top bar on GNOME). Off: clicking X closes it." Classes="secondary" Margin="0,4,0,0" />
                             <TextBlock Text="Appearance" Classes="heading" Margin="0,18,0,8" />
@@ -349,7 +352,7 @@
 
                             <TextBlock Text="Global controls" Classes="heading" Margin="0,18,0,8" />
                             <WrapPanel>
-                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / toggle" Margin="0,0,0,4" /><Button x:Name="ToggleKeyBox" Content="Choose a key…" Click="CaptureStartKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Start hotkey" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / Stop" Margin="0,0,0,4" /><Button x:Name="ToggleKeyBox" Content="Choose a key…" Click="CaptureStartKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Start hotkey" /></StackPanel>
                                 <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Stop all" Margin="0,0,0,4" /><Button x:Name="StopKeyBox" Content="Choose a key…" Click="CaptureStopKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Stop all hotkey" /></StackPanel>
                                 <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Pause / Unpause" Margin="0,0,0,4" /><Button x:Name="PauseKeyBox" Content="F7" Click="CapturePauseKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Pause hotkey" /></StackPanel>
                                 <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" Margin="0,0,0,4" /><Button x:Name="QuickRecordKeyBox" Content="F10" Click="CaptureRecordKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Record macro hotkey" /></StackPanel>
@@ -363,8 +366,9 @@
                             <TextBlock Text="Controller" Classes="heading" Margin="0,18,0,8" />
                             <TextBlock x:Name="ControllerStatus" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" Margin="0,0,0,6" />
                             <WrapPanel>
-                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / toggle" Margin="0,0,0,4" /><Button x:Name="ControllerStartBox" Tag="StartStop" Content="A" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Start controller button" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / Stop" Margin="0,0,0,4" /><Button x:Name="ControllerStartBox" Tag="StartStop" Content="A" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Start controller button" /></StackPanel>
                                 <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Stop all" Margin="0,0,0,4" /><Button x:Name="ControllerStopBox" Tag="StopAll" Content="B" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Stop all controller button" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Pause / Unpause" Margin="0,0,0,4" /><Button x:Name="ControllerPauseBox" Tag="Pause" Content="View" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Pause controller button" /></StackPanel>
                                 <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" Margin="0,0,0,4" /><Button x:Name="ControllerRecordBox" Tag="Record" Content="Y" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Record controller button" /></StackPanel>
                                 <StackPanel Width="170"><TextBlock Text="Screenshot" Margin="0,0,0,4" /><Button x:Name="ControllerScreenshotBox" Tag="Screenshot" Content="X" Click="CaptureControllerButton_Click" PointerReleased="ClearControllerButton_Click" HorizontalAlignment="Stretch" ToolTip.Tip="Click, then press a controller button. Right-click to leave it without one." AutomationProperties.Name="Screenshot controller button" /></StackPanel>
                             </WrapPanel>

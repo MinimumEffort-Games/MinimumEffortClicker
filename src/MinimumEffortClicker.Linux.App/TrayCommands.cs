@@ -47,6 +47,8 @@ public partial class MainWindow
         if (trayHidePending) return;
         Show();
         if (WindowState == WindowState.Minimized) WindowState = shownState;
+        // A window hidden to the tray is mapped again; the window manager forgets its keep-above state meanwhile.
+        if (Topmost) X11Windows.SetKeepAbove(this, true);
         Activate();
         RefreshStatus();
     }
@@ -98,6 +100,19 @@ public partial class MainWindow
     private void CloseToTray_Changed(object sender, RoutedEventArgs e)
     {
         if (initialized) PersistPreferences();
+    }
+
+    /// <summary>Keep on top (User, 2026-10-18): the clicker stays in front of other windows. Start, tests and recordings
+    /// still minimise it when they are set to.</summary>
+    private void KeepOnTop_Changed(object sender, RoutedEventArgs e)
+    {
+        ApplyKeepOnTop();
+        if (initialized) PersistPreferences();
+    }
+    private void ApplyKeepOnTop()
+    {
+        Topmost = KeepOnTopBox.IsChecked == true;
+        X11Windows.SetKeepAbove(this, Topmost);
     }
 
     private void ExitApplication()

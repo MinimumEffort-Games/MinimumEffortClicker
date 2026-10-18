@@ -134,6 +134,35 @@ internal static class X11Windows
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return false; }
     }
 
+    /// <summary>
+    /// Keep on top for the main window: adds or removes only _NET_WM_STATE_ABOVE, leaving its task bar entry alone.
+    /// Sent as well as Avalonia's Topmost, which does not reliably reach GNOME and KWin through Xwayland.
+    /// </summary>
+    public static bool SetKeepAbove(Window window, bool above)
+    {
+        if (window.TryGetPlatformHandle() is not { HandleDescriptor: "XID" } handle) return false;
+        try
+        {
+            lock (gate)
+            {
+                if (display == 0) display = XOpenDisplay(null);
+                if (display == 0) return false;
+                var message = new ClientMessage
+                {
+                    Type = 33, SendEvent = 1, Display = display, Window = handle.Handle, Format = 32,
+                    MessageType = XInternAtom(display, "_NET_WM_STATE", false),
+                    Data0 = above ? 1 : 0, // add or remove
+                    Data1 = XInternAtom(display, "_NET_WM_STATE_ABOVE", false),
+                    Data3 = 1, // a normal application asked
+                };
+                XSendEvent(display, XDefaultRootWindow(display), false, (1 << 19) | (1 << 20), ref message);
+                XFlush(display);
+                return true;
+            }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return false; }
+    }
+
     /// <summary>XClientMessageEvent, padded to the size of an XEvent.</summary>
     [StructLayout(LayoutKind.Sequential, Size = 192)]
     private struct ClientMessage
