@@ -66,8 +66,12 @@ public partial class MainWindow
         if (key == 0) return null;
         try { return DesktopRuntime.InputFromVirtualKey(key); } catch (ArgumentException) { return null; }
     }
-    private void ShowHeldInput() => ToggleHeldKeyBox.Content = UiArt.InputContent(selectedHeldInput, InputLabel(selectedHeldInput));
-    private void ShowToggleShortcut() => ToggleShortcutBox.Content = selectedToggleKey == 0 ? "Keyboard/Mouse" : UiArt.InputContent(ShortcutInput(selectedToggleKey), ShortcutKeys.Label(selectedToggleKey));
+    private void ShowHeldInput() { ToggleHeldKeyBox.Content = UiArt.InputContent(selectedHeldInput, InputLabel(selectedHeldInput)); RefreshToggleSave(); }
+    private void ShowToggleShortcut()
+    {
+        ToggleShortcutBox.Content = selectedToggleKey == 0 ? "Keyboard/Mouse" : UiArt.InputContent(ShortcutInput(selectedToggleKey), ShortcutKeys.Label(selectedToggleKey));
+        RefreshToggleSave();
+    }
     private void ClearToggleKey_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) { selectedToggleKey = 0; ShowToggleShortcut(); e.Handled = true; }
     private async void ResetGlobalKeys_Click(object sender, RoutedEventArgs e)
     {

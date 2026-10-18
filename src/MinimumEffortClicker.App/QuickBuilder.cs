@@ -660,19 +660,25 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// A click anywhere in the clicker outside the Create an action panel and the Action List's rows and buttons ends
-    /// editing. The panel edits the selected action, and the list's buttons act on it, so those keep it selected.
+    /// A click anywhere in the clicker outside an editor panel and its list's rows and buttons ends editing, on the Actions,
+    /// Toggles and Controller to Key pages alike. The panel edits the selected item, and the list's buttons act on it, so
+    /// those keep it selected.
     /// </summary>
     private void EditingWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (editingQuick is null && QuickActionList.SelectedIndex < 0 || e.OriginalSource is not DependencyObject source) return;
         // A dropdown's list opens in its own popup, outside this window's tree; a pick there belongs to the dropdown.
-        if (TreeRoot(source) != this) return;
-        if (IsInside(source, CreateActionCard) || IsInside(source, QuickEditorTools) || IsInside(source, TestSelectedButton)) return;
-        if (IsInside(source, ActionListCard) && (Ancestor<ListBoxItem>(source) is not null || Ancestor<ButtonBase>(source) is not null
-            || Ancestor<System.Windows.Controls.Primitives.ScrollBar>(source) is not null)) return;
-        StopEditing();
+        if (e.OriginalSource is not DependencyObject source || TreeRoot(source) != this) return;
+        if ((editingQuick is not null || QuickActionList.SelectedIndex >= 0) && !IsInside(source, TestSelectedButton)
+            && !KeepsSelection(source, CreateActionCard, QuickEditorTools, ActionListCard)) StopEditing();
+        if (editingToggle is not null && !KeepsSelection(source, ToggleEditorCard, ToggleEditorTools, ToggleListCard)) StopEditingToggle();
+        if (editingControllerBind is not null && !KeepsSelection(source, ControllerBindEditorCard, ControllerBindEditorTools, ControllerBindListCard))
+            StopEditingControllerBind();
     }
+    /// <summary>The editor panel, its buttons, and a row, button or scroll bar in its list keep the selection.</summary>
+    private static bool KeepsSelection(DependencyObject source, DependencyObject editor, DependencyObject tools, DependencyObject list) =>
+        IsInside(source, editor) || IsInside(source, tools) || IsInside(source, list) && (Ancestor<ListBoxItem>(source) is not null
+            || Ancestor<DataGridRow>(source) is not null || Ancestor<ButtonBase>(source) is not null
+            || Ancestor<System.Windows.Controls.Primitives.ScrollBar>(source) is not null);
     private static bool IsInside(DependencyObject node, DependencyObject root)
     {
         for (DependencyObject? at = node; at is not null; at = TreeParent(at)) if (at == root) return true;
