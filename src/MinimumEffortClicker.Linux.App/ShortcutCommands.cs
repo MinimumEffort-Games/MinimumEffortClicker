@@ -13,8 +13,9 @@ namespace MinimumEffortClicker.App;
 
 public partial class MainWindow
 {
-    private int selectedStartKey = 0x77, selectedStopKey = 0x78, selectedToggleKey;
-    private InputControl selectedHeldInput = InputControl.Key(0x11);
+    private int selectedStartKey = ShortcutKeys.DefaultStartKey, selectedStopKey = ShortcutKeys.DefaultStopKey, selectedToggleKey;
+    // Empty until chosen, like the other choices in the editor; Clear editor empties it again.
+    private InputControl? selectedHeldInput;
     private async Task<int?> CaptureShortcut(string purpose)
     {
         if (runtime is null || screenshotBusy || bindingBusy || ioBusy || quickOperation) return null;
@@ -61,8 +62,17 @@ public partial class MainWindow
         if (key == 0) return null;
         try { return MinimumEffortClicker.Linux.DesktopRuntime.InputFromVirtualKey(key); } catch (ArgumentException) { return null; }
     }
-    private void ShowHeldInput() => ToggleHeldKeyBox.Content = UiArt.InputContent(selectedHeldInput, InputLabel(selectedHeldInput));
-    private void ShowToggleShortcut() => ToggleShortcutBox.Content = selectedToggleKey == 0 ? "Keyboard/Mouse" : UiArt.InputContent(ShortcutInput(selectedToggleKey), ShortcutKeys.Label(selectedToggleKey));
+    private void ShowHeldInput()
+    {
+        ToggleHeldKeyBox.Content = selectedHeldInput is { } held ? UiArt.InputContent(held, InputLabel(held)) : "Choose a key or mouse button…";
+        ToggleHeldKeyBox.SetButtonStyle(selectedHeldInput is null ? "NeedsChoiceButton" : "ChosenButton");
+        RefreshToggleSave();
+    }
+    private void ShowToggleShortcut()
+    {
+        ToggleShortcutBox.Content = selectedToggleKey == 0 ? "Keyboard/Mouse" : UiArt.InputContent(ShortcutInput(selectedToggleKey), ShortcutKeys.Label(selectedToggleKey));
+        RefreshToggleSave();
+    }
     private void ClearToggleKey_Click(object? sender, Avalonia.Input.PointerReleasedEventArgs e) { if (e.InitialPressMouseButton != Avalonia.Input.MouseButton.Right) return; selectedToggleKey = 0; ShowToggleShortcut(); e.Handled = true; }
     private async void ResetGlobalKeys_Click(object sender, RoutedEventArgs e)
     {
@@ -70,9 +80,10 @@ public partial class MainWindow
         runtime.Stop("Stopped before resetting keybinds.");
         for (int i = 0; i < 80 && runtime.Snapshot.Busy; i++) await Task.Delay(25);
         if (runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) { ReasonLabel.Text = "Finish input cleanup before resetting keybinds."; return; }
-        selectedStartKey = 0x77; selectedStopKey = 0x78; selectedRecordKey = 0x79;
+        selectedStartKey = ShortcutKeys.DefaultStartKey; selectedStopKey = ShortcutKeys.DefaultStopKey; selectedRecordKey = ShortcutKeys.DefaultRecordKey; selectedPauseKey = ShortcutKeys.DefaultPauseKey;
         selectedScreenshotKey = ShortcutKeys.DefaultScreenshotKey; ScreenshotHotkeyBox.IsChecked = true;
         screenshotSettings = screenshotSettings with { Hotkey = ShortcutKeys.DefaultScreenshotKey, HotkeyEnabled = true };
+        // Applies Start, Stop All, Record, Screenshot and Pause together (ApplyHotkeysAsync registers all of them).
         await ApplyHotkeysAsync();
     }
 }

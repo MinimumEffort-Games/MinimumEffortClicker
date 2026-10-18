@@ -39,7 +39,7 @@
                     <TextBlock Grid.Column="2" Text="Action List" Classes="heading" />
                     <WrapPanel Grid.Row="1" Margin="0,0,0,12" VerticalAlignment="Bottom">
                         <Button x:Name="RunButton" Content="Start F8" Click="Run_Click" Classes="green" MinWidth="100" Margin="0,0,8,0" AutomationProperties.Name="Start Actions" />
-                        <Button x:Name="PausePlaybackButton" Content="Pause" Click="PausePlayback_Click" Classes="blue" Margin="0" AutomationProperties.Name="Pause playback" />
+                        <Button x:Name="PausePlaybackButton" Content="Pause" Click="PausePlayback_Click" Classes="blue" MinWidth="110" Margin="0" AutomationProperties.Name="Pause playback" />
                         <UniformGrid Rows="2" Margin="12,0,0,0">
                             <ToggleButton x:Name="LoopBox" Classes="choice stacked" Content="Loop" IsCheckedChanged="Loop_Changed" Margin="0,0,0,2" />
                             <ToggleButton IsCheckedChanged="ActionsChoice_Changed" x:Name="MinimizeOnStartBox" Classes="choice stacked" Content="Minimize on Start" IsChecked="True" Margin="0,2,0,0" ToolTip.Tip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front." />
@@ -351,6 +351,7 @@
                             <WrapPanel>
                                 <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Start / toggle" Margin="0,0,0,4" /><Button x:Name="ToggleKeyBox" Content="Choose a key…" Click="CaptureStartKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Start hotkey" /></StackPanel>
                                 <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Stop all" Margin="0,0,0,4" /><Button x:Name="StopKeyBox" Content="Choose a key…" Click="CaptureStopKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Stop all hotkey" /></StackPanel>
+                                <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Pause / Unpause" Margin="0,0,0,4" /><Button x:Name="PauseKeyBox" Content="F7" Click="CapturePauseKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Pause hotkey" /></StackPanel>
                                 <StackPanel Width="170" Margin="0,0,12,0"><TextBlock Text="Record Macro / Stop" Margin="0,0,0,4" /><Button x:Name="QuickRecordKeyBox" Content="F10" Click="CaptureRecordKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Record macro hotkey" /></StackPanel>
                                 <StackPanel x:Name="ScreenshotHotkeyPanel" Width="170"><TextBlock Text="Screenshot" Margin="0,0,0,4" /><Button x:Name="ScreenshotKeyBox" Content="Choose a key…" Click="CaptureScreenshotKey_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Screenshot hotkey" /></StackPanel>
                             </WrapPanel>
@@ -372,7 +373,7 @@
 
                             <TextBlock Text="Emergency stop" Classes="heading" Margin="0,18,0,8" />
                             <ListBox x:Name="EmergencyStopBox" Classes="choice" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop">
-                                <ListBoxItem x:Name="StopAllOnlyItem" Content="Stop All F9" Padding="10,6" ToolTip.Tip="Only Stop All stops the clicker (default)." /><ListBoxItem Content="Stop All Any Input" Padding="10,6" ToolTip.Tip="Any key you press or mouse movement stops the clicker." />
+                                <ListBoxItem x:Name="StopAllOnlyItem" Content="Stop All F6" Padding="10,6" ToolTip.Tip="Only Stop All stops the clicker (default)." /><ListBoxItem Content="Stop All Any Input" Padding="10,6" ToolTip.Tip="Any key you press or mouse movement stops the clicker." />
                             </ListBox>
                             <TextBlock x:Name="EmergencyStopHint" Classes="secondary" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left" />
 
@@ -417,7 +418,7 @@
                                 </StackPanel>
                             </Border>
                             <TextBlock Text="Create Toggle" Classes="heading" Margin="0,10,0,8" />
-                            <Border Classes="card" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2">
+                            <Border x:Name="ToggleEditorCard" Classes="card" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2">
                                 <StackPanel>
                                     <TextBlock Text="Toggle name" />
                                     <TextBox x:Name="ToggleNameBox" MaxLength="100" AutomationProperties.Name="Toggle name" />
@@ -439,17 +440,16 @@
                                     </Grid>
                                 </StackPanel>
                             </Border>
-                            <WrapPanel Margin="0,6,0,0">
-                                <Button Classes="icon" x:Name="SaveToggleButton" Click="SaveToggle_Click" ToolTip.Tip="Add toggle" AutomationProperties.Name="Save toggle"><PathIcon Data="{StaticResource IconSave}" /></Button>
-                                <Button Classes="icon" Click="NewToggle_Click" ToolTip.Tip="New toggle" AutomationProperties.Name="New toggle"><PathIcon Data="{StaticResource IconAdd}" /></Button>
-                                <Button Classes="icon" x:Name="DeleteToggleButton" Click="DeleteToggle_Click" IsEnabled="False" ToolTip.Tip="Remove toggle" AutomationProperties.Name="Remove toggle"><PathIcon Data="{StaticResource IconDelete}" /></Button>
+                            <WrapPanel x:Name="ToggleEditorTools" Margin="0,6,0,0">
+                                <Button x:Name="SaveToggleButton" Content="Add Toggle" Click="SaveToggle_Click" IsEnabled="False" ToolTip.ShowOnDisabled="True" Classes="blue" AutomationProperties.Name="Save toggle" />
+                                <Button Content="Clear editor" Click="NewToggle_Click" ToolTip.Tip="Clear the settings to create another toggle. The Toggle List is kept." />
                             </WrapPanel>
                         </StackPanel>
                     </ScrollViewer>
                     <ScrollViewer Grid.Column="2" Padding="0,0,16,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <TextBlock Text="Toggle List" Classes="heading" />
-                            <Border Classes="card" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2">
+                            <Border x:Name="ToggleListCard" Classes="card" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2">
                                 <StackPanel>
                                     <TextBlock x:Name="ToggleEmptyLabel" Text="Create your first toggle on the left." Classes="secondary" />
                                     <DataGrid x:Name="ToggleList" MinHeight="200" MaxHeight="320" AutoGenerateColumns="False" CanUserReorderColumns="False" CanUserResizeColumns="False" IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column" RowHeight="40" GridLinesVisibility="All" SelectionChanged="ToggleSelection_Changed" AutomationProperties.Name="Saved toggles" x:CompileBindings="False">
@@ -464,7 +464,7 @@
                                                     <DataTemplate><TextBlock Text="{Binding Name}" Margin="14,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="92">
+                                            <DataGridTemplateColumn Width="112">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Hold / Tap" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate><ContentControl Content="{Binding HeldPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
@@ -486,6 +486,7 @@
                                             </DataGridTemplateColumn>
                                         </DataGrid.Columns>
                                     </DataGrid>
+                                    <Button Classes="icon" x:Name="DeleteToggleButton" Click="DeleteToggle_Click" IsEnabled="False" HorizontalAlignment="Left" Margin="0,8,0,0" ToolTip.Tip="Remove the selected toggle" ToolTip.ShowOnDisabled="True" AutomationProperties.Name="Remove toggle"><PathIcon Data="{StaticResource IconDelete}" /></Button>
                                 </StackPanel>
                             </Border>
                             <TextBlock Text="Autorun is an example toggle: hold W on/off for games without autorun." Classes="secondary" Margin="0,6,0,0" />
@@ -536,7 +537,7 @@
                     <ScrollViewer Padding="0,0,16,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <TextBlock Text="Create Controller to Key" Classes="heading" />
-                            <Border Classes="card" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2">
+                            <Border x:Name="ControllerBindEditorCard" Classes="card" BorderBrush="{DynamicResource ActionBorder}" BorderThickness="2">
                                 <StackPanel>
                                     <TextBlock Text="Bind name" />
                                     <TextBox x:Name="ControllerBindNameBox" MaxLength="100" AutomationProperties.Name="Bind name" />
@@ -546,10 +547,9 @@
                                     <Button x:Name="ControllerBindButtonBox" Content="Press to choose a button…" Classes="needs-choice" Click="CaptureBindButton_Click" HorizontalAlignment="Stretch" AutomationProperties.Name="Controller binding" Margin="0,4,0,0" />
                                 </StackPanel>
                             </Border>
-                            <WrapPanel Margin="0,6,0,0">
-                                <Button Classes="icon" x:Name="SaveControllerBindButton" Click="SaveControllerBind_Click" ToolTip.Tip="Add bind" ToolTip.ShowOnDisabled="True" AutomationProperties.Name="Save bind"><PathIcon Data="{StaticResource IconSave}" /></Button>
-                                <Button Classes="icon" Click="NewControllerBind_Click" ToolTip.Tip="New bind" AutomationProperties.Name="New bind"><PathIcon Data="{StaticResource IconAdd}" /></Button>
-                                <Button Classes="icon" x:Name="DeleteControllerBindButton" Click="DeleteControllerBind_Click" IsEnabled="False" ToolTip.Tip="Remove bind" AutomationProperties.Name="Remove bind"><PathIcon Data="{StaticResource IconDelete}" /></Button>
+                            <WrapPanel x:Name="ControllerBindEditorTools" Margin="0,6,0,0">
+                                <Button x:Name="SaveControllerBindButton" Content="Add Binding" Click="SaveControllerBind_Click" IsEnabled="False" ToolTip.ShowOnDisabled="True" Classes="blue" AutomationProperties.Name="Save bind" />
+                                <Button Content="Clear editor" Click="NewControllerBind_Click" ToolTip.Tip="Clear the settings to create another binding. The list is kept." />
                             </WrapPanel>
                             <TextBlock x:Name="ControllerBindStatusLabel" Classes="secondary optional" TextWrapping="Wrap" Margin="0,6,0,0" />
                         </StackPanel>
@@ -557,7 +557,7 @@
                     <ScrollViewer Grid.Column="2" Padding="0,0,16,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <TextBlock Text="Controller to Key List" Classes="heading" />
-                            <Border Classes="card" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2">
+                            <Border x:Name="ControllerBindListCard" Classes="card" BorderBrush="{DynamicResource ListBorder}" BorderThickness="2">
                                 <StackPanel>
                                     <TextBlock x:Name="ControllerBindEmptyLabel" Text="Create your first bind on the left." Classes="secondary" />
                                     <DataGrid x:Name="ControllerBindList" MinHeight="200" MaxHeight="420" AutoGenerateColumns="False" CanUserReorderColumns="False" CanUserResizeColumns="False" IsReadOnly="True" SelectionMode="Single" SelectionChanged="ControllerBindSelection_Changed" AutomationProperties.Name="Controller to Key binds" x:CompileBindings="False">
@@ -571,7 +571,7 @@
                                                     <DataTemplate><TextBlock Text="{Binding Name}" Margin="14,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" /></DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTemplateColumn Width="96">
+                                            <DataGridTemplateColumn Width="112">
                                                 <DataGridTemplateColumn.Header><TextBlock Text="Controller" HorizontalAlignment="Center" /></DataGridTemplateColumn.Header>
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate><ContentControl Content="{Binding ButtonPicture}" Margin="4,3" HorizontalAlignment="Center" VerticalAlignment="Center" /></DataTemplate>
@@ -593,6 +593,7 @@
                                             </DataGridTemplateColumn>
                                         </DataGrid.Columns>
                                     </DataGrid>
+                                    <Button Classes="icon" x:Name="DeleteControllerBindButton" Click="DeleteControllerBind_Click" IsEnabled="False" HorizontalAlignment="Left" Margin="0,8,0,0" ToolTip.Tip="Remove the selected binding" ToolTip.ShowOnDisabled="True" AutomationProperties.Name="Remove bind"><PathIcon Data="{StaticResource IconDelete}" /></Button>
                                 </StackPanel>
                             </Border>
                             <TextBlock x:Name="ControllerBindControllerLabel" Classes="secondary" TextWrapping="Wrap" Margin="0,6,0,0" />

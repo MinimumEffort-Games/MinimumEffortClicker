@@ -21,7 +21,7 @@ public partial class MainWindow
         try
         {
             trayIcon = new(
-                () => Dispatcher.BeginInvoke(RestoreFromTray),
+                () => Dispatcher.BeginInvoke(BringToFront),
                 () => { CancelScreenshot("Stopped from notification area"); runtime?.Stop("Stopped from the notification area."); },
                 () => Dispatcher.BeginInvoke(ExitApplication));
         }
@@ -31,13 +31,22 @@ public partial class MainWindow
         }
     }
 
+    // Coming back from minimised or the tray returns to the size the user had, maximised included.
+    private WindowState shownState = WindowState.Normal;
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == WindowStateProperty && WindowState is not WindowState.Minimized) shownState = WindowState;
+    }
+
     internal void RestoreFromTray()
     {
         if (allowClose || closing || screenshotBusy || Dispatcher.HasShutdownStarted) return;
         if (trayNotice is not null) { trayNotice.Activate(); return; }
         if (trayHidePending) return;
         Show();
-        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        if (WindowState == WindowState.Minimized) WindowState = shownState;
         Activate();
         RefreshStatus();
     }

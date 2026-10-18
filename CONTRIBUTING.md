@@ -13,7 +13,7 @@ startup, explicit start, foreground validation, an independent Stop All and owne
 importing a macro, or restored focus, must never begin playback.
 
 Real-input probes run only in isolation: on Windows `scripts/Run-M0Local.ps1 -IsolatedVm` inside an isolated virtual
-machine, as a standard user, with `MEC_ISOLATED_VM=1` set in that guest and F9 as the stop route; on Linux
+machine, as a standard user, with `MEC_ISOLATED_VM=1` set in that guest and F6 (the default Stop All) as the stop route; on Linux
 `scripts/linux/run-headless-probe.sh` (GNOME) or `scripts/linux/run-headless-kwin-probe.sh` (KDE), which start a
 private headless desktop. Never run them on a normal desktop or in ordinary CI.
 

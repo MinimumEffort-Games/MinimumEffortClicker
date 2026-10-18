@@ -88,14 +88,48 @@ public partial class MainWindow
         selectedToggleKey = macroBindings.TryGetValue(row.Id, out var binding) ? binding.Key : 0;
         selectedToggleController = binding?.Controller; ShowToggleController();
         ShowToggleShortcut();
-        SaveToggleButton.ToolTip = "Save changes";
         DeleteToggleButton.IsEnabled = true;
+        RefreshToggleSave();
     }
     private void NewToggle_Click(object sender, RoutedEventArgs e)
     {
         editingToggle = null; ToggleList.SelectedIndex = -1; ToggleModeBox.SelectedIndex = 0; ToggleIntervalSlider.Value = 100;
+        selectedHeldInput = null; ShowHeldInput();
         selectedToggleKey = 0; ShowToggleShortcut(); selectedToggleController = null; ShowToggleController(); ToggleNameBox.Text = "";
-        SaveToggleButton.ToolTip = "Add toggle"; DeleteToggleButton.IsEnabled = false;
+        DeleteToggleButton.IsEnabled = false; RefreshToggleSave();
+    }
+
+    /// <summary>A click outside the editor and the Toggle List ends editing, like on the Actions page; the editor keeps its
+    /// settings as a start for a new toggle.</summary>
+    private void StopEditingToggle()
+    {
+        if (editingToggle is null && ToggleList.SelectedIndex < 0) return;
+        refreshingToggles = true; ToggleList.SelectedIndex = -1; refreshingToggles = false;
+        editingToggle = null; DeleteToggleButton.IsEnabled = false; RefreshToggleSave();
+    }
+
+    /// <summary>
+    /// Add Toggle / Save Changes works like Add Action: blue to add a toggle, green to change the selected one, grey until the
+    /// editor holds a toggle that can be saved; hovering it then says what is missing.
+    /// </summary>
+    private void RefreshToggleSave()
+    {
+        if (SaveToggleButton is null) return;
+        string? missing = ToggleMissing();
+        SaveToggleButton.IsEnabled = missing is null;
+        ToolTip.SetTip(SaveToggleButton, missing);
+        SaveToggleButton.Content = editingToggle is null ? "Add Toggle" : "Save Changes";
+        SaveToggleButton.Classes.Set("blue", editingToggle is null); SaveToggleButton.Classes.Set("green", editingToggle is not null);
+    }
+    private string? ToggleMissing()
+    {
+        int key = selectedToggleKey;
+        if (selectedHeldInput is null) return "Choose the key or mouse button to hold or tap.";
+        if (key == 0 && selectedToggleController is null) return "Choose a keyboard or mouse shortcut, a controller button, or both.";
+        if (key != 0 && macroBindings.Values.Any(b => b.MacroId != editingToggle && b.Key == key)) return "That shortcut is assigned to another toggle. Choose a different key.";
+        if (selectedToggleController is { } pad && ControllerButtonUse(pad, exceptToggle: editingToggle) is { } use) return use + " Choose another controller button.";
+        if (key != 0 && selectedHeldInput is { } held && MinimumEffortClicker.Linux.DesktopRuntime.InputMatchesKey(held, key)) return "Choose a shortcut different from the input being held.";
+        return null;
     }
     private async void SaveToggle_Click(object sender, RoutedEventArgs e)
     {
@@ -113,12 +147,13 @@ public partial class MainWindow
                 throw new ArgumentException("That shortcut is assigned to another toggle. Choose a different key.");
             if (selectedToggleController is { } pad && ControllerButtonUse(pad, exceptToggle: id) is { } padUse)
                 throw new ArgumentException(padUse + " Choose another controller button.");
-            var held = InputLabel(selectedHeldInput);
-            if (key != 0 && MinimumEffortClicker.Linux.DesktopRuntime.InputMatchesKey(selectedHeldInput, key))
+            if (selectedHeldInput is not { } heldInput) throw new ArgumentException("Choose the key or mouse button to hold or tap.");
+            var held = InputLabel(heldInput);
+            if (key != 0 && MinimumEffortClicker.Linux.DesktopRuntime.InputMatchesKey(heldInput, key))
                 throw new ArgumentException("Choose a shortcut different from the input being held.");
             string name = (ToggleNameBox.Text ?? "").Trim(); if (name.Length == 0) name = "Toggle " + held;
             var macro = new MacroDefinition(id, name,
-                new(selectedHeldInput, ToggleModeBox.SelectedIndex == 1 ? HelperMode.Repeat : HelperMode.Hold, TimeSpan.FromMilliseconds(ToggleModeBox.SelectedIndex == 1 ? ToggleIntervalSlider.Value : 100), TimeSpan.FromMilliseconds(ToggleModeBox.SelectedIndex == 1 ? 2 : 20), 0), IsToggle: true);
+                new(heldInput, ToggleModeBox.SelectedIndex == 1 ? HelperMode.Repeat : HelperMode.Hold, TimeSpan.FromMilliseconds(ToggleModeBox.SelectedIndex == 1 ? ToggleIntervalSlider.Value : 100), TimeSpan.FromMilliseconds(ToggleModeBox.SelectedIndex == 1 ? 2 : 20), 0), IsToggle: true);
             var owner = profiles.FirstOrDefault(p => p.Macros.Any(m => m.Id == id))
                 ?? profiles.FirstOrDefault(p => p.Macros.Count < 100 && p.Macros.All(m => m.IsToggle));
             var updated = owner is null
@@ -133,7 +168,7 @@ public partial class MainWindow
             editingToggle = id;
             await ApplyAvailability();
             RememberActiveToggles();
-            RefreshToggleList(); SaveToggleButton.ToolTip = "Save changes"; DeleteToggleButton.IsEnabled = true;
+            RefreshToggleList(); DeleteToggleButton.IsEnabled = true; RefreshToggleSave();
             ReasonLabel.Text = enabledToggles.Contains(id)
                 ? $"Saved. Press {ShortcutLabel(binding)} in your Click target to {(macro.Plan!.Mode == HelperMode.Repeat ? "spam" : "hold")} {held}, then again to stop."
                 : "Saved disabled. " + ReasonLabel.Text;
@@ -176,7 +211,11 @@ public partial class MainWindow
     /// <summary>A toggle's shortcut in words: its key or mouse button, its controller button, or both ("F1 / LB").</summary>
     private static string ShortcutLabel(MacroBinding binding) => string.Join(" / ",
         new[] { binding.HasKey ? MacroBindings.KeyLabel(binding.Key) : null, binding.Controller is { } pad ? ControllerButtons.Label(pad) : null }.OfType<string>());
-    private void ShowToggleController() => ToggleControllerBox.Content = selectedToggleController is { } pad ? UiArt.ControllerGlyph(pad, 22) : "Controller";
+    private void ShowToggleController()
+    {
+        ToggleControllerBox.Content = selectedToggleController is { } pad ? UiArt.ControllerGlyph(pad, 22) : "Controller";
+        RefreshToggleSave();
+    }
     private void ClearToggleController_Click(object? sender, Avalonia.Input.PointerReleasedEventArgs e) { if (e.InitialPressMouseButton != Avalonia.Input.MouseButton.Right) return; selectedToggleController = null; ShowToggleController(); e.Handled = true; }
     private void CaptureToggleController_Click(object sender, RoutedEventArgs e)
     {

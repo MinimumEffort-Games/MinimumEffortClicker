@@ -36,8 +36,8 @@ public partial class MainWindow : Window
     private bool overlaySettingsLoaded;
     private int refreshPending;
     private (string State, string Reason)? lastRuntimeStatus;
-    private string stopKey = "F9";
-    private int appliedToggleKey = 0x77, appliedStopKey = 0x78;
+    private string stopKey = ShortcutKeys.Label(ShortcutKeys.DefaultStopKey);
+    private int appliedToggleKey = ShortcutKeys.DefaultStartKey, appliedStopKey = ShortcutKeys.DefaultStopKey;
     private bool appliedHoldTrigger;
 
     public MainWindow(bool previewOnly = false)
@@ -54,7 +54,7 @@ public partial class MainWindow : Window
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();
         ShowHeldInput(); ShowToggleShortcut();
-        ToggleKeyBox.Content = "F8"; StopKeyBox.Content = "F9";
+        ToggleKeyBox.Content = ShortcutKeys.Label(ShortcutKeys.DefaultStartKey); StopKeyBox.Content = ShortcutKeys.Label(ShortcutKeys.DefaultStopKey);
         if (previewOnly) return;
         runtime = new DesktopRuntime();
         runtime.CaptureScreenshot = stop => Dispatcher.InvokeAsync(() => TakeScreenshotAsync(fromAction: true, stop));
@@ -62,6 +62,7 @@ public partial class MainWindow : Window
         runtime.Changed += RuntimeChanged;
         runtime.Control.RecordingRequested += QuickRecordHotkey;
         runtime.Control.ScreenshotRequested += ScreenshotHotkey;
+        runtime.Control.PauseRequested += PauseHotkey;
         runtime.Control.StopRequested += CancelScreenshot;
         runtime.StopIssued += CancelPowerSchedule;
         runtime.QuickStartRequested += () =>
@@ -134,6 +135,9 @@ public partial class MainWindow : Window
             OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY); overlaySettingsLoaded = true;
             Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
+            // A file from before the Pause key may hold its default on another control; Pause then takes the first free key.
+            selectedPauseKey = ShortcutKeys.FreePauseKey(settings.PauseKey, [settings.ToggleKey, settings.StopKey, settings.RecordKey, .. settings.Screenshots is { HotkeyEnabled: true } shot ? new[] { shot.Hotkey } : []]);
+            PauseKeyBox.Content = ShortcutKeys.Label(selectedPauseKey);
             EmergencyStopBox.SelectedIndex = (int)settings.EmergencyStop; runtime.EmergencyStop = settings.EmergencyStop; EmergencyStop_Changed(this, null!);
             appliedClickLimit = 20; appliedKeepAwake = settings.KeepAwake;
             KeepAwakeBox.IsChecked = appliedKeepAwake;
@@ -155,9 +159,11 @@ public partial class MainWindow : Window
             await SetQuickRecordKey();
             await MakeSavedMacrosAvailable();
             await RestoreActiveToggles();
+            MeasureDesktopPixels();
             StartControllers();
             await LoadControllerBinds();
             await ConfigureScreenshotHotkey();
+            await ConfigurePauseHotkey();
             settingsLoaded = true;
             }
             catch (Exception ex) { if (!allowClose) ReasonLabel.Text = "Startup settings could not be loaded: " + ex.Message; }
@@ -203,6 +209,7 @@ public partial class MainWindow : Window
             runtime.Control.RecordingRequested -= QuickRecordHotkey;
             screenshotCancellation?.Cancel();
             runtime.Control.ScreenshotRequested -= ScreenshotHotkey;
+            runtime.Control.PauseRequested -= PauseHotkey;
             runtime.Control.StopRequested -= CancelScreenshot;
             runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Close();
         };
@@ -229,9 +236,11 @@ public partial class MainWindow : Window
         {
             if (snapshot.ActionsActive) playbackSeenActive = true;
             // The clicker comes back when the Action List ends, however it ended, with any target.
-            // A list that ends while a toggle keeps running leaves the clicker out of the way: the user is playing.
+            // A list that ends while a toggle keeps running leaves the clicker out of the way: the user is playing. Only a toggle
+            // that really runs counts: right after a list ends its session is still closing for a moment, and treating that as
+            // "a toggle runs" sometimes left the clicker minimised after a run that simply ended.
             if (!snapshot.Busy) { playbackAway = null; ComeBack(away); }
-            else if (playbackSeenActive && !snapshot.ActionsActive) playbackAway = null;
+            else if (playbackSeenActive && !snapshot.ActionsActive && snapshot.ActiveHelperIds is { Count: > 0 }) playbackAway = null;
         }
         TargetLabel.IsEnabled = ToggleTargetLabel.IsEnabled = !snapshot.Busy && !snapshot.CleanupPending
             && !quickOperation && !screenshotBusy && !macroFileBusy && !ioBusy && !bindingBusy && !closing;
@@ -246,7 +255,7 @@ public partial class MainWindow : Window
         FailureDetailLabel.Visibility = snapshot.CleanupPending || snapshot.State is "Could not continue" or "Not started" or "Cleanup pending" ? Visibility.Visible : Visibility.Collapsed;
         FailureDetailLabel.Text = snapshot.Reason;
         PausePlaybackButton.IsEnabled = !quickOperation && (snapshot.PlaybackActive || runtime.CanResume);
-        PausePlaybackButton.Content = runtime.CanResume ? "Resume" : "Pause";
+        PausePlaybackButton.Content = runtime.CanResume ? $"Unpause {PauseHint}" : $"Pause {PauseHint}";
         var status = (snapshot.State, snapshot.Reason);
         if (lastRuntimeStatus != status)
         {
@@ -313,12 +322,12 @@ public partial class MainWindow : Window
     private bool actionsStartPending;
     private async void Run_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime is not null && (runtime.Snapshot.ActionsActive || actionsStartPending))
+        // F8 is Start / Stop: it also stops a paused run; the Pause key and button go on with it.
+        if (runtime is not null && (runtime.Snapshot.ActionsActive || actionsStartPending || runtime.CanResume))
         {
             CancelScreenshot("Actions stopped."); quickCancellation?.Cancel(); runtime.StopActions(); return;
         }
         if (runtime is null || screenshotBusy || quickOperation || macroFileBusy || ioBusy) return;
-        if (runtime.CanResume) { await ResumeActionsAsync(); return; }
         if (!TryQuickSequence(out var definition, out var plan, out var error)) { ReasonLabel.Text = error; return; }
         TestResultLabel.Text = "";
         StepAside? away = null;
@@ -332,9 +341,10 @@ public partial class MainWindow : Window
             if (runtime.IsDesktopMode)
             {
                 var frame = runtime.GetTargetFrame(); plan!.ValidateDesktopMode(frame.Width, frame.Height, frame.Dpi);
-                away = StepAsideForTarget(MinimizeOnStartBox.IsChecked == true);
             }
-            away ??= StepAsideForTarget(minimize: false); // A window target comes forward below; the clicker comes back after.
+            // Minimize on Start minimizes with any Click target; a window target also comes to the front below, and the
+            // clicker comes back after.
+            away = StepAsideForTarget(MinimizeOnStartBox.IsChecked == true);
             if (!plan!.LeaveCursorFree && !runtime.BringTargetForward()) { ReasonLabel.Text = runtime.Snapshot.Reason; return; }
             // Allow the initiating mouse/key release and foreground handoff to settle BEFORE
             // sampling physical input. The old countdown ran after that sample.
@@ -439,10 +449,11 @@ public partial class MainWindow : Window
         if (runtime is null) return;
         if (bindingBusy) { ReasonLabel.Text = "Wait for the current binding change."; return; }
         if (runtime.Snapshot.Busy) { runtime.Stop("Stopped before changing global controls."); ReasonLabel.Text = "Wait for cleanup, then apply controls again."; return; }
-        if (selectedStartKey == selectedStopKey || selectedStartKey == selectedRecordKey || selectedStopKey == selectedRecordKey
-            || screenshotSettings.HotkeyEnabled && (selectedStartKey == screenshotSettings.Hotkey || selectedStopKey == screenshotSettings.Hotkey))
+        // The new set is checked as a whole: Reset keybinds swaps keys between controls (the old Pause F6 is the new Stop All).
+        if (!ShortcutKeys.AllDifferent(selectedStartKey, selectedStopKey, selectedRecordKey, selectedPauseKey,
+            screenshotSettings.HotkeyEnabled ? screenshotSettings.Hotkey : null))
         {
-            selectedStartKey = appliedToggleKey; selectedStopKey = appliedStopKey;
+            selectedStartKey = appliedToggleKey; selectedStopKey = appliedStopKey; selectedRecordKey = appliedRecordKey; selectedPauseKey = appliedPauseKey;
             ToggleKeyBox.Content = ShortcutKeys.Label(appliedToggleKey); StopKeyBox.Content = ShortcutKeys.Label(appliedStopKey);
             ReasonLabel.Text = "Each global control needs a different key. The previous key was kept."; return;
         }
@@ -464,12 +475,13 @@ public partial class MainWindow : Window
             }
             await SetQuickRecordKey();
             await ConfigureScreenshotHotkey();
+            await ConfigurePauseHotkey();
             if (!success)
             {
                 string error = runtime.Control.Error ?? "That key is unavailable. The previous keys were restored.";
                 selectedStartKey = appliedToggleKey; selectedStopKey = appliedStopKey;
                 await runtime.Control.ConfigureAsync(appliedToggleKey, appliedStopKey);
-                await SetQuickRecordKey(); await ConfigureScreenshotHotkey();
+                await SetQuickRecordKey(); await ConfigureScreenshotHotkey(); await ConfigurePauseHotkey();
                 ReasonLabel.Text = error;
             }
             ToggleKeyBox.Content = ShortcutKeys.Label(appliedToggleKey);
@@ -477,7 +489,7 @@ public partial class MainWindow : Window
             if (success) ReasonLabel.Text = "Keybinds saved.";
         }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
-        finally { bindingBusy = false; Pages.IsEnabled = true; }
+        finally { bindingBusy = false; Pages.IsEnabled = true; RefreshStatus(); }
     }
 
     private void ResizeClicks_Changed(object sender, SelectionChangedEventArgs e)
@@ -494,7 +506,7 @@ public partial class MainWindow : Window
             CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop, showInputAccessNotice,
             Actions: new(LoopBox.IsChecked == true, MinimizeOnStartBox.IsChecked == true, RecordDelaysBox.IsChecked == true,
                 MinimizeOnRecordBox.IsChecked == true, RecordMovementBox.IsChecked == true),
-            ActiveToggles: rememberedToggles, Controller: controllerControls);
+            ActiveToggles: rememberedToggles, Controller: controllerControls, PauseKey: appliedPauseKey);
         if (preferencesBusy) return;
         preferencesBusy = true;
         try

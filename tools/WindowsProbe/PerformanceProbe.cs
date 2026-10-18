@@ -38,7 +38,7 @@ internal static class PerformanceProbe
                 runtime.SetClickRateLimit(scenario.Rate);
                 await app.Dispatcher.InvokeAsync(() =>
                 {
-                    if (scenario.Overlay) { overlay.Update(runtime.Snapshot, "F9"); overlay.Show(); }
+                    if (scenario.Overlay) { overlay.Update(runtime.Snapshot, "F6"); overlay.Show(); }
                     else overlay.Hide();
                     runtime.OverlayHandle = scenario.Overlay ? new WindowInteropHelper(overlay).Handle : 0;
                 });
@@ -52,7 +52,7 @@ internal static class PerformanceProbe
                     while (runtime.Snapshot.Busy)
                     {
                         await Task.Delay(100, stop);
-                        if (scenario.Overlay) await app.Dispatcher.InvokeAsync(() => overlay.Update(runtime.Snapshot, "F9"));
+                        if (scenario.Overlay) await app.Dispatcher.InvokeAsync(() => overlay.Update(runtime.Snapshot, "F6"));
                     }
                 });
                 int expected = before.Count + (int)runtime.Snapshot.InputsSent / 2;

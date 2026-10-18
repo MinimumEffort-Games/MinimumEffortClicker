@@ -117,8 +117,11 @@ public partial class MainWindow
     {
         if (SaveControllerBindButton is null) return;
         string? missing = ControllerBindMissing();
+        // Add Binding / Save Changes works like Add Action: blue to add, green to change the selected binding, grey until complete.
         SaveControllerBindButton.IsEnabled = missing is null;
-        ToolTip.SetTip(SaveControllerBindButton, missing ?? (editingControllerBind is null ? "Add bind" : "Save changes"));
+        ToolTip.SetTip(SaveControllerBindButton, missing);
+        SaveControllerBindButton.Content = editingControllerBind is null ? "Add Binding" : "Save Changes";
+        SaveControllerBindButton.Classes.Set("blue", editingControllerBind is null); SaveControllerBindButton.Classes.Set("green", editingControllerBind is not null);
         ControllerBindButtonBox.Content = selectedBindButton is { } b ? UiArt.ControllerGlyph(b, 24) : "Press to choose a button…";
         ControllerOutputBox.Content = selectedBindOutput is { } o ? UiArt.InputContent(o, OutputLabel(o)) : "Choose a key or mouse button…";
         ControllerOutputBox.SetButtonStyle(selectedBindOutput is null ? "NeedsChoiceButton" : "ChosenButton");
@@ -155,6 +158,15 @@ public partial class MainWindow
         ShowControllerBindReady();
     }
 
+    /// <summary>A click outside the editor and the list ends editing, like on the Actions page; the editor keeps its
+    /// settings as a start for a new binding.</summary>
+    private void StopEditingControllerBind()
+    {
+        if (editingControllerBind is null && ControllerBindList.SelectedIndex < 0) return;
+        refreshingControllerBinds = true; ControllerBindList.SelectedIndex = -1; refreshingControllerBinds = false;
+        editingControllerBind = null; DeleteControllerBindButton.IsEnabled = false; ShowControllerBindReady();
+    }
+
     private void ControllerBindSelection_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (refreshingControllerBinds || ControllerBindList.SelectedItem is not ControllerBindRow row) return;
@@ -181,7 +193,7 @@ public partial class MainWindow
         {
             editingControllerBind = id;
             ControllerBindStatusLabel.Text = $"Saved. Holding {ControllerButtons.Label(button)} holds {OutputLabel(output)}.";
-            RefreshControllerBindList(); DeleteControllerBindButton.IsEnabled = true;
+            RefreshControllerBindList(); DeleteControllerBindButton.IsEnabled = true; ShowControllerBindReady();
         }
     }
 

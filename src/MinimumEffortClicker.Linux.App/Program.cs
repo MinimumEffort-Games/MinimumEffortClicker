@@ -7,6 +7,7 @@ namespace MinimumEffortClicker.App;
 internal static class Program
 {
     private static Socket? instance;
+    private static FileStream? instanceLock;
     public static event Action? ShowRequested;
 
     [STAThread]
@@ -25,18 +26,19 @@ internal static class Program
     private static string SocketPath => Path.Combine(Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR") is { Length: > 0 } runtime ? runtime : Path.GetTempPath(),
         $"minimum-effort-clicker-{Environment.UserName}.sock");
 
-    /// <summary>One app per desktop session. A second launch asks the first to show its window.</summary>
+    /// <summary>
+    /// One app per desktop session, however fast the icon is clicked. The first launch takes an exclusive lock on a file
+    /// at once (.NET on Linux locks a FileShare.None file with flock, which the system drops if the app dies); a later
+    /// launch that cannot take it waits for the first one's socket and asks it to show its window, then closes. Before
+    /// the lock, a launch during the first one's start-up found no socket yet and opened a second app.
+    /// </summary>
     private static bool AcquireInstance()
     {
+        try { instanceLock = new FileStream(SocketPath + ".lock", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
+        catch (IOException) { ShowRunningInstance(); return false; }
+        catch (UnauthorizedAccessException) { ShowRunningInstance(); return false; }
         var endpoint = new UnixDomainSocketEndPoint(SocketPath);
-        try
-        {
-            using var client = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-            client.Connect(endpoint);
-            client.Send(Encoding.ASCII.GetBytes("show"));
-            return false;
-        }
-        catch (SocketException) { File.Delete(SocketPath); } // No listener: a stale socket from a crash.
+        try { File.Delete(SocketPath); } catch (IOException) { } // We hold the lock, so any socket left is stale.
         instance = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
         instance.Bind(endpoint);
         instance.Listen(4);
@@ -52,10 +54,33 @@ internal static class Program
         return true;
     }
 
+    /// <summary>Asks the running app to show its window; while it is still starting, its socket may take a few seconds to
+    /// appear.</summary>
+    private static void ShowRunningInstance()
+    {
+        var endpoint = new UnixDomainSocketEndPoint(SocketPath);
+        for (var waited = System.Diagnostics.Stopwatch.StartNew(); waited.Elapsed < ShowWait; Thread.Sleep(200))
+        {
+            try
+            {
+                using var client = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+                client.Connect(endpoint);
+                client.Send(Encoding.ASCII.GetBytes("show"));
+                return;
+            }
+            catch (SocketException) { } // Not listening yet.
+        }
+    }
+    private static readonly TimeSpan ShowWait = TimeSpan.FromSeconds(10);
+
     private static void ReleaseInstance()
     {
-        if (instance is null) return;
-        instance.Dispose();
-        try { File.Delete(SocketPath); } catch (IOException) { }
+        if (instance is not null)
+        {
+            instance.Dispose();
+            try { File.Delete(SocketPath); } catch (IOException) { }
+        }
+        // The lock file stays: deleting it could let a launch starting right now lock a different file.
+        instanceLock?.Dispose();
     }
 }

@@ -83,7 +83,7 @@ internal static class HelperProbe
             overlay = await app.Dispatcher.InvokeAsync(() =>
             {
                 var window = new StatusOverlay();
-                window.Update(runtime.Snapshot, "F9"); window.Show();
+                window.Update(runtime.Snapshot, "F6"); window.Show();
                 runtime.OverlayHandle = new WindowInteropHelper(window).Handle;
                 Require(ProbeNative.SetWindowPos(runtime.OverlayHandle, -1, receiver.X - 100, receiver.Y - 20, 280, 86, 0x0010 | 0x0040), "Overlay placement failed.");
                 return window;
@@ -265,7 +265,7 @@ internal static class HelperProbe
 
 
             report.Stage = "Profile binding enable and disable";
-            var macro = new ArmedHelper(new(Guid.NewGuid(), 0x75, false), hold, "Hold W");
+            var macro = new ArmedHelper(new(Guid.NewGuid(), 0x7A, false), hold, "Hold W");
             long beforeEnable = runtime.Snapshot.InputsSent;
             Require(await runtime.ConfigureHelpersAsync([macro]), "Profile binding registration failed.");
             await Task.Delay(100, deadline.Token);
@@ -278,7 +278,7 @@ internal static class HelperProbe
             Require(ProbeNative.SendProbeMacroKey(), "Disabled binding probe failed.");
             await Task.Delay(100, deadline.Token);
             Require(!runtime.Snapshot.Busy && runtime.Snapshot.InputsSent == 2, "Disabled macro restarted.");
-            report.Checks.Add("Profile F6 registration emitted nothing; its explicit trigger held W, disabling cleaned up, and a disabled trigger did not restart.");
+            report.Checks.Add("Profile F11 registration emitted nothing; its explicit trigger held W, disabling cleaned up, and a disabled trigger did not restart.");
 
             report.Stage = "Overlapping sequence through shared ownership";
             var sequence = SequenceCompiler.Compile(new([SequenceStep.Group("W with Space", TimeSpan.FromSeconds(2),
@@ -507,7 +507,7 @@ internal static class HelperProbe
             }
             Require(pendingSettings.All(t => t.IsCompleted), "Control shutdown left a settings request pending.");
             bool rejectedAfterClose = false;
-            try { await runtime.Control.ConfigureAsync(0x77, 0x78); }
+            try { await runtime.Control.ConfigureAsync(ShortcutKeys.DefaultStartKey, ShortcutKeys.DefaultStopKey); }
             catch (ObjectDisposedException) { rejectedAfterClose = true; }
             Require(rejectedAfterClose, "Disposed control accepted a new settings request.");
             report.Checks.Add("All eight queued settings requests settled after control disposal; later configuration was rejected. No input was owned during this lifecycle check.");

@@ -21,17 +21,17 @@ internal static class SpamPerformanceProbe
             var id = Guid.NewGuid();
             var helper = new HelperPlan(mouse ? InputControl.Mouse(PointerButton.Left) : InputControl.Key(0x12),
                 HelperMode.Repeat, TimeSpan.FromMilliseconds(interval), TimeSpan.FromMilliseconds(2), 0);
-            Require(await runtime.ConfigureHelpersAsync([new(new(id, 0x75, false), helper, "Spam benchmark")]), "F6 unavailable.");
+            Require(await runtime.ConfigureHelpersAsync([new(new(id, 0x7A, false), helper, "Spam benchmark")]), "F11 unavailable.");
             var before = await Request(pipe, "state");
             process.Refresh(); receiverProcess.Refresh();
             var cpu = process.TotalProcessorTime; var receiverCpu = receiverProcess.TotalProcessorTime;
             var duration = Stopwatch.StartNew();
             report.Stage = $"Spam {(mouse ? "click" : "E")} at {interval}ms";
-            Require(ProbeNative.SendProbeMacroKey(), "F6 start failed.");
+            Require(ProbeNative.SendProbeMacroKey(), "F11 start failed.");
             await WaitFor(() => runtime.Snapshot.Busy, stop);
             await Task.Delay(2000, stop);
             var stopping = Stopwatch.StartNew();
-            Require(ProbeNative.SendProbeMacroKey(), "F6 stop failed.");
+            Require(ProbeNative.SendProbeMacroKey(), "F11 stop failed.");
             await WaitFor(() => !runtime.Snapshot.Busy && !runtime.Snapshot.CleanupPending, stop);
             double stopMs = stopping.Elapsed.TotalMilliseconds;
             var after = await Request(pipe, "state");

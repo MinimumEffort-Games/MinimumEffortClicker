@@ -3,10 +3,23 @@ namespace MinimumEffortClicker.Core;
 /// <summary>Windows virtual-key identities for local, single-key or mouse-button shortcuts.</summary>
 public static class ShortcutKeys
 {
-    /// <summary>F8 starts and stops Actions, F9 stops everything, F10 starts and stops recording.</summary>
-    public const int DefaultStartKey = 0x77, DefaultStopKey = 0x78, DefaultRecordKey = 0x79;
-    /// <summary>F7 takes a screenshot (User, 2026-10-17).</summary>
-    public const int DefaultScreenshotKey = 0x76;
+    // The default keys side by side (User, 2026-10-18): F6 Stop All, F7 Pause / Unpause, F8 Start / Stop, F9 Screenshot,
+    // F10 Record / Stop. Keys someone saved stay as they are; Reset keybinds gives these.
+    public const int DefaultStopKey = 0x75, DefaultPauseKey = 0x76, DefaultStartKey = 0x77, DefaultScreenshotKey = 0x78, DefaultRecordKey = 0x79;
+
+    /// <summary>
+    /// The Pause key to use: the saved one, unless another control already has it. A file saved before the Pause key
+    /// existed loads with the default (F7), which may be that file's screenshot key; Pause then takes the first free key.
+    /// </summary>
+    public static int FreePauseKey(int saved, IReadOnlyCollection<int> taken) =>
+        new[] { saved, DefaultPauseKey, 0x75, 0x74, 0x73, 0x7A, 0x7B }.FirstOrDefault(key => !taken.Contains(key), saved);
+    /// <summary>The global controls (Start, Stop All, Record, Pause and, when on, Screenshot) each have their own key. The
+    /// check is on the new set as a whole, so a reset that swaps keys between controls is not refused.</summary>
+    public static bool AllDifferent(params int?[] keys)
+    {
+        var used = keys.Where(key => key is not null).ToArray();
+        return used.Distinct().Count() == used.Length;
+    }
     public static bool IsMouse(int key) => key is 1 or 2 or 4 or 5 or 6;
     public static bool Supported(int key) => IsMouse(key) || key is 8 or 9 or 12 or 13 or 19 or 20 or 27
         or >= 0x20 and <= 0x28 or 0x2C or 0x2D or 0x2E or >= 0x30 and <= 0x39

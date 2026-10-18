@@ -16,6 +16,17 @@ public sealed class PlatformTests
     }
 
     [TestMethod]
+    public void TheXwaylandScaleIsTheX11ScreenOverTheHelpersDesktop()
+    {
+        // A 4K screen at 175 % with Xwayland at full resolution (found on a KDE PC): X11 3840 wide, KWin 2195.
+        Assert.AreEqual(1.75, XwaylandScale.Ratio(3840, 2195));
+        Assert.AreEqual(1.0, XwaylandScale.Ratio(1920, 1920), "No scaling.");
+        Assert.AreEqual(1.5, XwaylandScale.Ratio(2880, 1920));
+        Assert.AreEqual(1.0, XwaylandScale.Ratio(0, 1920), "No X display: nothing changes.");
+        Assert.AreEqual(4.0, XwaylandScale.Ratio(100000, 1000), "Kept within reason.");
+    }
+
+    [TestMethod]
     public void TheDecksSilentBuiltInDevicesDoNotCountAsInputAccess()
     {
         // Valve's controller (vendor 28DE) and the EC's AT keyboard (BUS_I8042) carry nothing while Steam runs.

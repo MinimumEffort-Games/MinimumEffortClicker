@@ -16,11 +16,13 @@ public sealed class DesktopControl : IDisposable
     private readonly object gate = new();
     private readonly TriggerLatch trigger = new();
     private readonly TriggerLatch recordingTrigger = new();
-    private readonly TriggerLatch screenshotTrigger = new();
     private readonly Dictionary<int, (MacroBinding Binding, TriggerLatch Latch)> macroTriggers = [];
     private readonly Dictionary<uint, int> grabbed = [];
-    private int toggleKey = 0x77, stopKey = 0x78;
-    private int? recordingKey, screenshotKey;
+    private int toggleKey = ShortcutKeys.DefaultStartKey, stopKey = ShortcutKeys.DefaultStopKey;
+    private int? recordingKey;
+    // Screenshot and Pause: global keys beside Start, Stop All and Record, handled alike (Engine GlobalKey).
+    private readonly GlobalKey screenshot, pause;
+    private GlobalKey[] ExtraKeys => [screenshot, pause];
     private volatile bool bindingsSuspended, disposed;
     private volatile int[] controlKeys = [];
     private EvdevMonitor? evdev;
@@ -31,7 +33,7 @@ public sealed class DesktopControl : IDisposable
     public bool Available { get; private set; }
     public string? Error { get; private set; }
     public bool HoldTrigger { get; set; }
-    public bool ScreenshotAvailable => screenshotKey is not null && Available && !bindingsSuspended;
+    public bool ScreenshotAvailable => screenshot.Key is not null && Available && !bindingsSuspended;
     public Func<bool>? TriggerAllowed { get; set; }
 
     public event Action? ToggleRequested;
@@ -40,6 +42,8 @@ public sealed class DesktopControl : IDisposable
     public event Action? ActionStopRequested;
     public event Action? RecordingRequested;
     public event Action? ScreenshotRequested;
+    /// <summary>The Pause key: pauses the running Action List, or goes on with a paused one.</summary>
+    public event Action? PauseRequested;
     public event Action<ulong, uint>? WindowChanged;
     public event Action<InputControl, bool>? PhysicalChanged;
     internal event Action<PhysicalMouse>? MouseObserved;
@@ -47,6 +51,8 @@ public sealed class DesktopControl : IDisposable
 
     public DesktopControl()
     {
+        screenshot = new(0, () => ScreenshotRequested?.Invoke());
+        pause = new(0, () => PauseRequested?.Invoke());
         ConnectPlatform();
         Register(toggleKey, stopKey);
     }
@@ -149,7 +155,7 @@ public sealed class DesktopControl : IDisposable
             {
                 // A toggle with only a controller button has no key to grab; the controller route triggers it.
                 if (!copy[i].HasKey) continue;
-                success = recordingKey != copy[i].Key && screenshotKey != copy[i].Key && CanUse(copy[i].Key);
+                success = recordingKey != copy[i].Key && !ExtraKeys.Any(e => e.Key == copy[i].Key) && CanUse(copy[i].Key);
                 if (!success) break;
                 var latch = new TriggerLatch(); latch.Reset(IsKeyDown(copy[i].Key));
                 macroTriggers.Add(i + 100, (copy[i], latch));
@@ -168,7 +174,7 @@ public sealed class DesktopControl : IDisposable
         {
             recordingKey = null;
             if (key is null) { Regrab(); return Task.FromResult(true); }
-            if (!Available || !ShortcutKeys.Supported(key.Value) || key == toggleKey || key == stopKey || key == screenshotKey
+            if (!Available || !ShortcutKeys.Supported(key.Value) || key == toggleKey || key == stopKey || ExtraKeys.Any(e => e.Key == key)
                 || macroTriggers.Values.Any(m => m.Binding.Key == key) || !CanUse(key.Value)) { Regrab(); return Task.FromResult(false); }
             recordingKey = key; recordingTrigger.Reset(IsKeyDown(key.Value));
             Regrab();
@@ -176,18 +182,21 @@ public sealed class DesktopControl : IDisposable
             return Task.FromResult(true);
         }
     }
-    public Task<bool> ConfigureScreenshotAsync(int? key)
+    public Task<bool> ConfigureScreenshotAsync(int? key) => ConfigureExtra(screenshot, key);
+    public Task<bool> ConfigurePauseAsync(int? key) => ConfigureExtra(pause, key);
+    /// <summary>A keyboard key (not Esc or a modifier) that no other control or toggle uses; null clears it.</summary>
+    private Task<bool> ConfigureExtra(GlobalKey slot, int? key)
     {
         lock (gate)
         {
-            screenshotKey = null; screenshotTrigger.Reset();
+            slot.Key = null; slot.Trigger.Reset();
             if (key is null) { Regrab(); return Task.FromResult(true); }
-            if (!Available || !ShortcutKeys.Supported(key.Value) || ShortcutKeys.IsMouse(key.Value) || key == 27
-                || key is >= 0xA0 and <= 0xA5 || key == toggleKey || key == stopKey || key == recordingKey
+            if (!Available || !GlobalKey.Allowed(key.Value) || key == toggleKey || key == stopKey || key == recordingKey
+                || ExtraKeys.Any(e => e != slot && e.Key == key)
                 || macroTriggers.Values.Any(m => m.Binding.Key == key) || !CanUse(key.Value)) { Regrab(); return Task.FromResult(false); }
-            screenshotKey = key; screenshotTrigger.Reset(IsKeyDown(key.Value));
+            slot.Key = key; slot.Trigger.Reset(IsKeyDown(key.Value));
             Regrab();
-            if (evdev is null && !grabbed.ContainsValue(key.Value)) { screenshotKey = null; Regrab(); return Task.FromResult(false); }
+            if (evdev is null && !grabbed.ContainsValue(key.Value)) { slot.Key = null; Regrab(); return Task.FromResult(false); }
             return Task.FromResult(true);
         }
     }
@@ -197,7 +206,7 @@ public sealed class DesktopControl : IDisposable
         {
             bindingsSuspended = suspended;
             trigger.Reset(IsKeyDown(toggleKey)); recordingTrigger.Reset();
-            screenshotTrigger.Reset(screenshotKey is { } key && IsKeyDown(key));
+            foreach (var extra in ExtraKeys) extra.Trigger.Reset(extra.Key is { } key && IsKeyDown(key));
             foreach (var item in macroTriggers.Values) item.Latch.Reset(IsKeyDown(item.Binding.Key));
             if (suspended) { Ungrab(); return Task.FromResult(true); }
             return Task.FromResult(Reapply());
@@ -210,7 +219,8 @@ public sealed class DesktopControl : IDisposable
 
     private bool Register(int toggle, int stop)
     {
-        macroTriggers.Clear(); recordingKey = null; screenshotKey = null; screenshotTrigger.Reset();
+        macroTriggers.Clear(); recordingKey = null;
+        foreach (var extra in ExtraKeys) { extra.Key = null; extra.Trigger.Reset(); }
         toggleKey = toggle; stopKey = stop;
         trigger.Reset(IsKeyDown(toggleKey));
         return Reapply();
@@ -231,7 +241,7 @@ public sealed class DesktopControl : IDisposable
     {
         controlKeys = macroTriggers.Values.Select(m => m.Binding.Key).Append(toggleKey).Append(stopKey)
             .Concat(recordingKey is { } record ? new[] { record } : [])
-            .Concat(screenshotKey is { } screenshot ? new[] { screenshot } : []).Distinct().ToArray();
+            .Concat(ExtraKeys.Where(e => e.Key is not null).Select(e => e.Key!.Value)).Distinct().ToArray();
     }
 
     /// <summary>
@@ -323,7 +333,8 @@ public sealed class DesktopControl : IDisposable
     {
         lock (gate)
         {
-            trigger.CancelPending(); screenshotTrigger.CancelPending();
+            trigger.CancelPending();
+            foreach (var extra in ExtraKeys) extra.Trigger.CancelPending();
             foreach (var macro in macroTriggers.Values) macro.Latch.CancelPending();
         }
         StopRequested?.Invoke(reason);
@@ -363,7 +374,8 @@ public sealed class DesktopControl : IDisposable
     {
         if (bindingsSuspended) return;
         TriggerCommand toggle = TriggerCommand.None;
-        bool record = false, screenshot = false;
+        bool record = false;
+        var extras = new List<GlobalKey>();
         var macros = new List<(Guid Id, TriggerCommand Command, bool Hold)>();
         bool available;
         lock (gate)
@@ -375,7 +387,8 @@ public sealed class DesktopControl : IDisposable
             bool targetRequired = ShortcutKeys.UsesHook(key);
             if (key == toggleKey) toggle = Edge(trigger, down, HoldTrigger, targetRequired);
             if (recordingKey == key) record = Edge(recordingTrigger, down, false, targetRequired) == TriggerCommand.Toggle;
-            if (screenshotKey == key) screenshot = Edge(screenshotTrigger, down, false, targetRequired: false) == TriggerCommand.Toggle;
+            foreach (var extra in ExtraKeys)
+                if (extra.Key == key && Edge(extra.Trigger, down, false, targetRequired: false) == TriggerCommand.Toggle) extras.Add(extra);
             foreach (var item in macroTriggers.Values)
                 if (key == item.Binding.Key) macros.Add((item.Binding.MacroId, Edge(item.Latch, down, item.Binding.HoldTrigger, targetRequired), item.Binding.HoldTrigger));
         }
@@ -383,7 +396,7 @@ public sealed class DesktopControl : IDisposable
         if (toggle == TriggerCommand.Toggle) ToggleRequested?.Invoke();
         else if (toggle == TriggerCommand.Stop) ActionStopRequested?.Invoke();
         if (record) RecordingRequested?.Invoke();
-        if (screenshot) ScreenshotRequested?.Invoke();
+        foreach (var extra in extras) extra.Fire();
         foreach (var (id, command, hold) in macros) MacroTriggered?.Invoke(id, command, hold);
     }
 

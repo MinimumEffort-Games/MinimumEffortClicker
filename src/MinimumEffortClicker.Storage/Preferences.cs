@@ -8,7 +8,7 @@ public sealed record UserPreferences(int SchemaVersion, int Appearance, int Togg
     OverlayOptions? OverlayOptions = null, bool MainTopmost = false, int ClicksPerSecond = 20, bool KeepAwake = false, bool ScaleClickPositions = true,
     bool CloseToTray = true, bool TrayNoticeShown = false, ScreenshotSettings? Screenshots = null, int RecordKey = ShortcutKeys.DefaultRecordKey,
     EmergencyStopMode EmergencyStop = EmergencyStopMode.OnlyStopAll, bool InputAccessNotice = true,
-    ActionsChoices? Actions = null, Guid[]? ActiveToggles = null, ControllerControls? Controller = null)
+    ActionsChoices? Actions = null, Guid[]? ActiveToggles = null, ControllerControls? Controller = null, int PauseKey = ShortcutKeys.DefaultPauseKey)
 {
     /// <summary>The most toggles that can be remembered as active; far more than the Toggles page is made for.</summary>
     public const int MaxActiveToggles = 200;
@@ -17,7 +17,8 @@ public sealed record UserPreferences(int SchemaVersion, int Appearance, int Togg
         && ShortcutKeys.Supported(StopKey) && ToggleKey != StopKey && (OverlayOptions?.Valid ?? true)
         && (Screenshots?.Valid ?? true) && ClicksPerSecond is >= 1 and <= 100 && ShortcutKeys.Supported(RecordKey) && Enum.IsDefined(EmergencyStop)
         && (ActiveToggles is null || ActiveToggles.Length <= MaxActiveToggles && !ActiveToggles.Contains(Guid.Empty))
-        && (Controller?.Valid ?? true);
+        && (Controller?.Valid ?? true)
+        && ShortcutKeys.Supported(PauseKey) && !ShortcutKeys.IsMouse(PauseKey);
 }
 
 public sealed class Preferences(string directory)

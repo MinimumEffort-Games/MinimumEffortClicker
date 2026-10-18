@@ -286,14 +286,23 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         NotifyChanged(); return false;
     }
 
+    /// <summary>
+    /// The Click target's client area, or the whole desktop. Throws InvalidOperationException whenever it is unavailable,
+    /// also when the desktop helper does not answer in time (a busy KWin or GNOME Shell): callers already treat that
+    /// exception as "not now", and a helper timeout must not end the app.
+    /// </summary>
     public TargetClientFrame GetTargetFrame()
     {
-        if (IsDesktopMode) return DesktopFrame();
-        var selected = target;
-        if (selected is null || targetInvalidated || Query(selected) is not { Exists: true, Minimized: false } state || state.ProcessId != selected.ProcessId)
-            throw new InvalidOperationException("Choose an open, restored target window first.");
-        if (state.Width <= 0 || state.Height <= 0) throw new InvalidOperationException("The selected window's client geometry is unavailable.");
-        return new(state.X, state.Y, state.Width, state.Height, Dpi(state.Scale));
+        try
+        {
+            if (IsDesktopMode) return DesktopFrame();
+            var selected = target;
+            if (selected is null || targetInvalidated || Query(selected) is not { Exists: true, Minimized: false } state || state.ProcessId != selected.ProcessId)
+                throw new InvalidOperationException("Choose an open, restored target window first.");
+            if (state.Width <= 0 || state.Height <= 0) throw new InvalidOperationException("The selected window's client geometry is unavailable.");
+            return new(state.X, state.Y, state.Width, state.Height, Dpi(state.Scale));
+        }
+        catch (HelperException ex) { throw new InvalidOperationException("The desktop helper did not answer: " + ex.Message, ex); }
     }
 
     private static int Dpi(double scale) => (int)Math.Round(96 * (scale > 0 ? scale : 1));
@@ -1026,7 +1035,9 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     Volatile.Write(ref activeControls, started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.PointerMove || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true))
                         ? [new(InputKind.PointerMove, 0)] : []);
                     if (started && !CoordinatesAvailable(action.Plan)) throw new InvalidOperationException("Recalibrate the action positions before playback.");
-                    activity = started ? action.Name : "Toggles";
+                    // Only a toggle that is still held makes the rest of the run "Toggles"; otherwise the run stays named after the
+                    // Action List, so the log does not call a finished list a toggle run.
+                    activity = started || actionToggleSession is not { ActiveIds.Length: > 0 } ? action.Name : "Toggles";
                     reason = started ? "Actions running alongside any enabled holds." : actionToggleSession?.LastActionCancelled == true
                         ? "Actions stopped. Any active toggles remain held." : "Actions finished. Any active toggles remain held.";
                     state = "Running";

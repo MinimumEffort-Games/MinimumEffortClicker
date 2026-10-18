@@ -30,7 +30,8 @@ You can also run `./MinimumEffortClicker` straight from the extracted folder and
 **Settings → Linux setup → Install GNOME helper** (GNOME) or **Allow this copy of the app** (KDE). Settings and macros live in `Data` beside the app.
 `./uninstall.sh` removes the install and keeps `Data` unless you pass `--delete-data`.
 
-F8 starts/stops Actions, F9 stops everything and F10 starts/stops recording, as on Windows.
+F6 stops everything, F7 pauses, F8 starts/stops Actions, F9 takes a screenshot and F10 starts/stops recording, as on
+Windows.
 
 ## Why a helper?
 

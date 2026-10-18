@@ -57,8 +57,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     public event Action? ExitRequested;
     /// <summary>The overlay's padlock: lock it to its anchor, or unlock it to drag it.</summary>
     public event Action? LockToggled;
-    /// <summary>The unlocked overlay was dropped: the anchor that keeps it there relative to the Click target.</summary>
-    public event Action<double, double>? AnchorDragged;
+    /// <summary>The unlocked overlay was dropped here: its top-left corner in screen pixels.</summary>
+    public event Action<int, int>? Dropped;
 
     public StatusOverlay()
     {
@@ -113,7 +113,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private void ShowLock()
     {
         lockPicture.Source = UiPictures.Lock(!options.Unlocked);
-        string tip = options.Unlocked ? "Unlocked: drag the overlay anywhere. Click to lock it there" : "Locked to its anchor point. Click to unlock it and drag it anywhere";
+        string tip = options.Unlocked ? "Unlocked: drag the overlay anywhere; it stays put on the screen. Click to lock it to the window where it is" : "Locked to its anchor point. Click to unlock it and drag it anywhere";
         lockButton.ToolTip = tip;
         System.Windows.Automation.AutomationProperties.SetName(lockButton, options.Unlocked ? "Lock the overlay" : "Unlock the overlay");
         if (Content is Border frame) frame.Cursor = options.Unlocked ? Cursors.SizeAll : null;
@@ -146,10 +146,21 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         try { DragMove(); }
         catch (InvalidOperationException) { return; } // The button was already up.
         finally { dragging = false; }
+        if (CurrentPosition() is { } at) Dropped?.Invoke(at.X, at.Y);
+    }
+    /// <summary>Where the overlay is now: its top-left corner in screen pixels.</summary>
+    public (int X, int Y)? CurrentPosition()
+    {
         var hwnd = new WindowInteropHelper(this).Handle;
-        if (target is not { } on || !ProbeNative.GetWindowRect(hwnd, out var rect)) return;
-        var anchor = OverlayAnchor.From(on.Left, on.Top, on.Width, on.Height, rect.Right - rect.Left, rect.Bottom - rect.Top, rect.Left, rect.Top, options.AnchorX, options.AnchorY);
-        AnchorDragged?.Invoke(anchor.X, anchor.Y);
+        return hwnd != 0 && ProbeNative.GetWindowRect(hwnd, out var rect) ? (rect.Left, rect.Top) : null;
+    }
+    /// <summary>The anchor that keeps the overlay where it is now on the Click target it was last placed on; locking uses it,
+    /// so the overlay does not jump.</summary>
+    public (double X, double Y)? CurrentAnchor()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (target is not { } on || hwnd == 0 || !ProbeNative.GetWindowRect(hwnd, out var rect)) return null;
+        return OverlayAnchor.From(on.Left, on.Top, on.Width, on.Height, rect.Right - rect.Left, rect.Bottom - rect.Top, rect.Left, rect.Top, options.AnchorX, options.AnchorY);
     }
     private void SetClickable(bool on)
     {
@@ -247,7 +258,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         stopLabel.Visibility = stop is null ? Visibility.Collapsed : Visibility.Visible;
         stopLabel.Text = stop ?? "";
     }
-    /// <summary>Places the overlay on the Click target (screen pixels) at its anchor, kept on the monitor's work area.</summary>
+    /// <summary>Places the overlay at its anchor on the Click target (screen pixels), or, while unlocked and dropped somewhere,
+    /// at that place on the screen: then it does not follow the target. Either way it is kept on the monitor's work area.</summary>
     public void PlaceOn(double left, double top, double width, double height)
     {
         target = (left, top, width, height);
@@ -256,6 +268,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd == 0 || !ProbeNative.GetWindowRect(hwnd, out var rect)) return;
         int w = rect.Right - rect.Left, h = rect.Bottom - rect.Top;
+        if (options.FreePlace is { } free) { PlaceWithinMonitor(free.X, free.Y, w, h); return; }
         var (x, y) = OverlayAnchor.Place(left, top, width, height, w, h, options.AnchorX, options.AnchorY);
         PlaceWithinMonitor((int)Math.Round(x), (int)Math.Round(y), w, h);
     }

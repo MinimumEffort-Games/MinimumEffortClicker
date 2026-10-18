@@ -30,7 +30,7 @@ public partial class App : Application
         var window = new MainWindow(preview);
         desktop.MainWindow = window;
         if (preview) { Dispatcher.UIThread.Post(() => RenderPreviews(window, args[1], desktop), DispatcherPriority.Background); return; }
-        Program.ShowRequested += () => Dispatcher.UIThread.Post(window.RestoreFromTray);
+        Program.ShowRequested += () => Dispatcher.UIThread.Post(window.BringToFront);
         desktop.ShutdownRequested += (_, _) => window.PrepareSessionExit();
         window.Show();
         StartupMeasurement.Mark("Window shown");
