@@ -9,7 +9,7 @@ Linux (same version and status as Windows): Avalonia app + MinimumEffortClicker.
 with scripts/linux/*.sh. Keep the Windows solution, lock files and behaviour unchanged by Linux work.
 Linux native probes run only in the private headless GNOME Shell (scripts/linux/run-headless-probe.sh).
 Default tests use fake inputs/time/targets; never synthesize desktop input in CI.
-Native probes are opt-in inside an isolated virtual machine (MEC_ISOLATED_VM=1, standard user, F9 stop route).
+Native probes are opt-in inside an isolated virtual machine (MEC_ISOLATED_VM=1, standard user, F6 stop route).
 Keep runtime offline and stopped on startup (one exception: the Steam build, with steam.mode, goes online through the Steam client only when the user shares a macro or Steam fetches macros they subscribed to; see docs/STEAM.md); loading a macro or restored focus never starts it. A running window-target run that pauses because its window left the front resumes by itself once the window is back in front for half a second; a pause the user asked for stays paused.
 Use scripts/Build.ps1 and scripts/Test.ps1; scripts/Build-Public.ps1 writes the ZIP under artifacts/package.
 Maintain pins, lock files and licence notices. Saved data migrates forward and is never reset.

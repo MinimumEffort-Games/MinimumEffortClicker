@@ -2,7 +2,7 @@
 # Run it as a standard user in the guest with MEC_ISOLATED_VM=1 set; never on a real desktop or in CI.
 param([switch]$IsolatedVm, [switch]$Helpers, [switch]$Recovery, [switch]$Performance)
 . "$PSScriptRoot/Common.ps1"
-if (!$IsolatedVm) { throw 'Explicit -IsolatedVm opt-in is required. F9 stops the bounded probe.' }
+if (!$IsolatedVm) { throw 'Explicit -IsolatedVm opt-in is required. F6 (the default Stop All) stops the bounded probe.' }
 if (([int]$Helpers.IsPresent + [int]$Recovery.IsPresent + [int]$Performance.IsPresent) -gt 1) { throw 'Choose one probe mode.' }
 if ($env:MEC_ISOLATED_VM -ne '1') { throw 'Set MEC_ISOLATED_VM=1 inside the isolated virtual machine before running the probe.' }
 $system = Get-CimInstance Win32_ComputerSystem
@@ -27,7 +27,7 @@ $environment = [ordered]@{
     ProbeAssemblySha256 = (Get-FileHash -LiteralPath ([IO.Path]::ChangeExtension($probe, '.dll')) -Algorithm SHA256).Hash
 }
 $environment | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $directory 'environment.json')
-Write-Host "Bounded VM input test: F9 stops input. Reports: $directory"
+Write-Host "Bounded VM input test: F6 stops input. Reports: $directory"
 $arguments = '--isolated-vm "' + $directory + '"'
 if ($Helpers) { $arguments += ' --m1' }
 if ($Recovery) { $arguments += ' --recovery' }

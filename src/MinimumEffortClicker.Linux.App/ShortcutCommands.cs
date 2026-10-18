@@ -13,7 +13,7 @@ namespace MinimumEffortClicker.App;
 
 public partial class MainWindow
 {
-    private int selectedStartKey = 0x77, selectedStopKey = 0x78, selectedToggleKey;
+    private int selectedStartKey = ShortcutKeys.DefaultStartKey, selectedStopKey = ShortcutKeys.DefaultStopKey, selectedToggleKey;
     // Empty until chosen, like the other choices in the editor; Clear editor empties it again.
     private InputControl? selectedHeldInput;
     private async Task<int?> CaptureShortcut(string purpose)
@@ -80,7 +80,7 @@ public partial class MainWindow
         runtime.Stop("Stopped before resetting keybinds.");
         for (int i = 0; i < 80 && runtime.Snapshot.Busy; i++) await Task.Delay(25);
         if (runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending) { ReasonLabel.Text = "Finish input cleanup before resetting keybinds."; return; }
-        selectedStartKey = 0x77; selectedStopKey = 0x78; selectedRecordKey = 0x79; selectedPauseKey = ShortcutKeys.DefaultPauseKey;
+        selectedStartKey = ShortcutKeys.DefaultStartKey; selectedStopKey = ShortcutKeys.DefaultStopKey; selectedRecordKey = ShortcutKeys.DefaultRecordKey; selectedPauseKey = ShortcutKeys.DefaultPauseKey;
         selectedScreenshotKey = ShortcutKeys.DefaultScreenshotKey; ScreenshotHotkeyBox.IsChecked = true;
         screenshotSettings = screenshotSettings with { Hotkey = ShortcutKeys.DefaultScreenshotKey, HotkeyEnabled = true };
         await ApplyHotkeysAsync();

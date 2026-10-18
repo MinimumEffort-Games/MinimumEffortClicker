@@ -18,7 +18,7 @@ public sealed class DesktopControl : IDisposable
     private readonly TriggerLatch recordingTrigger = new();
     private readonly Dictionary<int, (MacroBinding Binding, TriggerLatch Latch)> macroTriggers = [];
     private readonly Dictionary<uint, int> grabbed = [];
-    private int toggleKey = 0x77, stopKey = 0x78;
+    private int toggleKey = ShortcutKeys.DefaultStartKey, stopKey = ShortcutKeys.DefaultStopKey;
     private int? recordingKey;
     // Screenshot and Pause: global keys beside Start, Stop All and Record, handled alike (Engine GlobalKey).
     private readonly GlobalKey screenshot, pause;

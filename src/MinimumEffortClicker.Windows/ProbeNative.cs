@@ -60,7 +60,7 @@ public static class ProbeNative
 
     /// <summary>Bounded M1 VM fixture only; distinct tag models an external trigger, never playback.</summary>
     public static bool SendProbeToggleKey() => SendProbeKey(ShortcutKeys.DefaultStartKey, 0x4D455454);
-    public static bool SendProbeMacroKey() => SendProbeKey(0x75, 0x4D455454); // F6, bounded opt-in fixture.
+    public static bool SendProbeMacroKey() => SendProbeKey(0x7A, 0x4D455454); // F11 (F6 is Stop All), bounded opt-in fixture.
 
     private static bool SendProbeKey(ushort key, nuint tag)
     {

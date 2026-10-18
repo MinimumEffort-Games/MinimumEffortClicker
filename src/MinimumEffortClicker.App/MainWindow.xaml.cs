@@ -32,7 +32,7 @@ public partial class MainWindow : Window
     private readonly OperationGate operations = new();
     private int refreshPending;
     private (string State, string Reason)? lastRuntimeStatus;
-    private string stopKey = "F9";
+    private string stopKey = ShortcutKeys.Label(ShortcutKeys.DefaultStopKey);
     private int appliedToggleKey = ShortcutKeys.DefaultStartKey, appliedStopKey = ShortcutKeys.DefaultStopKey;
     private bool appliedHoldTrigger;
 
@@ -49,7 +49,7 @@ public partial class MainWindow : Window
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();
         ShowHeldInput(); ShowToggleShortcut();
-        ToggleKeyBox.Content = "F8"; StopKeyBox.Content = "F9";
+        ToggleKeyBox.Content = ShortcutKeys.Label(ShortcutKeys.DefaultStartKey); StopKeyBox.Content = ShortcutKeys.Label(ShortcutKeys.DefaultStopKey);
         if (previewOnly) return;
         runtime = new DesktopRuntime();
         InitializeWorkshop();
@@ -128,7 +128,9 @@ public partial class MainWindow : Window
             OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY); overlaySettingsLoaded = true;
             Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
-            selectedPauseKey = settings.PauseKey; PauseKeyBox.Content = ShortcutKeys.Label(selectedPauseKey);
+            // A file from before the Pause key may hold its default on another control; Pause then takes the first free key.
+            selectedPauseKey = ShortcutKeys.FreePauseKey(settings.PauseKey, [settings.ToggleKey, settings.StopKey, settings.RecordKey, .. settings.Screenshots is { HotkeyEnabled: true } shot ? new[] { shot.Hotkey } : []]);
+            PauseKeyBox.Content = ShortcutKeys.Label(selectedPauseKey);
             EmergencyStopBox.SelectedIndex = (int)settings.EmergencyStop; runtime.EmergencyStop = settings.EmergencyStop; EmergencyStop_Changed(this, null!);
             appliedClickLimit = 20; appliedKeepAwake = settings.KeepAwake;
             KeepAwakeBox.IsChecked = appliedKeepAwake;

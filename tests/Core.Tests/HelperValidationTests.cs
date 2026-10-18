@@ -41,7 +41,7 @@ public sealed class HelperValidationTests
         {
             Directory.CreateDirectory(directory);
             var store = new Preferences(directory);
-            File.WriteAllText(Path.Combine(directory, "preferences.json"), "{\"SchemaVersion\":1,\"Appearance\":0,\"ToggleKey\":119,\"StopKey\":120,\"HoldTrigger\":false,\"Overlay\":true}");
+            File.WriteAllText(Path.Combine(directory, "preferences.json"), "{\"SchemaVersion\":1,\"Appearance\":0,\"ToggleKey\":119,\"StopKey\":117,\"HoldTrigger\":false,\"Overlay\":true}");
             Assert.AreEqual(UserPreferences.Default, store.Load());
             var value = UserPreferences.Default with { OverlayOptions = new(true, true, 0.75, 1.5), MainTopmost = true };
             store.Save(value); Assert.AreEqual(value, store.Load());

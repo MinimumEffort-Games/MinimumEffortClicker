@@ -162,7 +162,7 @@ public partial class MainWindow
         // Keep the ScrollViewer enabled while its editing controls are locked.
         QuickFields.IsEnabled = QuickEditorTools.IsEnabled = QuickListTools.IsEnabled = QuickActionList.IsEnabled = idle;
         LoopBox.IsEnabled = MinimizeOnStartBox.IsEnabled = idle;
-        // A paused run can be stopped with Stop F8; the Pause button says how to go on ("Unpause F6").
+        // A paused run can be stopped with Stop F8; the Pause button says how to go on ("Unpause F7").
         bool stopping = snapshot.ActionsActive || actionsStartPending || runtime?.CanResume == true;
         RunButton.Content = $"{(stopping ? "Stop" : "Start")} {StartHint}";
         RunButton.SetButtonStyle(stopping ? "RedButton" : "GreenButton");

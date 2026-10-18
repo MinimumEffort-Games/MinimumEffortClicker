@@ -150,7 +150,7 @@ public partial class MainWindow
         };
     }
     private bool recordKeyChanging;
-    private int appliedRecordKey = 0x79, selectedRecordKey = 0x79;
+    private int appliedRecordKey = ShortcutKeys.DefaultRecordKey, selectedRecordKey = ShortcutKeys.DefaultRecordKey;
 
     private async Task SetQuickRecordKey()
     {

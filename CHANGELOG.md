@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- New default keys side by side: F6 Stop All, F7 Pause / Unpause, F8 Start / Stop, F9 Screenshot, F10 Record. Keys you
+  already saved stay as they are; Reset keybinds gives the new defaults. If an older setup already uses F7, Pause takes
+  the first free key.
 - Toggles and Controller to Key edit like the Actions page: blue Add Toggle / Add Binding, green Save Changes for the
   selected item, grey until complete, Clear editor, the bin below the list, and a click elsewhere ends editing.
 - Linux: the clicker runs once, however fast the icon is clicked; a second launch brings the running one to the front.
@@ -9,7 +12,7 @@
   pins it to the window where it is. Picking a spot on the Overlay Anchor Point picture locks it there.
 - Minimize on Start and Minimize on record minimize with any Click target and any way of starting; a window target
   still comes to the front.
-- A Pause key, F6 by default (Settings, Global controls): Pause F6 / Unpause F6 on the button. F8 stays Start / Stop and
+- A Pause key (Settings, Global controls): "Pause F7" / "Unpause F7" on the button. F8 stays Start / Stop and
   also stops a paused run.
 - Linux: a desktop helper that answers too slowly (a busy KWin or GNOME Shell) no longer closes the app while the
   overlay is being placed, for example when closing the clicker to the tray; the overlay keeps its place instead.

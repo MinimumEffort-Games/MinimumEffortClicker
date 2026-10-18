@@ -29,8 +29,8 @@ see [Linux](#linux)). GitHub's automatic "Source code" archives contain source, 
 1. Extract the complete app ZIP into a new writable folder.
 2. Open `MinimumEffortClicker.App.exe`. The .NET runtime is included.
 3. Choose your target and review the actions before starting.
-4. **F8** starts/stops Actions, **F9** stops all Actions/toggles/recording, and
-   **F10** starts/stops recording by default. Check Settings if you change keys.
+4. By default **F6** stops all Actions/toggles/recording, **F7** pauses, **F8** starts/stops Actions, **F9** takes a
+   screenshot and **F10** starts/stops recording. Check Settings if you change keys.
 
 Playback starts stopped. Loading/importing and restored focus never start it. If the target window goes behind another window during a run, the run pauses and continues by itself when the window is back in front.
 Checked toggles are available for their shortcut, not automatically running.
