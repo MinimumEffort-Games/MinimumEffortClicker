@@ -101,6 +101,15 @@ public sealed class MacroFileTests
         Assert.AreEqual(1, HelperProfiles.Open(path).Macros[0].Sequence!.Steps[0].Times);
     }
     [TestMethod]
+    public void ALookActionRoundTrips()
+    {
+        var look = SequenceStep.Group("Look", TimeSpan.FromMilliseconds(16), [new(Guid.NewGuid(), TimeSpan.Zero, InputControl.Look(-40, 7), TimeSpan.Zero), new(Guid.NewGuid(), TimeSpan.FromMilliseconds(16), InputControl.Look(12, -3), TimeSpan.Zero)]);
+        var profile = Profile() with { Macros = [new(Guid.NewGuid(), "Turn", null, Sequence: new([look]))] };
+        string path = Path.Combine(directory, "look.mecprofile"); HelperProfiles.Export(path, profile);
+        var loaded = HelperProfiles.Open(path).Macros[0].Sequence!.Steps[0];
+        CollectionAssert.AreEqual(new[] { (-40, 7), (12, -3) }, loaded.Children!.Select(c => c.Control.LookStep).ToArray());
+    }
+    [TestMethod]
     public void InvalidSaveDoesNotDamageExistingMacroFile()
     {
         var profile = Profile(); string path = Path.Combine(directory, "safe.mecprofile"); HelperProfiles.Export(path, profile);

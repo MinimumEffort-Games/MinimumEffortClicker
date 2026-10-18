@@ -55,15 +55,16 @@ public static class KdeInputGuard
         return 0;
     }
 
-    /// <summary>Lines: "m x y" move, "b code 0|1" button, "k evdev 0|1" key, "s axis value" scroll, "r" release all.</summary>
+    /// <summary>Lines: "m x y" move, "l dx dy" relative move (Look), "b code 0|1" button, "k evdev 0|1" key, "s axis value" scroll, "r" release all.</summary>
     internal static string Handle(IInputDevice input, string line, HashSet<uint> buttons, HashSet<int> keys, bool locked)
     {
         var parts = line.Split(' ');
         bool press = parts.Length == 3 && parts[2] == "1";
-        if (locked && parts[0] is "m" or "s" || locked && press) return Locked;
+        if (locked && parts[0] is "m" or "l" or "s" || locked && press) return Locked;
         switch (parts[0])
         {
             case "m": input.MoveTo(double.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture), double.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture)); break;
+            case "l": input.MoveBy(double.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture), double.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture)); break;
             case "b":
                 uint button = uint.Parse(parts[1]);
                 input.SetButton(button, press);

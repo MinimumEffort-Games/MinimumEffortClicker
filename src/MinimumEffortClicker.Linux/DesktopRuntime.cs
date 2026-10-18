@@ -37,6 +37,16 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     private string activity = "Minimum Effort";
     private string? inputRejection;
     private bool RejectInput(string message) { inputRejection = message; return false; }
+    // A look sends up to 60 steps a second; the target is asked at most every 100 ms meanwhile. The run's own watch on the
+    // target window still pauses it as soon as the target leaves the front.
+    private long lookTargetCheckedAt;
+    private bool lookTargetAvailable;
+    private bool LookTargetAvailable()
+    {
+        long now = Environment.TickCount64;
+        if (now - lookTargetCheckedAt >= 100 || !lookTargetAvailable) { lookTargetAvailable = TargetAvailable; lookTargetCheckedAt = now; }
+        return lookTargetAvailable;
+    }
     private ActionToggleSession? actionToggleSession;
     public bool CanStartActions { get { lock (gate) return !recording && (!busy ? !executor.HasOwnedInput : actionToggleSession is { ActionBusy: false } && playbackControl?.IsPaused != true); } }
     public bool ActionsBusy { get { lock (gate) return actionToggleSession?.ActionBusy ?? busy; } }
@@ -417,7 +427,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             {
                 inputRejection = null;
                 cursorFreeActive = request.LeaveCursorFree;
-                if (request.Sequence?.Inputs.Any(i => (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true)) == true)
+                if (request.Sequence?.Inputs.Any(i => i.Control.Kind == InputKind.Look || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true)) == true)
                     controls = controls.Append(new InputControl(InputKind.PointerMove, 0)).Distinct().ToArray();
                 cancellation = new();
                 playbackControl = new(); executor.Playback = playbackControl; runningRequest = request;
@@ -847,10 +857,13 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         if (transition.Edge == InputEdge.Down || transition.Position is not null)
         {
             if (!WaitForUsersRelease(transition.Control)) return RejectInput("Release physical keys/buttons before starting. Physical input takes priority.");
-            if (!TargetAvailable) return RejectInput("The Click target is unavailable or no longer in front. Bring it forward and start again.");
+            if (!(transition.Control.Kind == InputKind.Look ? LookTargetAvailable() : TargetAvailable)) return RejectInput("The Click target is unavailable or no longer in front. Bring it forward and start again.");
             if (cancellation?.IsCancellationRequested != false || !Control.Available) return RejectInput("Playback was stopped or its input controls became unavailable.");
-            if (activeLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)) return RejectInput("The foreground keyboard layout differs from this recording.");
-            if (transition.Control.Kind != InputKind.ScanCode)
+            if (transition.Control.Kind != InputKind.Look && activeLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)) return RejectInput("The foreground keyboard layout differs from this recording.");
+            // A look goes wherever the game holds the cursor: there is no spot or window under it to check, and skipping those
+            // desktop queries keeps fast turns close to their recorded timing.
+            if (transition.Control.Kind == InputKind.Look) { }
+            else if (transition.Control.Kind != InputKind.ScanCode)
             {
                 TargetClientFrame frame;
                 try { frame = GetTargetFrame(); } catch (InvalidOperationException) { return false; }
@@ -861,9 +874,9 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     pointer = position.Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi); destination = pointer;
                 }
                 else if (CursorPosition() is { } current) pointer = current;
-                else return false;
+                else return RejectInput("The desktop could not report where the cursor is.");
                 if (pointer.X < frame.X || pointer.Y < frame.Y
-                    || pointer.X >= frame.X + frame.Width || pointer.Y >= frame.Y + frame.Height) return false;
+                    || pointer.X >= frame.X + frame.Width || pointer.Y >= frame.Y + frame.Height) return RejectInput("The cursor is outside the Click target. Put it on the target, then start with the hotkey.");
                 if (WindowAt(pointer.X, pointer.Y) is not { } underPointer) return RejectInput("The desktop could not report the window at this click location.");
                 if (IsDesktopMode)
                 {
@@ -934,6 +947,11 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     int code = LinuxKeys.EvdevFromScanCode(control.Code);
                     if (code == 0) return false;
                     helper.Key(code, down); return true;
+                case InputKind.Look:
+                    // Relative movement: a game that holds the cursor turns its camera; it never has a saved spot.
+                    if (!down) return true;
+                    var (dx, dy) = control.LookStep;
+                    helper.PointerMoveBy(dx, dy); return true;
                 case InputKind.Scroll or InputKind.HorizontalScroll:
                     if (!down) return true;
                     uint steps = (uint)Math.Clamp(Math.Abs(control.Code) / 120, 1, 100);
@@ -942,7 +960,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 default: return false;
             }
         }
-        catch (HelperException) { return false; }
+        // The helper says why (for example that Look needs a newer GNOME helper); the run stops with that reason.
+        catch (HelperException ex) { return RejectInput(ex.Message); }
     }
 
     public bool IsOwnPoint(int screenX, int screenY, bool includeOverlay = true)
@@ -1032,7 +1051,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     // A finishing action must not replace the explicit Stop All reason or state.
                     if (stop.IsCancellationRequested) return;
                     activeLayout = started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.ScanCode) ? action.Plan.KeyboardLayout : null;
-                    Volatile.Write(ref activeControls, started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.PointerMove || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true))
+                    Volatile.Write(ref activeControls, started && action.Plan.Inputs.Any(i => i.Control.Kind is InputKind.PointerMove or InputKind.Look || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true))
                         ? [new(InputKind.PointerMove, 0)] : []);
                     if (started && !CoordinatesAvailable(action.Plan)) throw new InvalidOperationException("Recalibrate the action positions before playback.");
                     // Only a toggle that is still held makes the rest of the run "Toggles"; otherwise the run stays named after the

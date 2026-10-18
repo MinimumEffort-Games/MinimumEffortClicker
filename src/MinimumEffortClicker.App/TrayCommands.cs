@@ -110,6 +110,7 @@ public partial class MainWindow
 
     internal void PrepareSessionExit()
     {
+        EndSession();
         exitRequested = true;
         runtime?.Stop("Stopped: Windows is ending this session.");
         screenshotCancellation?.Cancel();

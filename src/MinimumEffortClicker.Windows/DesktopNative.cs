@@ -45,6 +45,29 @@ internal static class DesktopNative
     [DllImport("user32.dll")] internal static extern uint MapVirtualKey(uint code, uint mapType);
     [DllImport("user32.dll")] internal static extern uint MapVirtualKeyExW(uint code, uint mapType, nint layout);
     [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint count, Input[] input, int size);
+    // Raw mouse movement for Look recording: a message-only window receives WM_INPUT while a recording runs.
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] internal static extern nint CreateWindowExW(uint exStyle, string className, string? title, uint style, int x, int y, int width, int height, nint parent, nint menu, nint instance, nint parameter);
+    [DllImport("user32.dll")] internal static extern bool DestroyWindow(nint window);
+    [DllImport("user32.dll")] internal static extern nint DispatchMessageW(ref ProbeNative.Message message);
+    [StructLayout(LayoutKind.Sequential)] internal struct RawInputDevice { public ushort UsagePage, Usage; public uint Flags; public nint Target; }
+    [DllImport("user32.dll", SetLastError = true)] internal static extern bool RegisterRawInputDevices(RawInputDevice[] devices, uint count, uint size);
+    [DllImport("user32.dll")] internal static extern uint GetRawInputData(nint rawInput, uint command, [Out] byte[]? data, ref uint size, uint headerSize);
+    [StructLayout(LayoutKind.Sequential)] private struct CursorInfo { public uint Size, Flags; public nint Cursor; public ProbeNative.Point Position; }
+    [DllImport("user32.dll")] private static extern bool GetCursorInfo(ref CursorInfo info);
+    [DllImport("user32.dll")] private static extern bool GetClipCursor(out ProbeNative.Rect rect);
+
+    /// <summary>
+    /// The cursor is held by the app in front, the way first- and third-person games hold it: hidden, or kept inside a
+    /// smaller area than the desktop. Mouse movement then turns the camera instead of moving a pointer.
+    /// </summary>
+    internal static bool CursorHeld()
+    {
+        var info = new CursorInfo { Size = (uint)Marshal.SizeOf<CursorInfo>() };
+        if (GetCursorInfo(ref info) && (info.Flags & 1) == 0) return true;
+        if (!GetClipCursor(out var clip)) return false;
+        int left = GetSystemMetrics(76), top = GetSystemMetrics(77);
+        return clip.Left > left || clip.Top > top || clip.Right < left + GetSystemMetrics(78) || clip.Bottom < top + GetSystemMetrics(79);
+    }
 
     internal static int VirtualKey(InputControl control) => control.Kind switch
     {
@@ -73,6 +96,13 @@ internal static class DesktopNative
         }
         if (control.Kind == InputKind.PointerMove)
             return move is { } movement && SendInput(1, [movement], Marshal.SizeOf<Input>()) == 1;
+        if (control.Kind == InputKind.Look)
+        {
+            // Relative movement (MOUSEEVENTF_MOVE without ABSOLUTE), the counts a game reads as camera movement.
+            var (dx, dy) = control.LookStep;
+            var look = new Input { Type = 0, Data = new() { Mouse = new() { X = dx, Y = dy, Flags = 0x0001, Extra = ProbeNative.InputTag } } };
+            return SendInput(1, [look], Marshal.SizeOf<Input>()) == 1;
+        }
         if (control.Kind == InputKind.ScanCode)
             input = new() { Type = 1, Data = new() { Key = new() { Scan = (ushort)(control.Code & 0xFF),
                 Flags = 8u | (up ? 2u : 0u) | ((control.Code & 0x100) != 0 ? 1u : 0u), Extra = ProbeNative.InputTag } } };

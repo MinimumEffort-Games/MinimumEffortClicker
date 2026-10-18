@@ -176,6 +176,7 @@ public sealed class KdeHelper : IDesktopHelper
 
     /// <summary>KWin reports the pointer rounded to whole pixels, so moves go to whole pixels too and read back exactly.</summary>
     public void PointerMove(double x, double y) => Input.Send(FormattableString.Invariant($"m {Math.Floor(x)} {Math.Floor(y)}"));
+    public void PointerMoveBy(double dx, double dy) => Input.Send(FormattableString.Invariant($"l {dx} {dy}"));
     public void PointerButton(uint button, bool pressed) => Input.Send($"b {LinuxButton(button)} {(pressed ? 1 : 0)}");
     public void Scroll(uint direction, uint steps)
     {

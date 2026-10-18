@@ -20,7 +20,7 @@ public partial class App : Application
             (MainWindow as MainWindow)?.EmergencyStop();
             args.Handled = true;
             AppLog.Crash("the app", args.Exception);
-            try { AppDialog.Show("Something went wrong and playback was stopped: " + args.Exception.Message + "\n\nSave your macro and restart the app if it misbehaves."); }
+            try { AppDialog.Show("Something went wrong and playback was stopped: " + args.Exception.Message + "\n\nSave your macro and restart the app if it misbehaves. Bug report (next to Help) puts the details in a report."); }
             catch (Exception) { /* Reporting must not raise a second failure. */ }
         };
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>

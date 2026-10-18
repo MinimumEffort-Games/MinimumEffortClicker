@@ -207,7 +207,7 @@ public partial class MainWindow
             away = StepAsideForTarget(minimize);
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             cancellation.Token.ThrowIfCancellationRequested();
-            using var recorder = new DesktopRecorder(runtime, new(Keyboard: true, MouseButtons: true, Scroll: true, PointerPath: true));
+            using var recorder = new DesktopRecorder(runtime, new(Keyboard: true, MouseButtons: true, Scroll: true, PointerPath: true, Look: true));
             quickRecorder = recorder; RefreshStatus();
             QuickRecordStatus.Text = $"Recording clicks and keys… {RecordHint} or {StopHint} finishes.";
             // Show captured actions as they happen; the list is rebuilt from the full draft on stop.

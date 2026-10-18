@@ -47,6 +47,10 @@ public sealed class DesktopControl : IDisposable
     public event Action<ulong, uint>? WindowChanged;
     public event Action<InputControl, bool>? PhysicalChanged;
     internal event Action<PhysicalMouse>? MouseObserved;
+    /// <summary>A mouse's relative counts (horizontal, vertical), for Look recording.</summary>
+    internal event Action<int, int>? RawMouseMoved;
+    /// <summary>The pointer position as last asked from the desktop helper, at most every 8 ms.</summary>
+    internal (int X, int Y) PointerNow() => Pointer();
     public event Action? PlatformChanged;
 
     public DesktopControl()
@@ -302,7 +306,9 @@ public sealed class DesktopControl : IDisposable
                         ShortcutEdge(key, down);
                     }
                     break;
-                case EvdevEventKind.Motion:
+                case EvdevEventKind.Motion or EvdevEventKind.RelativeMotion:
+                    // A mouse's own counts also go to a Look recording; a touchpad's positions are no camera turn.
+                    if (sample.Kind == EvdevEventKind.RelativeMotion && RawMouseMoved is { } look) look(sample.Code == 0 ? sample.Value : 0, sample.Code == 0 ? 0 : sample.Value);
                     if (MouseObserved is { } moved) { var (x, y) = Pointer(); moved(new(new(InputKind.PointerMove, 0), true, x, y)); }
                     break;
                 case EvdevEventKind.Wheel or EvdevEventKind.HorizontalWheel:

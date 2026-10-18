@@ -18,6 +18,9 @@ public partial class MainWindow
     private static string ScrollSummary(QuickScroll scroll) => $"{scroll.Notches} notch{(scroll.Notches == 1 ? "" : "es")}"
         + (scroll.Notches > 1 ? $" · {Ms(scroll.Gap)} ms apart" : "") + (scroll.Position is { } p ? $" · at {p.X}, {p.Y}" : " · at cursor")
         + (scroll.After > TimeSpan.Zero ? $" · {Ms(scroll.After)} ms after" : "");
+    /// <summary>The Action List line and editor summary for a Look action.</summary>
+    private static string LookSummary(QuickLook look) => $"{look.Length.TotalSeconds:0.##} s of mouse movement · {look.Moves} steps · turn {look.TotalX:+#;-#;0}, {look.TotalY:+#;-#;0}"
+        + (look.After > TimeSpan.Zero ? $" · {Ms(look.After)} ms after" : "");
     private static string TimingSummary(SequenceStep step)
     {
         if (step.Kind == StepKind.Screenshot) return $"Save PNG · {Ms(step.Duration)} ms pause after saving";

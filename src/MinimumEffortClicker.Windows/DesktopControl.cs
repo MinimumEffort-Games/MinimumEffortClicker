@@ -322,6 +322,7 @@ public sealed class DesktopControl : IDisposable
             {
                 if (message.Id == 0x8001) while (commands.TryDequeue(out var command)) command();
                 if (message.Id == 0x113) WatchHooks(); // WM_TIMER; a thread timer has no window, so it arrives here
+                if (message.Id == 0x00FF) { ReadRawMouse(message.LParam); DesktopNative.DispatchMessageW(ref message); continue; } // WM_INPUT; the window's default handling frees it
                 if (message.Id != 0x312 || bindingsSuspended) continue;
                 if (message.WParam is 1 or BackupStopId)
                 {
@@ -355,7 +356,34 @@ public sealed class DesktopControl : IDisposable
             if (destroyHook != 0) DesktopNative.UnhookWinEvent(destroyHook);
             if (keyboardHook != 0) DesktopNative.UnhookWindowsHookEx(keyboardHook);
             if (mouseHook != 0) DesktopNative.UnhookWindowsHookEx(mouseHook);
+            if (rawWindow != 0) DesktopNative.DestroyWindow(rawWindow);
         }
+    }
+
+    // Look recording: raw mouse movement, the counts games read, goes to a message-only window while a recording runs.
+    private nint rawWindow;
+    private readonly byte[] rawBuffer = new byte[64];
+    internal event Action<int, int>? RawMouseMoved;
+    internal Task<bool> WatchRawMouseAsync(bool on) => QueueCommand(() =>
+    {
+        if (on && rawWindow == 0) rawWindow = DesktopNative.CreateWindowExW(0, "Message", null, 0, 0, 0, 0, 0, -3, 0, 0, 0); // HWND_MESSAGE
+        if (rawWindow == 0) return false;
+        // RIDEV_INPUTSINK: also while another app is in front; RIDEV_REMOVE when the recording ends.
+        var device = new DesktopNative.RawInputDevice { UsagePage = 1, Usage = 2, Flags = on ? 0x100u : 0x1u, Target = on ? rawWindow : 0 };
+        return DesktopNative.RegisterRawInputDevices([device], 1, (uint)Marshal.SizeOf<DesktopNative.RawInputDevice>());
+    });
+    private void ReadRawMouse(nint handle)
+    {
+        const int header = 24; // RAWINPUTHEADER on x64: type, size, device, wParam
+        uint size = (uint)rawBuffer.Length;
+        if (DesktopNative.GetRawInputData(handle, 0x10000003, rawBuffer, ref size, header) is uint.MaxValue || size < header + 24) return;
+        // Only a real mouse: injected movement (this app's playback, other tools) has no device, absolute movement
+        // (tablets, remote desktop) is not a camera turn.
+        if (BitConverter.ToUInt32(rawBuffer, 0) != 0 || BitConverter.ToInt64(rawBuffer, 8) == 0 || (BitConverter.ToUInt16(rawBuffer, header) & 1) != 0) return;
+        int dx = BitConverter.ToInt32(rawBuffer, header + 12), dy = BitConverter.ToInt32(rawBuffer, header + 16);
+        if (dx == 0 && dy == 0) return;
+        // A recording problem never takes the hotkeys down with it.
+        try { RawMouseMoved?.Invoke(dx, dy); } catch (Exception) { }
     }
 
     private void Observe(InputControl input, bool down)
