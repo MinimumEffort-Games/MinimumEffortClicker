@@ -1035,7 +1035,9 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     Volatile.Write(ref activeControls, started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.PointerMove || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true))
                         ? [new(InputKind.PointerMove, 0)] : []);
                     if (started && !CoordinatesAvailable(action.Plan)) throw new InvalidOperationException("Recalibrate the action positions before playback.");
-                    activity = started ? action.Name : "Toggles";
+                    // Only a toggle that is still held makes the rest of the run "Toggles"; otherwise the run stays named after the
+                    // Action List, so the log does not call a finished list a toggle run.
+                    activity = started || actionToggleSession is not { ActiveIds.Length: > 0 } ? action.Name : "Toggles";
                     reason = started ? "Actions running alongside any enabled holds." : actionToggleSession?.LastActionCancelled == true
                         ? "Actions stopped. Any active toggles remain held." : "Actions finished. Any active toggles remain held.";
                     state = "Running";
