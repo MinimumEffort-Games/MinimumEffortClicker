@@ -450,11 +450,11 @@ public partial class MainWindow : Window
         if (runtime is null) return;
         if (operations.Has(Operation.Binding)) { ReasonLabel.Text = "Wait for the current binding change."; return; }
         if (runtime.Snapshot.Busy) { runtime.Stop("Stopped before changing global controls."); ReasonLabel.Text = "Wait for cleanup, then apply controls again."; return; }
-        if (selectedStartKey == selectedStopKey || selectedStartKey == selectedRecordKey || selectedStopKey == selectedRecordKey
-            || appliedPauseKey == selectedStartKey || appliedPauseKey == selectedStopKey || appliedPauseKey == selectedRecordKey
-            || screenshotSettings.HotkeyEnabled && (selectedStartKey == screenshotSettings.Hotkey || selectedStopKey == screenshotSettings.Hotkey))
+        // The new set is checked as a whole: Reset keybinds swaps keys between controls (the old Pause F6 is the new Stop All).
+        if (!ShortcutKeys.AllDifferent(selectedStartKey, selectedStopKey, selectedRecordKey, selectedPauseKey,
+            screenshotSettings.HotkeyEnabled ? screenshotSettings.Hotkey : null))
         {
-            selectedStartKey = appliedToggleKey; selectedStopKey = appliedStopKey;
+            selectedStartKey = appliedToggleKey; selectedStopKey = appliedStopKey; selectedRecordKey = appliedRecordKey; selectedPauseKey = appliedPauseKey;
             ToggleKeyBox.Content = ShortcutKeys.Label(appliedToggleKey); StopKeyBox.Content = ShortcutKeys.Label(appliedStopKey);
             ReasonLabel.Text = "Each global control needs a different key. The previous key was kept."; return;
         }

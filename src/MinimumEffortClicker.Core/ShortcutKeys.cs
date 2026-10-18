@@ -13,6 +13,13 @@ public static class ShortcutKeys
     /// </summary>
     public static int FreePauseKey(int saved, IReadOnlyCollection<int> taken) =>
         new[] { saved, DefaultPauseKey, 0x75, 0x74, 0x73, 0x7A, 0x7B }.FirstOrDefault(key => !taken.Contains(key), saved);
+    /// <summary>The global controls (Start, Stop All, Record, Pause and, when on, Screenshot) each have their own key. The
+    /// check is on the new set as a whole, so a reset that swaps keys between controls is not refused.</summary>
+    public static bool AllDifferent(params int?[] keys)
+    {
+        var used = keys.Where(key => key is not null).ToArray();
+        return used.Distinct().Count() == used.Length;
+    }
     public static bool IsMouse(int key) => key is 1 or 2 or 4 or 5 or 6;
     public static bool Supported(int key) => IsMouse(key) || key is 8 or 9 or 12 or 13 or 19 or 20 or 27
         or >= 0x20 and <= 0x28 or 0x2C or 0x2D or 0x2E or >= 0x30 and <= 0x39

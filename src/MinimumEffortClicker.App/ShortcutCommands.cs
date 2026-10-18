@@ -88,7 +88,7 @@ public partial class MainWindow
         selectedStartKey = ShortcutKeys.DefaultStartKey; selectedStopKey = ShortcutKeys.DefaultStopKey; selectedRecordKey = ShortcutKeys.DefaultRecordKey; selectedPauseKey = ShortcutKeys.DefaultPauseKey;
         selectedScreenshotKey = ShortcutKeys.DefaultScreenshotKey; ScreenshotHotkeyBox.IsChecked = true;
         screenshotSettings = screenshotSettings with { Hotkey = ShortcutKeys.DefaultScreenshotKey, HotkeyEnabled = true };
+        // Applies Start, Stop All, Record, Screenshot and Pause together (ApplyHotkeysAsync registers all of them).
         await ApplyHotkeysAsync();
-        await ConfigurePauseHotkey();
     }
 }
