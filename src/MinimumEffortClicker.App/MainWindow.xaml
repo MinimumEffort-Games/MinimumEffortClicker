@@ -66,7 +66,7 @@
                   <TextBlock Grid.Column="2" Text="Action List" Style="{StaticResource Heading}"/>
                   <WrapPanel Grid.Row="1" Margin="0,0,0,12" VerticalAlignment="Bottom">
                     <Button x:Name="RunButton" Content="Start F8" Click="Run_Click" Style="{StaticResource GreenButton}" MinWidth="100" Margin="0,0,8,0" ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="Start Actions"/>
-                    <Button x:Name="PausePlaybackButton" Content="Pause" Click="PausePlayback_Click" Style="{StaticResource BlueButton}" Margin="0,0,0,0" AutomationProperties.Name="Pause playback"/>
+                    <Button x:Name="PausePlaybackButton" Content="Pause" Click="PausePlayback_Click" Style="{StaticResource BlueButton}" MinWidth="110" Margin="0,0,0,0" AutomationProperties.Name="Pause playback"/>
                     <UniformGrid Rows="2" Margin="12,0,0,0">
                       <ToggleButton x:Name="LoopBox" Style="{StaticResource StackedToggle}" Content="Loop" Checked="Loop_Changed" Unchecked="Loop_Changed" Margin="0,0,0,2"/>
                       <ToggleButton Style="{StaticResource StackedToggle}" Checked="ActionsChoice_Changed" Unchecked="ActionsChoice_Changed" x:Name="MinimizeOnStartBox" Content="Minimize on Start" IsChecked="True" Margin="0,2,0,0" ToolTip="Ticked: Start minimises the clicker when the Click target is Desktop, and brings it back when the run ends. Unticked: the clicker stays up. With a window target, that window still comes to the front."/>

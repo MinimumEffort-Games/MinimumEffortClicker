@@ -193,7 +193,7 @@ public partial class MainWindow
         try
         {
             // The clicker comes back when the recording ends, also after F10 with a window target.
-            away = StepAsideForTarget(minimize && (runtime.IsDesktopMode || !fromHotkey));
+            away = StepAsideForTarget(minimize);
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             // Recording starts the moment the key or button is pressed. The target was just brought forward, so give the
             // foreground switch a few short retries instead of a fixed countdown.

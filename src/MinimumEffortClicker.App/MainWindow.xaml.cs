@@ -237,7 +237,7 @@ public partial class MainWindow : Window
         FailureDetailLabel.Visibility = snapshot.CleanupPending || snapshot.Failed ? Visibility.Visible : Visibility.Collapsed;
         FailureDetailLabel.Text = snapshot.Reason;
         PausePlaybackButton.IsEnabled = !operations.Has(Operation.Quick) && (snapshot.PlaybackActive || runtime.CanResume);
-        PausePlaybackButton.Content = runtime.CanResume ? "Resume" : "Pause";
+        PausePlaybackButton.Content = runtime.CanResume ? $"Unpause {StartHint}" : "Pause";
         var status = (snapshot.State, snapshot.Reason);
         if (lastRuntimeStatus != status)
         {
@@ -308,9 +308,10 @@ public partial class MainWindow : Window
             if (runtime.IsDesktopMode)
             {
                 var frame = runtime.GetTargetFrame(); plan!.ValidateDesktopMode(frame.Width, frame.Height, frame.Dpi);
-                away = StepAsideForTarget(MinimizeOnStartBox.IsChecked == true);
             }
-            away ??= StepAsideForTarget(minimize: false); // A window target comes forward below; the clicker comes back after.
+            // Minimize on Start minimizes with any Click target; a window target also comes to the front below, and the
+            // clicker comes back after.
+            away = StepAsideForTarget(MinimizeOnStartBox.IsChecked == true);
             if (!plan!.LeaveCursorFree && !runtime.BringTargetForward()) { ReasonLabel.Text = runtime.Snapshot.Reason; return; }
             // Allow the initiating mouse/key release and foreground handoff to settle BEFORE
             // sampling physical input. The old countdown ran after that sample.

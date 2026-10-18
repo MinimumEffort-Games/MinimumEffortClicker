@@ -162,12 +162,14 @@ public partial class MainWindow
         // Keep the ScrollViewer enabled while its editing controls are locked.
         QuickFields.IsEnabled = QuickEditorTools.IsEnabled = QuickListTools.IsEnabled = QuickActionList.IsEnabled = idle;
         LoopBox.IsEnabled = MinimizeOnStartBox.IsEnabled = idle;
-        bool stopping = snapshot.ActionsActive || actionsStartPending;
-        RunButton.Content = $"{(stopping ? "Stop" : "Start")} {StartHint}";
+        // While paused, Start is plainly off and the Pause button says how to go on ("Unpause F8"), so the state is clear.
+        bool paused = runtime?.CanResume == true;
+        bool stopping = !paused && (snapshot.ActionsActive || actionsStartPending);
+        RunButton.Content = paused ? "Start" : $"{(stopping ? "Stop" : "Start")} {StartHint}";
         RunButton.SetButtonStyle(stopping ? "RedButton" : "GreenButton");
         Avalonia.Automation.AutomationProperties.SetName(RunButton, stopping ? "Stop Actions" : "Start Actions");
-        RunButton.IsEnabled = stopping || !quickOperation && !macroFileBusy && !ioBusy && !screenshotBusy && !quickEditorOpen && !bindingBusy && runtime?.Control.Available == true
-            && (runtime.CanResume || quickValid && runtime.CanStartActions);
+        RunButton.IsEnabled = !paused && (stopping || !quickOperation && !macroFileBusy && !ioBusy && !screenshotBusy && !quickEditorOpen && !bindingBusy && runtime?.Control.Available == true
+            && quickValid && runtime.CanStartActions);
         QuickRecordButton.IsEnabled = quickRecorder is not null || quickCancellation is not null || idle;
         QuickRecordButton.Content = $"{RecordHint} Record/Stop";
         LoadMacroButton.IsEnabled = idle && !ioBusy;

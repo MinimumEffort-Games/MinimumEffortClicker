@@ -203,7 +203,7 @@ public partial class MainWindow
         try
         {
             // The clicker comes back when the recording ends, also after F10 with a window target.
-            away = StepAsideForTarget(minimize && (runtime.IsDesktopMode || !fromHotkey));
+            away = StepAsideForTarget(minimize);
             if (!runtime.BringTargetForward()) throw new InvalidOperationException(runtime.Snapshot.Reason);
             cancellation.Token.ThrowIfCancellationRequested();
             using var recorder = new DesktopRecorder(runtime, new(Keyboard: true, MouseButtons: true, Scroll: true, PointerPath: true));
