@@ -89,7 +89,8 @@ public partial class MainWindow
         try { monitors = string.Join("; ", DesktopMonitor.List()); }
         catch (Exception ex) when (ex is InvalidOperationException or Win32Exception) { monitors = "unknown"; }
         string target = runtime is null || runtime.IsDesktopMode ? "Desktop"
-            : runtime.SelectedWindow is { } window ? $"a window of {ProgramOf(window.ProcessId)}" : "a window";
+            // A remembered target whose window closed has no program any more.
+            : runtime.SelectedWindow is { } window && ProgramOf(window.ProcessId) is { Length: > 0 } program ? $"a window of {program}" : "a window (closed or unavailable)";
         string controllers = gamepads?.Connected is { Count: > 0 } pads ? string.Join(", ", pads) : "none";
         string screenshotKey = screenshotSettings.HotkeyEnabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "none";
         return string.Join(Environment.NewLine,

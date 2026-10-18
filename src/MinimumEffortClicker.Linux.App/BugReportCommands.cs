@@ -97,7 +97,8 @@ public partial class MainWindow
         string version = typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
         string monitors = string.Join("; ", Screens.All.Select((s, i) => $"Monitor {i + 1}{(s.IsPrimary ? " (main)" : "")} · {s.Bounds.Width} × {s.Bounds.Height} at {s.Scaling * 100:0} %"));
         string target = runtime is null || runtime.IsDesktopMode ? "Desktop"
-            : runtime.SelectedWindow is { } window ? $"a window of {ProgramOf(window.ProcessId)}" : "a window";
+            // A remembered target whose window closed has no program any more.
+            : runtime.SelectedWindow is { } window && ProgramOf(window.ProcessId) is { Length: > 0 } program ? $"a window of {program}" : "a window (closed or unavailable)";
         string controllers = gamepads?.Connected is { Count: > 0 } pads ? string.Join(", ", pads) : "none";
         string screenshotKey = screenshotSettings.HotkeyEnabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "none";
         string helper = runtime?.Control.Helper is null ? $"{LinuxSetup.HelperName} not connected" : $"{LinuxSetup.HelperName} connected";

@@ -38,7 +38,7 @@ internal sealed class BugReportWindow : DialogWindow
         this.parts = parts; this.folder = folder; OwnerWindow = owner;
         Title = "Report a bug"; Width = 640; SizeToContent = SizeToContent.Height; CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false; FontSize = 14;
-        var panel = new StackPanel { Margin = new Thickness(20) };
+        var panel = new StackPanel { Margin = new Thickness(20, 20, 20, 0) };
         panel.Children.Add(new TextBlock { Text = "Report a bug", FontSize = 20, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
         panel.Children.Add(Secondary("This saves a report as a zip file and opens a new GitHub issue with your text filled in. Drag the zip into the issue before you submit it. The clicker itself sends nothing.", new Thickness(0, 0, 0, 12)));
         var body = new StackPanel();
@@ -53,16 +53,21 @@ internal sealed class BugReportWindow : DialogWindow
         var card = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), Padding = new Thickness(12), Child = body };
         card.SetResourceReference(Border.BackgroundProperty, "Surface"); card.SetResourceReference(Border.BorderBrushProperty, "Border");
         panel.Children.Add(card);
-        panel.Children.Add(status);
+        var footer = new StackPanel { Margin = new Thickness(20, 0, 20, 20) };
+        footer.Children.Add(status);
         var buttons = new Grid { Margin = new Thickness(0, 14, 0, 0) };
         var cancel = new Button { Content = "Cancel", MinWidth = 90, HorizontalAlignment = HorizontalAlignment.Left, IsCancel = true };
         cancel.SetButtonStyle("RedButton"); create.SetButtonStyle("GreenButton");
         cancel.Click += (_, _) => DialogResult = false;
         create.Click += (_, _) => Create();
         buttons.Children.Add(cancel); buttons.Children.Add(create);
-        panel.Children.Add(buttons);
-        // On a small screen the open preview would push the buttons off it; the report then scrolls inside the window.
-        Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        footer.Children.Add(buttons);
+        // The buttons stay at the bottom; the report above them scrolls when the screen is too short for the open preview.
+        var layout = new DockPanel();
+        DockPanel.SetDock(footer, Dock.Bottom);
+        layout.Children.Add(footer);
+        layout.Children.Add(new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+        Content = layout;
         screenshot.IsEnabled = parts.Screenshot is not null;
         actionList.IsEnabled = parts.SaveActionList is not null;
         happened.Text = text ?? "";

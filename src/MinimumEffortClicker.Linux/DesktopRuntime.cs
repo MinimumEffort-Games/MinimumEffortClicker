@@ -37,6 +37,16 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     private string activity = "Minimum Effort";
     private string? inputRejection;
     private bool RejectInput(string message) { inputRejection = message; return false; }
+    // A look sends up to 60 steps a second; the target is asked at most every 100 ms meanwhile. The run's own watch on the
+    // target window still pauses it as soon as the target leaves the front.
+    private long lookTargetCheckedAt;
+    private bool lookTargetAvailable;
+    private bool LookTargetAvailable()
+    {
+        long now = Environment.TickCount64;
+        if (now - lookTargetCheckedAt >= 100 || !lookTargetAvailable) { lookTargetAvailable = TargetAvailable; lookTargetCheckedAt = now; }
+        return lookTargetAvailable;
+    }
     private ActionToggleSession? actionToggleSession;
     public bool CanStartActions { get { lock (gate) return !recording && (!busy ? !executor.HasOwnedInput : actionToggleSession is { ActionBusy: false } && playbackControl?.IsPaused != true); } }
     public bool ActionsBusy { get { lock (gate) return actionToggleSession?.ActionBusy ?? busy; } }
@@ -847,9 +857,9 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         if (transition.Edge == InputEdge.Down || transition.Position is not null)
         {
             if (!WaitForUsersRelease(transition.Control)) return RejectInput("Release physical keys/buttons before starting. Physical input takes priority.");
-            if (!TargetAvailable) return RejectInput("The Click target is unavailable or no longer in front. Bring it forward and start again.");
+            if (!(transition.Control.Kind == InputKind.Look ? LookTargetAvailable() : TargetAvailable)) return RejectInput("The Click target is unavailable or no longer in front. Bring it forward and start again.");
             if (cancellation?.IsCancellationRequested != false || !Control.Available) return RejectInput("Playback was stopped or its input controls became unavailable.");
-            if (activeLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)) return RejectInput("The foreground keyboard layout differs from this recording.");
+            if (transition.Control.Kind != InputKind.Look && activeLayout is { } layout && !string.Equals(layout, TargetKeyboardLayout, StringComparison.OrdinalIgnoreCase)) return RejectInput("The foreground keyboard layout differs from this recording.");
             // A look goes wherever the game holds the cursor: there is no spot or window under it to check, and skipping those
             // desktop queries keeps fast turns close to their recorded timing.
             if (transition.Control.Kind == InputKind.Look) { }
@@ -864,9 +874,9 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     pointer = position.Resolve(frame.X, frame.Y, frame.Width, frame.Height, frame.Dpi); destination = pointer;
                 }
                 else if (CursorPosition() is { } current) pointer = current;
-                else return false;
+                else return RejectInput("The desktop could not report where the cursor is.");
                 if (pointer.X < frame.X || pointer.Y < frame.Y
-                    || pointer.X >= frame.X + frame.Width || pointer.Y >= frame.Y + frame.Height) return false;
+                    || pointer.X >= frame.X + frame.Width || pointer.Y >= frame.Y + frame.Height) return RejectInput("The cursor is outside the Click target. Put it on the target, then start with the hotkey.");
                 if (WindowAt(pointer.X, pointer.Y) is not { } underPointer) return RejectInput("The desktop could not report the window at this click location.");
                 if (IsDesktopMode)
                 {
