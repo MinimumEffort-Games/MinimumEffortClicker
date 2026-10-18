@@ -235,9 +235,11 @@ public partial class MainWindow : Window
         {
             if (snapshot.ActionsActive) playbackSeenActive = true;
             // The clicker comes back when the Action List ends, however it ended, with any target.
-            // A list that ends while a toggle keeps running leaves the clicker out of the way: the user is playing.
+            // A list that ends while a toggle keeps running leaves the clicker out of the way: the user is playing. Only a toggle
+            // that really runs counts: right after a list ends its session is still closing for a moment, and treating that as
+            // "a toggle runs" sometimes left the clicker minimised after a run that simply ended.
             if (!snapshot.Busy) { playbackAway = null; ComeBack(away); }
-            else if (playbackSeenActive && !snapshot.ActionsActive) playbackAway = null;
+            else if (playbackSeenActive && !snapshot.ActionsActive && snapshot.ActiveHelperIds is { Count: > 0 }) playbackAway = null;
         }
         TargetLabel.IsEnabled = ToggleTargetLabel.IsEnabled = !snapshot.Busy && !snapshot.CleanupPending
             && !quickOperation && !screenshotBusy && !macroFileBusy && !ioBusy && !bindingBusy && !closing;
@@ -486,7 +488,7 @@ public partial class MainWindow : Window
             if (success) ReasonLabel.Text = "Keybinds saved.";
         }
         catch (Exception ex) { ReasonLabel.Text = ex.Message; }
-        finally { bindingBusy = false; Pages.IsEnabled = true; }
+        finally { bindingBusy = false; Pages.IsEnabled = true; RefreshStatus(); }
     }
 
     private void ResizeClicks_Changed(object sender, SelectionChangedEventArgs e)
