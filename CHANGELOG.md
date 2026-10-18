@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Toggles and Controller to Key edit like the Actions page: blue Add Toggle / Add Binding, green Save Changes for the
+  selected item, grey until complete, Clear editor, the bin below the list, and a click elsewhere ends editing.
 - Linux: the clicker runs once, however fast the icon is clicked; a second launch brings the running one to the front.
 - The unlocked overlay stays where you dropped it on the screen and no longer follows the Click target; locking it
   pins it to the window where it is. Picking a spot on the Overlay Anchor Point picture locks it there.

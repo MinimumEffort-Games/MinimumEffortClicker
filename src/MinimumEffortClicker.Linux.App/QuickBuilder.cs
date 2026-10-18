@@ -675,13 +675,18 @@ public partial class MainWindow
     /// </summary>
     private void EditingWindow_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
     {
-        if (editingQuick is null && QuickActionList.SelectedIndex < 0 || e.Source is not Avalonia.Visual source) return;
+        if (e.Source is not Avalonia.Visual source) return;
         bool Inside(Avalonia.Visual root) => source == root || Avalonia.VisualTree.VisualExtensions.IsVisualAncestorOf(root, source);
         bool Within<T>() => source is T || Avalonia.VisualTree.VisualExtensions.GetVisualAncestors(source).OfType<T>().Any();
         // A dropdown's list opens in a popup (its own top level, or the overlay layer); a pick there belongs to the dropdown.
         if (TopLevel.GetTopLevel(source) != this || Within<Avalonia.Controls.Primitives.OverlayLayer>() || Within<Avalonia.Controls.Primitives.PopupRoot>()) return;
-        if (Inside(CreateActionCard) || Inside(QuickEditorTools) || Inside(TestSelectedButton)) return;
-        if (Inside(ActionListCard) && (Within<ListBoxItem>() || Within<Button>() || Within<ScrollBar>())) return;
-        StopEditing();
+        // The editor panel, its buttons, and a row, button or scroll bar in its list keep the selection; any other click ends
+        // editing, on the Actions, Toggles and Controller to Key pages alike.
+        bool Keeps(Avalonia.Visual editor, Avalonia.Visual tools, Avalonia.Visual list) => Inside(editor) || Inside(tools)
+            || Inside(list) && (Within<ListBoxItem>() || Within<DataGridRow>() || Within<Button>() || Within<ScrollBar>());
+        if ((editingQuick is not null || QuickActionList.SelectedIndex >= 0) && !Inside(TestSelectedButton) && !Keeps(CreateActionCard, QuickEditorTools, ActionListCard))
+            StopEditing();
+        if (editingToggle is not null && !Keeps(ToggleEditorCard, ToggleEditorTools, ToggleListCard)) StopEditingToggle();
+        if (editingControllerBind is not null && !Keeps(ControllerBindEditorCard, ControllerBindEditorTools, ControllerBindListCard)) StopEditingControllerBind();
     }
 }

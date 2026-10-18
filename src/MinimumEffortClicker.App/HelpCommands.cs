@@ -64,7 +64,8 @@ public partial class MainWindow
             "- Give it a name.",
             "- Click the key or mouse button to hold or tap, on the keyboard or the mouse beside it.",
             "- Choose Hold or Spam.",
-            "- Pick its shortcut: Keyboard/Mouse for a key or mouse button, Controller for a controller button, or both. Right-click either one to remove it. Then save.",
+            "- Pick its shortcut: Keyboard/Mouse for a key or mouse button, Controller for a controller button, or both. Right-click either one to remove it. Then press Add Toggle.",
+            "- Select a toggle in the list to change it: the button turns green and says Save Changes. Click anywhere else to stop editing. Clear editor empties the settings; the bin under the list removes the selected toggle.",
             "",
             "Toggles only work when a click target is selected. Set a toggle Active to arm it; the toggles you leave active are armed again the next time the app starts. Nothing happens until you press its shortcut while your Click target is in front.",
             "Spam is built for fast tapping. The click limit on the Actions page does not apply to it.",
@@ -72,7 +73,7 @@ public partial class MainWindow
         ("Controller to Key",
         [
             "Turns controller buttons into keys and mouse buttons, in whichever window is in front; no Click target is needed.",
-            "- Name the bind, click the key or mouse button it presses, press Controller binding and then the controller button (or click it on the picture), and save.",
+            "- Name the bind, click the key or mouse button it presses, press Controller binding and then the controller button (or click it on the picture), and press Add Binding. Select a bind to change it (Save Changes) or to remove it with the bin under the list; click anywhere else to stop editing.",
             "- While the controller button is held, its key or mouse button is held. Two binds may press the same key; it stays down until both buttons are up.",
             "- Set a bind Inactive to keep it without using it. Active binds come back when the clicker starts, and press nothing until you press their button.",
             "- On the controller picture, buttons that already do something are outlined red; hover one to see what. Buttons used under Settings → Controller (A, B, Y, X by default) cannot be bound here; clear them there first. Stop All lets go of everything.",
