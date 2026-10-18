@@ -94,6 +94,7 @@ public partial class MainWindow
     private void NewToggle_Click(object sender, RoutedEventArgs e)
     {
         editingToggle = null; ToggleList.SelectedIndex = -1; ToggleModeBox.SelectedIndex = 0; ToggleIntervalSlider.Value = 100;
+        selectedHeldInput = null; ShowHeldInput();
         selectedToggleKey = 0; ShowToggleShortcut(); selectedToggleController = null; ShowToggleController(); ToggleNameBox.Text = "";
         DeleteToggleButton.IsEnabled = false; RefreshToggleSave();
     }
@@ -123,10 +124,11 @@ public partial class MainWindow
     private string? ToggleMissing()
     {
         int key = selectedToggleKey;
+        if (selectedHeldInput is null) return "Choose the key or mouse button to hold or tap.";
         if (key == 0 && selectedToggleController is null) return "Choose a keyboard or mouse shortcut, a controller button, or both.";
         if (key != 0 && macroBindings.Values.Any(b => b.MacroId != editingToggle && b.Key == key)) return "That shortcut is assigned to another toggle. Choose a different key.";
         if (selectedToggleController is { } pad && ControllerButtonUse(pad, exceptToggle: editingToggle) is { } use) return use + " Choose another controller button.";
-        if (key != 0 && MinimumEffortClicker.Linux.DesktopRuntime.InputMatchesKey(selectedHeldInput, key)) return "Choose a shortcut different from the input being held.";
+        if (key != 0 && selectedHeldInput is { } held && MinimumEffortClicker.Linux.DesktopRuntime.InputMatchesKey(held, key)) return "Choose a shortcut different from the input being held.";
         return null;
     }
     private async void SaveToggle_Click(object sender, RoutedEventArgs e)
@@ -145,12 +147,13 @@ public partial class MainWindow
                 throw new ArgumentException("That shortcut is assigned to another toggle. Choose a different key.");
             if (selectedToggleController is { } pad && ControllerButtonUse(pad, exceptToggle: id) is { } padUse)
                 throw new ArgumentException(padUse + " Choose another controller button.");
-            var held = InputLabel(selectedHeldInput);
-            if (key != 0 && MinimumEffortClicker.Linux.DesktopRuntime.InputMatchesKey(selectedHeldInput, key))
+            if (selectedHeldInput is not { } heldInput) throw new ArgumentException("Choose the key or mouse button to hold or tap.");
+            var held = InputLabel(heldInput);
+            if (key != 0 && MinimumEffortClicker.Linux.DesktopRuntime.InputMatchesKey(heldInput, key))
                 throw new ArgumentException("Choose a shortcut different from the input being held.");
             string name = (ToggleNameBox.Text ?? "").Trim(); if (name.Length == 0) name = "Toggle " + held;
             var macro = new MacroDefinition(id, name,
-                new(selectedHeldInput, ToggleModeBox.SelectedIndex == 1 ? HelperMode.Repeat : HelperMode.Hold, TimeSpan.FromMilliseconds(ToggleModeBox.SelectedIndex == 1 ? ToggleIntervalSlider.Value : 100), TimeSpan.FromMilliseconds(ToggleModeBox.SelectedIndex == 1 ? 2 : 20), 0), IsToggle: true);
+                new(heldInput, ToggleModeBox.SelectedIndex == 1 ? HelperMode.Repeat : HelperMode.Hold, TimeSpan.FromMilliseconds(ToggleModeBox.SelectedIndex == 1 ? ToggleIntervalSlider.Value : 100), TimeSpan.FromMilliseconds(ToggleModeBox.SelectedIndex == 1 ? 2 : 20), 0), IsToggle: true);
             var owner = profiles.FirstOrDefault(p => p.Macros.Any(m => m.Id == id))
                 ?? profiles.FirstOrDefault(p => p.Macros.Count < 100 && p.Macros.All(m => m.IsToggle));
             var updated = owner is null

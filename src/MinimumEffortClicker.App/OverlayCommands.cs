@@ -11,7 +11,8 @@ public partial class MainWindow
         overlay.ShowRequested += RestoreFromTray;
         overlay.ExitRequested += ExitApplication;
         overlay.LockToggled += () => SetOverlayUnlocked(!overlayOptions.Unlocked);
-        overlay.Dropped += (x, y) => { overlayOptions = overlayOptions with { FreeX = x, FreeY = y }; PersistPreferences(); };
+        // The overlay gets its new place at once; without RefreshStatus it kept the old one and the next placement put it back.
+        overlay.Dropped += (x, y) => { overlayOptions = overlayOptions with { FreeX = x, FreeY = y }; RefreshStatus(); PersistPreferences(); };
     }
     private void DisplaysChanged(object? sender, EventArgs e)
     {

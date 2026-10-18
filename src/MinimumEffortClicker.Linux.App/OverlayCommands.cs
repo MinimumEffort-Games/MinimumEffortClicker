@@ -18,7 +18,8 @@ public partial class MainWindow
         overlay.ShowRequested += BringToFront;
         overlay.ExitRequested += ExitApplication;
         overlay.LockToggled += () => SetOverlayUnlocked(!overlayOptions.Unlocked);
-        overlay.Dropped += (x, y) => { overlayOptions = overlayOptions with { FreeX = x, FreeY = y }; PersistPreferences(); };
+        // The overlay gets its new place at once; without RefreshStatus it kept the old one and the next placement put it back.
+        overlay.Dropped += (x, y) => { overlayOptions = overlayOptions with { FreeX = x, FreeY = y }; RefreshStatus(); PersistPreferences(); };
     }
 
     /// <summary>The overlay's square and a second launch of the app: show the clicker in front, also when GNOME would only
