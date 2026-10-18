@@ -159,6 +159,7 @@ public partial class MainWindow : Window
             await ConfigureScreenshotHotkey();
             await ConfigurePauseHotkey();
             settingsLoaded = true;
+            CheckLastSession();
             }
             catch (Exception ex) { if (!allowClose) ReasonLabel.Text = "Startup settings could not be loaded: " + ex.Message; }
             finally
@@ -187,6 +188,7 @@ public partial class MainWindow : Window
         };
         Closed += (_, _) =>
         {
+            EndSession();
             trayIcon?.Dispose(); trayIcon = null;
             SendControllerOutputs(controllerKeys.ReleaseAll().Select(o => (o, false)));
             gamepads?.Dispose(); gamepads = null;

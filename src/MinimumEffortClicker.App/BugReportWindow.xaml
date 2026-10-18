@@ -1,0 +1,41 @@
+<Window x:Class="MinimumEffortClicker.App.BugReportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Report a bug" Icon="Assets/App.ico"
+        Width="620" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource AppBackground}" Foreground="{DynamicResource TextPrimary}"
+        FontFamily="Segoe UI" FontSize="14" UseLayoutRounding="True">
+    <StackPanel Margin="20">
+        <TextBlock Text="Report a bug" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <TextBlock Text="This saves a report as a zip file and opens a new GitHub issue with your text filled in. Drag the zip into the issue before you submit it. The clicker itself sends nothing." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,12"/>
+        <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="1" CornerRadius="8" Padding="12">
+            <StackPanel>
+                <TextBlock Text="What happened?"/>
+                <TextBox x:Name="HappenedBox" MaxLength="4000" Height="90" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,4,0,10" TextChanged="Text_Changed" AutomationProperties.Name="What happened"/>
+                <TextBlock Text="What did you expect? (optional)"/>
+                <TextBox x:Name="ExpectedBox" MaxLength="2000" Height="60" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,4,0,12" AutomationProperties.Name="What did you expect"/>
+                <TextBlock Text="Include" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <WrapPanel>
+                    <ToggleButton x:Name="SystemBox" Style="{StaticResource ChoiceToggle}" Content="App and system details" IsChecked="True" Margin="0,0,6,6" Checked="Include_Changed" Unchecked="Include_Changed" ToolTip="App version, Windows version, monitors and scaling, controllers, the main settings."/>
+                    <ToggleButton x:Name="LogBox" Style="{StaticResource ChoiceToggle}" Content="End of the log" IsChecked="True" Margin="0,0,6,6" Checked="Include_Changed" Unchecked="Include_Changed" ToolTip="The last lines of log.txt, with the most recent error."/>
+                    <ToggleButton x:Name="ScreenshotBox" Style="{StaticResource ChoiceToggle}" Content="Screenshot of the clicker" Margin="0,0,6,6" Checked="Include_Changed" Unchecked="Include_Changed" ToolTip="A picture of the clicker window only, as it is now."/>
+                    <ToggleButton x:Name="ActionListBox" Style="{StaticResource ChoiceToggle}" Content="Current Action List" Margin="0,0,6,6" Checked="Include_Changed" Unchecked="Include_Changed" ToolTip="The list as a macro file. It may hold colours and image areas captured from your screen."/>
+                </WrapPanel>
+                <TextBlock Text="Your user name, home folder and computer name are replaced with neutral words. GitHub issues are public: check the preview and the zip before you submit." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,4,0,8"/>
+                <Expander Header="Preview of the text in the report" Foreground="{DynamicResource TextPrimary}">
+                    <TextBox x:Name="PreviewBox" IsReadOnly="True" Height="180" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Margin="0,6,0,0" AutomationProperties.Name="Report preview"/>
+                </Expander>
+            </StackPanel>
+        </Border>
+        <TextBlock x:Name="StatusText" TextWrapping="Wrap" Margin="0,10,0,0" Foreground="{DynamicResource TextSecondary}"/>
+        <Grid Margin="0,14,0,0">
+            <Button Content="Cancel" IsCancel="True" MinWidth="90" HorizontalAlignment="Left"
+                    Style="{StaticResource StandardButton}" Background="{DynamicResource StopFill}"
+                    BorderBrush="{DynamicResource StopBorder}" Foreground="{DynamicResource ColourButtonText}"/>
+            <Button x:Name="CreateButton" Content="Create report and open GitHub" Click="Create_Click" IsDefault="True" IsEnabled="False" Padding="12,5" HorizontalAlignment="Right"
+                    Style="{StaticResource StandardButton}" Background="{DynamicResource SuccessFill}"
+                    BorderBrush="{DynamicResource SuccessBorder}" Foreground="{DynamicResource ColourButtonText}"/>
+        </Grid>
+    </StackPanel>
+</Window>

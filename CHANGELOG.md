@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Windows: Report a bug, next to Help. It saves a zip (your text, app and system details, the end of the log, and
+  optionally a picture of the clicker and the Action List; user name and computer name replaced) and opens a new
+  GitHub issue with the text filled in. The app sends nothing itself. After a close that was not normal, the next
+  start offers a report.
 - Windows: Look recording for first- and third-person games. While a game holds the cursor, Record keeps the mouse
   movement as Look actions (relative movement, about 60 steps a second), so playback turns the camera the same way.
   Clicks made then keep no screen spot, so they never move the cursor. Selecting a Look shows its length and turn;

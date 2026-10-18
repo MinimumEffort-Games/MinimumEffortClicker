@@ -102,6 +102,8 @@ public partial class MainWindow
         ]),
         ("If something is stuck",
         [
+            "Report a bug (next to Help): describe what happened, choose what to include (app and system details, the end of the log, a picture of the clicker, the Action List; your user name and computer name are replaced), and press Create report. The clicker saves a zip, shows it in its folder and opens a new GitHub issue with your text. Drag the zip into the issue and submit it. The clicker sends nothing itself. If it did not close normally, it offers a report at the next start.",
+            "",
             "Cleanup pending means the clicker could not let go of a key or button because you were holding the same one yourself. Let go of it and press Release stuck input.",
             "",
             "Closing the app normally stops and releases everything. Ending it from Task Manager does not.",
