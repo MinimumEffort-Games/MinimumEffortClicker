@@ -49,7 +49,8 @@ public partial class MainWindow
         if (QuickActionList.SelectedItem is not QuickRow row) { ReasonLabel.Text = "Select an action in the list, then test it."; return; }
         if (screenshotBusy || quickOperation || macroFileBusy || ioBusy || runtime.Snapshot.Busy || runtime.Snapshot.CleanupPending)
         { ReasonLabel.Text = "Finish or stop the current run before testing an action."; return; }
-        var step = row.Step with { Enabled = true };
+        // A test sends the action once, also when the list runs it several times in a row.
+        var step = row.Step with { Enabled = true, Times = 1 };
         quickOperation = true;
         StepAside? away = null;
         bool? passed = null; string detail;

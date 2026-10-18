@@ -84,4 +84,28 @@ public sealed class ControllerControlsTests
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
+
+    [TestMethod]
+    public void ViewPausesByDefaultAndAnOlderLayoutThatUsedViewKeepsIt()
+    {
+        Assert.AreEqual(ControllerCommand.Pause, ControllerControls.Default.CommandFor(ControllerButton.View));
+        Assert.AreEqual(ControllerButton.View, ControllerControls.SteamDeck.Pause);
+        string directory = Path.Combine(Path.GetTempPath(), "mec-controller-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new Preferences(directory);
+            Directory.CreateDirectory(directory);
+            string path = Path.Combine(directory, "preferences.json");
+            // Saved before the Pause button existed: View is free, so it pauses.
+            File.WriteAllText(path, """{"SchemaVersion":1,"Appearance":2,"ToggleKey":119,"StopKey":117,"HoldTrigger":false,"Overlay":true,"Controller":{"StartStop":1,"StopAll":2,"Record":4,"Screenshot":3}}""");
+            Assert.AreEqual(ControllerButton.View, store.Load().Controller!.Pause);
+            // View was already Start/Stop: it stays that, Pause has no button, and nothing else is reset.
+            File.WriteAllText(path, """{"SchemaVersion":1,"Appearance":2,"ToggleKey":119,"StopKey":117,"HoldTrigger":false,"Overlay":true,"Controller":{"StartStop":9,"StopAll":2,"Record":4,"Screenshot":3}}""");
+            var loaded = store.Load();
+            Assert.AreEqual(2, loaded.Appearance);
+            Assert.AreEqual(ControllerButton.View, loaded.Controller!.StartStop);
+            Assert.IsNull(loaded.Controller.Pause);
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
 }

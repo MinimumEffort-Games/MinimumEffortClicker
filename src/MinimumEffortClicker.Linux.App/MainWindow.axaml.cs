@@ -133,7 +133,7 @@ public partial class MainWindow : Window
             IdleOverlayBox.IsChecked = overlayOptions.KeepIdle;
             OverlayOpacity.Value = overlayOptions.Opacity; OverlayScale.Value = overlayOptions.Scale;
             OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY); overlaySettingsLoaded = true;
-            Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
+            KeepOnTopBox.IsChecked = settings.MainTopmost; ApplyKeepOnTop();
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
             // A file from before the Pause key may hold its default on another control; Pause then takes the first free key.
             selectedPauseKey = ShortcutKeys.FreePauseKey(settings.PauseKey, [settings.ToggleKey, settings.StopKey, settings.RecordKey, .. settings.Screenshots is { HotkeyEnabled: true } shot ? new[] { shot.Hotkey } : []]);
@@ -145,7 +145,7 @@ public partial class MainWindow : Window
             LoopBox.IsChecked = choices.Loop; MinimizeOnStartBox.IsChecked = choices.MinimizeOnStart; RecordDelaysBox.IsChecked = choices.RecordPauses;
             MinimizeOnRecordBox.IsChecked = choices.MinimizeOnRecord; RecordMovementBox.IsChecked = choices.SimulateMovement;
             // Set before anything can save preferences again, so an early save keeps the remembered toggles.
-            rememberedToggles = settings.ActiveToggles ?? [];
+            rememberedToggles = settings.ActiveToggles ?? []; lastTarget = settings.LastTarget;
             controllerControls = settings.Controller ?? ControllerControls.DefaultFor(OnSteamDeck); ShowControllerButtons();
             runtime.SetClickRateLimit(appliedClickLimit); runtime.KeepAwakeWhileRunning = appliedKeepAwake;
             await runtime.Control.ConfigureAsync(settings.ToggleKey, settings.StopKey);
@@ -155,13 +155,14 @@ public partial class MainWindow : Window
             runtime.Control.HoldTrigger = false; stopKey = ShortcutKeys.Label(settings.StopKey);
             initialized = true; Config_Changed(this, new RoutedEventArgs()); RefreshStatus();
             if (loaded.Warning is not null) ReasonLabel.Text = loaded.Warning;
-            RefreshTargetChoices();
+            RefreshTargetChoices(); RestoreLastTarget();
             await SetQuickRecordKey();
             await MakeSavedMacrosAvailable();
             await RestoreActiveToggles();
             MeasureDesktopPixels();
             StartControllers();
             await LoadControllerBinds();
+            SettleControllerPause();
             await ConfigureScreenshotHotkey();
             await ConfigurePauseHotkey();
             settingsLoaded = true;
@@ -411,12 +412,15 @@ public partial class MainWindow : Window
         // Appearance can follow the desktop, which may have switched since; the outline shows what is showing now.
         if (page == 3) ShowThemeChoice();
         for (int i = 0; i < Pages.Children.Count; i++) Pages.Children[i].Visibility = i == page ? Visibility.Visible : Visibility.Collapsed;
-        // The first layout of Settings scrolls its chosen list items into view, which left the page opened half-way
-        // down; once that layout is done it starts at the top.
-        if (page == 3 && !settingsShown)
+        // The first layout of Settings scrolls its chosen list items into view, which left the page opened part-way
+        // down (sometimes still after a reset at Background priority). Those requests are ignored until the app is idle
+        // again, and then the page starts at the top.
+        if (page == 3 && !settingsShown && SettingsScroll.Content is Control content)
         {
             settingsShown = true;
-            Dispatcher.UIThread.Post(() => SettingsScroll.Offset = default, DispatcherPriority.Background);
+            EventHandler<RequestBringIntoViewEventArgs> ignore = (_, e) => e.Handled = true;
+            content.AddHandler(RequestBringIntoViewEvent, ignore);
+            Dispatcher.UIThread.Post(() => { content.RemoveHandler(RequestBringIntoViewEvent, ignore); SettingsScroll.Offset = default; }, DispatcherPriority.ApplicationIdle);
         }
     }
     private void Navigate(int page)
@@ -502,11 +506,11 @@ public partial class MainWindow : Window
     {
         if (!initialized) return;
         pendingPreferences = new(1, ThemeBox.SelectedIndex, appliedToggleKey,
-            appliedStopKey, appliedHoldTrigger, OverlayBox.IsChecked == true, overlayOptions, false, appliedClickLimit, appliedKeepAwake, ResizeClicksBox.SelectedIndex == 0,
+            appliedStopKey, appliedHoldTrigger, OverlayBox.IsChecked == true, overlayOptions, KeepOnTopBox.IsChecked == true, appliedClickLimit, appliedKeepAwake, ResizeClicksBox.SelectedIndex == 0,
             CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop, showInputAccessNotice,
             Actions: new(LoopBox.IsChecked == true, MinimizeOnStartBox.IsChecked == true, RecordDelaysBox.IsChecked == true,
                 MinimizeOnRecordBox.IsChecked == true, RecordMovementBox.IsChecked == true),
-            ActiveToggles: rememberedToggles, Controller: controllerControls, PauseKey: appliedPauseKey);
+            ActiveToggles: rememberedToggles, Controller: controllerControls, PauseKey: appliedPauseKey, LastTarget: lastTarget);
         if (preferencesBusy) return;
         preferencesBusy = true;
         try

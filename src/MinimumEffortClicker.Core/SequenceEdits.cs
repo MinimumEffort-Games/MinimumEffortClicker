@@ -35,6 +35,13 @@ public sealed class SequenceHistory
         undo.Add(Current); redo.Clear(); Current = SequenceEdits.Snapshot(next);
         while (undo.Count > 50 || undo.Sum(Weight) > 50000) undo.RemoveAt(0);
     }
+    /// <summary>Replaces the current draft without a new undo step: the follow-up of an edit still in progress, like the
+    /// next digit typed into the same number, so the whole change is one undo.</summary>
+    public void Amend(SequenceDefinition next)
+    {
+        SequenceCompiler.Compile(next, points);
+        redo.Clear(); Current = SequenceEdits.Snapshot(next);
+    }
     public void Undo() { if (!CanUndo) return; redo.Add(Current); Current = undo[^1]; undo.RemoveAt(undo.Count - 1); }
     public void Redo() { if (!CanRedo) return; undo.Add(Current); Current = redo[^1]; redo.RemoveAt(redo.Count - 1); }
     private static int Weight(SequenceDefinition definition) => definition.Steps.Sum(s => 1 + (s.Children?.Count ?? 0) + (s.Condition?.Template?.Bgra.Length ?? 0) / 64);

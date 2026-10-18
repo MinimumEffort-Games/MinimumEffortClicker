@@ -14,7 +14,7 @@ public partial class MainWindow
     // The Pause key (F7 by default) pauses a running Action List and goes on with a paused one, like the Pause button;
     // F8 stays Start / Stop (User, 2026-10-18).
     private int appliedPauseKey = ShortcutKeys.DefaultPauseKey, selectedPauseKey = ShortcutKeys.DefaultPauseKey;
-    private string PauseHint => ShortcutKeys.Label(appliedPauseKey);
+    private string PauseHint => controllerHints && controllerControls.Pause is { } pad ? ControllerButtons.Label(pad) : ShortcutKeys.Label(appliedPauseKey);
     private void PauseHotkey()
     {
         if (!Dispatcher.HasShutdownStarted) Dispatcher.BeginInvoke(() =>

@@ -88,6 +88,19 @@ public sealed class MacroFileTests
         Assert.IsFalse(HelperProfiles.Open(path).Macros[0].Sequence!.Steps.Any(s => s.Once));
     }
     [TestMethod]
+    public void TimesRoundTripsAndAFileWithoutItRunsOnce()
+    {
+        var click = QuickActions.Click(PointerButton.Left, QuickClickKind.Single, TimeSpan.FromMilliseconds(10), TimeSpan.Zero, TimeSpan.FromMilliseconds(10)) with { Times = 250 };
+        var profile = Profile() with { Macros = [new(Guid.NewGuid(), "Many", null, Sequence: new([click]))] };
+        string path = Path.Combine(directory, "times.mecprofile"); HelperProfiles.Export(path, profile);
+        Assert.AreEqual(250, HelperProfiles.Open(path).Macros[0].Sequence!.Steps[0].Times);
+        // Files saved before the option existed have no "times" field: every action runs once.
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+        foreach (var step in root["macros"]![0]!["sequence"]!["steps"]!.AsArray()) step!.AsObject().Remove("times");
+        File.WriteAllText(path, root.ToJsonString());
+        Assert.AreEqual(1, HelperProfiles.Open(path).Macros[0].Sequence!.Steps[0].Times);
+    }
+    [TestMethod]
     public void InvalidSaveDoesNotDamageExistingMacroFile()
     {
         var profile = Profile(); string path = Path.Combine(directory, "safe.mecprofile"); HelperProfiles.Export(path, profile);

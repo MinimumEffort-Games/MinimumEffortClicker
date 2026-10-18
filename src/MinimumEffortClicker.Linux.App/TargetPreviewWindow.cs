@@ -90,9 +90,10 @@ internal sealed class TargetPreviewWindow : Window
         reserved = true;
         try
         {
-            Position = new PixelPoint(calibration.X, calibration.Y);
+            // The frame is in the desktop helper's units; with display scaling the X11 window is placed in larger pixels.
+            Position = DesktopPixels.ToWindow(calibration.X, calibration.Y);
             Show();
-            Position = new PixelPoint(calibration.X, calibration.Y);
+            Position = DesktopPixels.ToWindow(calibration.X, calibration.Y);
             timer.Start();
         }
         catch { Finish("Target preview could not start."); throw; }
@@ -112,7 +113,8 @@ internal sealed class TargetPreviewWindow : Window
             int number = 0;
             foreach (var point in points)
             {
-                var centre = new Point(point.Position.X / scale, point.Position.Y / scale);
+                // Points are in helper units like the frame: to X11 pixels, then to this window's own units.
+                var centre = new Point(point.Position.X * DesktopPixels.Factor / scale, point.Position.Y * DesktopPixels.Factor / scale);
                 drawing.DrawEllipse(surface, pen, centre, 13, 13);
                 var label = new FormattedText($"{++number}  {point.Name}", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, 13, ink);
                 drawing.DrawRectangle(surface, null, new Rect(centre.X + 17, centre.Y - 12, label.Width + 12, 26));

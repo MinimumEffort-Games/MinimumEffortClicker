@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using MinimumEffortClicker.Core;
 using MinimumEffortClicker.Linux;
 
 namespace MinimumEffortClicker.App;
@@ -45,7 +46,38 @@ public partial class MainWindow
         finally { syncingTargets = false; }
     }
 
+    // The Click target chosen last; saved with the preferences and picked again at the next start.
+    private RememberedTarget? lastTarget;
+    private static string ProgramOf(int processId)
+    {
+        try { using var process = System.Diagnostics.Process.GetProcessById(processId); return process.ProcessName; }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { return ""; }
+    }
+    /// <summary>
+    /// At start: selects the Click target used last when its window is open (User, 2026-10-18). Nothing runs; a missing
+    /// window leaves Desktop, as before.
+    /// </summary>
+    private void RestoreLastTarget()
+    {
+        if (runtime is null || lastTarget is not { } remembered) return;
+        string? restored = null;
+        try
+        {
+            var windows = runtime.ListTargets();
+            int pick = remembered.Pick(windows.Select(w => (ProgramOf(w.ProcessId), w.Title)).ToArray());
+            if (pick < 0) return;
+            runtime.SelectTarget(windows[pick]);
+            restored = windows[pick].Title;
+        }
+        // The window closed meanwhile, or the desktop helper did not answer: Desktop stays, as without a remembered target.
+        catch (Exception ex) when (ex is InvalidOperationException or HelperException or ArgumentException) { }
+        finally { RefreshTargetChoices(); RefreshStatus(); }
+        // After RefreshStatus, which shows the runtime's own "Click target selected" line once and would replace this.
+        if (restored is not null) ReasonLabel.Text = $"Click target from last time selected: {restored}.";
+    }
+
     private void ClickTarget_Changed(object sender, SelectionChangedEventArgs e)
+
     {
         if (syncingTargets || runtime is null || sender is not ComboBox { SelectedItem: TargetWindow selected }) return;
         var previous = runtime.SelectedWindow;
@@ -54,6 +86,9 @@ public partial class MainWindow
         try
         {
             if (selected.Handle == 0) runtime.UseDesktop(); else runtime.SelectTarget(selected);
+            lastTarget = selected.Handle != 0 && ProgramOf(selected.ProcessId) is { Length: > 0 } program ? new(program, selected.Title) : null;
+            // A new target gets the overlay back on the anchor chosen in Settings (User, 2026-10-18).
+            SetOverlayAnchor(overlayOptions.AnchorX, overlayOptions.AnchorY);
             quickPoint = null;
             useCursorLocation = true;
             ShowQuickCoordinates();

@@ -34,7 +34,8 @@ public partial class MainWindow
         [
             "The Actions page runs a list of clicks, key presses and pauses in order.",
             "",
-            "- Click target: choose where the clicks go. Desktop uses screen positions on any monitor. A window uses positions inside that window and follows it when it moves.",
+            "- Click target: choose where the clicks go. Desktop uses screen positions on any monitor. A window uses positions inside that window and follows it when it moves. The clicker remembers the window you chose and picks it again the next time it starts, when that window is open.",
+            "- Choosing a Click target puts the overlay back on the spot set under Settings → Overlay Anchor Point.",
             "- Add Action: pick one of the six pictures (click, key press, pause, wait until, screenshot, scroll; hover one for its name), fill in its settings and press Add Action. A green outline shows what is chosen; a red one shows what still needs a choice.",
             "- Click: click the button on the mouse picture (LMB, MMB, RMB, M4, M5), then Single Click, Double Click or Hold.",
             "- Key Press: press the key button and click the key on the keyboard. LCtrl, LShift and LAlt below it are held with the key. A press duration of 500 ms or more holds the key.",
@@ -43,6 +44,7 @@ public partial class MainWindow
             "- Numbers: turn the mouse wheel over a number field, or use its small arrows; hold Shift for ten steps at a time. Typing works too.",
             "- Start (F8): runs the list once. Turn on Loop to repeat it until you stop it. With Desktop as the Click target, Start minimises the clicker; turn off Minimize on Start to keep it up.",
             "- Test Selected Action (above the list, on the right): the clicker minimises and runs only the selected action. A click shows a ring where it landed. A colour wait is checked once: the button turns green when the colour is there right now and red when it is not. It also turns red when an action could not run.",
+            "- × next to a click or key press: how many times in a row it runs each time the list gets to it (1–9,999), so a thousand clicks are one row. With Loop on it does that in every loop, or only in the first loop when it is set to run once. Test Selected Action sends it once.",
             "- Each row shows a mouse or keyboard for clicks and key presses. Active / Inactive turns the action on or off. Below it, the repeat icon makes it run in every loop and the 1 icon only in the first loop, for example a click that opens a level before the loop starts. Without Loop, every action runs once.",
             "",
             "Select a row to edit it: the blue Add Action button turns green and says Save Changes. Click an empty spot in the list, or anywhere else in the clicker, to stop editing. The editor keeps its settings, so Add Action then adds a new action.",
@@ -86,6 +88,7 @@ public partial class MainWindow
         ]),
         ("Settings",
         [
+            "- Keep on top: the clicker stays in front of other windows. Start, Test and Record still minimise it when they are set to.",
             "- Minimize to taskbar: clicking X keeps the clicker running in the notification area; use the tray icon's Exit to quit. Turn it off and X closes the clicker.",
             "- Appearance: light or dark; the one showing has the green outline.",
             "- When the click target is resized: Scale makes saved clicks and scroll spots stretch with the window; Keep fixed keeps them the same distance from its top-left corner.",
@@ -94,7 +97,7 @@ public partial class MainWindow
             "- The overlay's corners button brings the clicker window back to the front. Its X stops anything running and quits the clicker. The rest of the overlay lets clicks through to the app beneath it.",
             "- Overlay Anchor Point: click along an edge of the picture to pin the overlay to that spot of the Click target window (or the screen, for Desktop). Unlock it with the padlock on the overlay to drag it anywhere instead; it then stays at that spot on the screen, also when the window moves. Locking it again pins it to the window where it is. While unlocked it catches clicks; lock it again to let clicks through.",
             "- Keys: F6 stops everything, F7 pauses and goes on, F8 starts and stops Actions (also a paused run), F9 takes a screenshot, F10 records. These are the defaults; change any of them below. Each needs its own key. If Stop All is not one of F1–F11, Ctrl+Alt+F9 also stops everything, even while an administrator window is in front.",
-            "- Controller: A starts and stops Actions, B stops everything, Y records and X takes a screenshot, in any window, like the keys. On a Steam Deck the back buttons do it instead (L4 start/stop, L5 stop all, R4 record, R5 screenshot), because Steam's desktop layout already uses A, B, X and Y. To change one, click its button under Controller, then press the controller button or click it on the picture; right-click to leave a control without one. Xbox, PlayStation, Switch and Steam Deck controllers work, including the Deck's back buttons. The overlay and buttons show the controller's names after you use it and the keys again after you type.",
+            "- Controller: A starts and stops Actions, B stops everything, View (Back) pauses and goes on, Y records and X takes a screenshot, in any window, like the keys. On a Steam Deck the back buttons do it instead (L4 start/stop, L5 stop all, R4 record, R5 screenshot), because Steam's desktop layout already uses A, B, X and Y. To change one, click its button under Controller, then press the controller button or click it on the picture; right-click to leave a control without one. Xbox, PlayStation, Switch and Steam Deck controllers work, including the Deck's back buttons. The overlay and buttons show the controller's names after you use it and the keys again after you type.",
         ]),
         ("If something is stuck",
         [
