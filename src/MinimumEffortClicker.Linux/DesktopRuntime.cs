@@ -286,14 +286,23 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
         NotifyChanged(); return false;
     }
 
+    /// <summary>
+    /// The Click target's client area, or the whole desktop. Throws InvalidOperationException whenever it is unavailable,
+    /// also when the desktop helper does not answer in time (a busy KWin or GNOME Shell): callers already treat that
+    /// exception as "not now", and a helper timeout must not end the app.
+    /// </summary>
     public TargetClientFrame GetTargetFrame()
     {
-        if (IsDesktopMode) return DesktopFrame();
-        var selected = target;
-        if (selected is null || targetInvalidated || Query(selected) is not { Exists: true, Minimized: false } state || state.ProcessId != selected.ProcessId)
-            throw new InvalidOperationException("Choose an open, restored target window first.");
-        if (state.Width <= 0 || state.Height <= 0) throw new InvalidOperationException("The selected window's client geometry is unavailable.");
-        return new(state.X, state.Y, state.Width, state.Height, Dpi(state.Scale));
+        try
+        {
+            if (IsDesktopMode) return DesktopFrame();
+            var selected = target;
+            if (selected is null || targetInvalidated || Query(selected) is not { Exists: true, Minimized: false } state || state.ProcessId != selected.ProcessId)
+                throw new InvalidOperationException("Choose an open, restored target window first.");
+            if (state.Width <= 0 || state.Height <= 0) throw new InvalidOperationException("The selected window's client geometry is unavailable.");
+            return new(state.X, state.Y, state.Width, state.Height, Dpi(state.Scale));
+        }
+        catch (HelperException ex) { throw new InvalidOperationException("The desktop helper did not answer: " + ex.Message, ex); }
     }
 
     private static int Dpi(double scale) => (int)Math.Round(96 * (scale > 0 ? scale : 1));
