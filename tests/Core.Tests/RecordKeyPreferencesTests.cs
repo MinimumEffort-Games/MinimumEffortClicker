@@ -17,6 +17,16 @@ public sealed class RecordKeyPreferencesTests
         Assert.IsFalse((custom with { RecordKey = 0 }).Valid);
     }
     [TestMethod]
+    public void OlderPreferencesGetF6AsThePauseKeyAndAMouseButtonIsRefused()
+    {
+        var old = """{"SchemaVersion":1,"Appearance":0,"ToggleKey":119,"StopKey":120,"HoldTrigger":false,"Overlay":true}""";
+        var restored = JsonSerializer.Deserialize<UserPreferences>(old)!;
+        Assert.AreEqual(0x75, restored.PauseKey); Assert.IsTrue(restored.Valid);
+        var custom = restored with { PauseKey = 0x13 };
+        Assert.AreEqual(0x13, JsonSerializer.Deserialize<UserPreferences>(JsonSerializer.Serialize(custom))!.PauseKey);
+        Assert.IsFalse((custom with { PauseKey = 5 }).Valid, "Pause needs a keyboard key.");
+    }
+    [TestMethod]
     public void CapturedKeyboardAndMouseRecordShortcutsPersist()
     {
         foreach (int key in new[] { 0x41, 0x7B, 5 })

@@ -44,10 +44,13 @@ public sealed class DesktopControl : IDisposable
     public bool HoldTrigger { get; set; }
     private int? recordingKey;
     private readonly TriggerLatch recordingTrigger = new();
-    private int? screenshotKey;
-    private readonly TriggerLatch screenshotTrigger = new();
+    // Screenshot and Pause: global keys beside Start, Stop All and Record, handled alike (Engine GlobalKey).
+    private readonly GlobalKey screenshot, pause;
+    private GlobalKey[] ExtraKeys => [screenshot, pause];
     public event Action? ScreenshotRequested;
-    public bool ScreenshotAvailable => screenshotKey is not null && Available && !bindingsSuspended;
+    /// <summary>The Pause key: pauses the running Action List, or goes on with a paused one.</summary>
+    public event Action? PauseRequested;
+    public bool ScreenshotAvailable => screenshot.Key is not null && Available && !bindingsSuspended;
     private volatile bool bindingsSuspended;
     private volatile int[] registeredKeys = [];
     private volatile int[] controlKeys = [];
@@ -55,7 +58,7 @@ public sealed class DesktopControl : IDisposable
     {
         controlKeys = macroTriggers.Values.Select(m => m.Binding.Key).Append(toggleKey).Append(stopKey)
         .Concat(recordingKey is { } record ? new[] { record } : [])
-        .Concat(screenshotKey is { } screenshot ? new[] { screenshot } : []).Distinct().ToArray();
+        .Concat(ExtraKeys.Where(e => e.Key is not null).Select(e => e.Key!.Value)).Distinct().ToArray();
         registeredKeys = controlKeys.Where(k => !ShortcutKeys.UsesHook(k)).ToArray();
     }
     public bool IsShortcutInput(InputControl input) => controlKeys.Contains(DesktopNative.VirtualKey(input));
@@ -65,16 +68,16 @@ public sealed class DesktopControl : IDisposable
     public Task<bool> SuspendBindingsAsync(bool suspended) => QueueCommand(() =>
     {
         bindingsSuspended = suspended;
-        foreach (int id in macroTriggers.Keys.Append(1).Append(2).Append(BackupStopId).Append(40).Append(41)) ProbeNative.UnregisterHotKey(0, id);
+        foreach (int id in macroTriggers.Keys.Append(1).Append(2).Append(BackupStopId).Append(40).Concat(ExtraKeys.Select(e => e.Id))) ProbeNative.UnregisterHotKey(0, id);
         BackupStopActive = false;
         trigger.Reset((ProbeNative.GetAsyncKeyState(toggleKey) & 0x8000) != 0); recordingTrigger.Reset();
-        screenshotTrigger.Reset(screenshotKey is { } key && (ProbeNative.GetAsyncKeyState(key) & 0x8000) != 0);
+        foreach (var extra in ExtraKeys) extra.Trigger.Reset(extra.Key is { } key && (ProbeNative.GetAsyncKeyState(key) & 0x8000) != 0);
         foreach (var item in macroTriggers.Values) item.Latch.Reset((ProbeNative.GetAsyncKeyState(item.Binding.Key) & 0x8000) != 0);
         if (suspended) return true;
         bool success = RegisterShortcut(1, stopKey) && RegisterShortcut(2, toggleKey);
         foreach (var pair in macroTriggers) success &= RegisterShortcut(pair.Key, pair.Value.Binding.Key);
         if (recordingKey is { } record) success &= RegisterShortcut(40, record);
-        if (screenshotKey is { } screenshot) success &= RegisterShortcut(41, screenshot);
+        foreach (var extra in ExtraKeys) if (extra.Key is { } extraKey) success &= RegisterShortcut(extra.Id, extraKey);
         RegisterBackupStop();
         Available = success && keyboardHook != 0 && mouseHook != 0;
         if (!Available) { Error = "A shortcut could not be restored. Apply your hotkeys again in Settings."; StopRequested?.Invoke(Error); }
@@ -85,20 +88,22 @@ public sealed class DesktopControl : IDisposable
     {
         ProbeNative.UnregisterHotKey(0, 40); recordingKey = null; RefreshRegisteredKeys();
         if (key is null) return true;
-        if (!Available || !ShortcutKeys.Supported(key.Value) || key == toggleKey || key == stopKey || key == screenshotKey || macroTriggers.Values.Any(m => m.Binding.Key == key)) return false;
+        if (!Available || !ShortcutKeys.Supported(key.Value) || key == toggleKey || key == stopKey || ExtraKeys.Any(e => e.Key == key) || macroTriggers.Values.Any(m => m.Binding.Key == key)) return false;
         if (!RegisterShortcut(40, key.Value)) return false;
         recordingTrigger.Reset((ProbeNative.GetAsyncKeyState(key.Value) & 0x8000) != 0); recordingKey = key; RefreshRegisteredKeys(); return true;
     });
-    public Task<bool> ConfigureScreenshotAsync(int? key) => QueueCommand(() =>
+    public Task<bool> ConfigureScreenshotAsync(int? key) => ConfigureExtra(screenshot, key);
+    public Task<bool> ConfigurePauseAsync(int? key) => ConfigureExtra(pause, key);
+    /// <summary>A keyboard key (not Esc or a modifier) that no other control or toggle uses; null clears it.</summary>
+    private Task<bool> ConfigureExtra(GlobalKey slot, int? key) => QueueCommand(() =>
     {
-        ProbeNative.UnregisterHotKey(0, 41); screenshotKey = null; screenshotTrigger.Reset(); RefreshRegisteredKeys();
+        ProbeNative.UnregisterHotKey(0, slot.Id); slot.Key = null; slot.Trigger.Reset(); RefreshRegisteredKeys();
         if (key is null) return true;
-        if (!Available || !ShortcutKeys.Supported(key.Value) || ShortcutKeys.IsMouse(key.Value) || key == 27
-            || key is >= 0xA0 and <= 0xA5 || key == toggleKey || key == stopKey || key == recordingKey
-            || macroTriggers.Values.Any(m => m.Binding.Key == key)) return false;
-        if (!RegisterShortcut(41, key.Value)) return false;
-        screenshotTrigger.Reset((ProbeNative.GetAsyncKeyState(key.Value) & 0x8000) != 0);
-        screenshotKey = key; RefreshRegisteredKeys(); return true;
+        if (!Available || !GlobalKey.Allowed(key.Value) || key == toggleKey || key == stopKey || key == recordingKey
+            || ExtraKeys.Any(e => e != slot && e.Key == key) || macroTriggers.Values.Any(m => m.Binding.Key == key)) return false;
+        if (!RegisterShortcut(slot.Id, key.Value)) return false;
+        slot.Trigger.Reset((ProbeNative.GetAsyncKeyState(key.Value) & 0x8000) != 0);
+        slot.Key = key; RefreshRegisteredKeys(); return true;
     });
     public event Action? ToggleRequested;
     public event Action<Guid, TriggerCommand, bool>? MacroTriggered;
@@ -110,6 +115,8 @@ public sealed class DesktopControl : IDisposable
 
     public DesktopControl()
     {
+        screenshot = new(41, () => ScreenshotRequested?.Invoke());
+        pause = new(42, () => PauseRequested?.Invoke());
         keyboardCallback = Keyboard;
         mouseCallback = Mouse;
         windowCallback = (_, evt, hwnd, obj, child, _, _) =>
@@ -166,7 +173,7 @@ public sealed class DesktopControl : IDisposable
     {
         ClearMacroBindings();
         ProbeNative.UnregisterHotKey(0, 40); recordingKey = null;
-        ProbeNative.UnregisterHotKey(0, 41); screenshotKey = null; screenshotTrigger.Reset();
+        foreach (var extra in ExtraKeys) { ProbeNative.UnregisterHotKey(0, extra.Id); extra.Key = null; extra.Trigger.Reset(); }
         ProbeNative.UnregisterHotKey(0, 1); ProbeNative.UnregisterHotKey(0, 2);
         toggleKey = toggle; stopKey = stop;
         trigger.Reset((ProbeNative.GetAsyncKeyState(toggleKey) & 0x8000) != 0);
@@ -231,10 +238,10 @@ public sealed class DesktopControl : IDisposable
             bool success = Available;
             for (int i = 0; success && i < copy.Length; i++)
             {
-                int id = i + 100; // Keep macro IDs separate from control/record/screenshot IDs 1,2,40,41.
+                int id = i + 100; // Keep macro IDs separate from control/record/screenshot/pause IDs 1,2,40,41,42.
                 // A toggle with only a controller button has no key to register; the controller route triggers it.
                 if (!copy[i].HasKey) continue;
-                success = recordingKey != copy[i].Key && screenshotKey != copy[i].Key && RegisterShortcut(id, copy[i].Key);
+                success = recordingKey != copy[i].Key && !ExtraKeys.Any(e => e.Key == copy[i].Key) && RegisterShortcut(id, copy[i].Key);
                 if (!success) break;
                 var latch = new TriggerLatch();
                 latch.Reset((ProbeNative.GetAsyncKeyState(copy[i].Key) & 0x8000) != 0);
@@ -319,12 +326,12 @@ public sealed class DesktopControl : IDisposable
                 if (message.WParam is 1 or BackupStopId)
                 {
                     trigger.CancelPending();
-                    screenshotTrigger.CancelPending();
+                    foreach (var extra in ExtraKeys) extra.Trigger.CancelPending();
                     foreach (var macro in macroTriggers.Values) macro.Latch.CancelPending();
                     StopRequested?.Invoke(message.WParam == 1 ? "Stopped with global hotkey." : $"Stopped with {BackupStopLabel}.");
                 }
                 if (message.WParam == 40 && Available && recordingKey is not null) RecordingRequested?.Invoke();
-                if (message.WParam == 41 && Available && screenshotKey is not null) ScreenshotRequested?.Invoke();
+                if (Available && ExtraKeys.FirstOrDefault(e => (nuint)e.Id == message.WParam && e.Key is not null) is { } pressed) pressed.Fire();
                 if (message.WParam == 2 && Available)
                 {
                     DispatchTrigger(trigger.RegisteredHotkey(HoldTrigger));
@@ -373,7 +380,7 @@ public sealed class DesktopControl : IDisposable
             if (!bindingsSuspended && evt.Extra != ProbeNative.InputTag && evt.Key == stopKey && (evt.Flags & 0x80) == 0)
             {
                 trigger.CancelPending();
-                screenshotTrigger.CancelPending();
+                foreach (var extra in ExtraKeys) extra.Trigger.CancelPending();
                 foreach (var macro in macroTriggers.Values) macro.Latch.CancelPending();
                 StopRequested?.Invoke("Stopped with global hotkey.");
             }
@@ -403,8 +410,9 @@ public sealed class DesktopControl : IDisposable
     {
         if (key == toggleKey) DispatchTrigger(ShortcutEdge(trigger, key, down, HoldTrigger));
         if (recordingKey == key && ShortcutKeys.UsesHook(key) && ShortcutEdge(recordingTrigger, key, down, false) == TriggerCommand.Toggle) RecordingRequested?.Invoke();
-        if (Available && screenshotKey == key && ShortcutKeys.UsesHook(key)
-            && ShortcutEdge(screenshotTrigger, key, down, false, targetRequired: false) == TriggerCommand.Toggle) ScreenshotRequested?.Invoke();
+        if (Available)
+            foreach (var extra in ExtraKeys)
+                if (extra.Key == key && ShortcutKeys.UsesHook(key) && ShortcutEdge(extra.Trigger, key, down, false, targetRequired: false) == TriggerCommand.Toggle) extra.Fire();
         if (Available)
                 foreach (var item in macroTriggers.Values)
                     if (key == item.Binding.Key)
@@ -422,7 +430,7 @@ public sealed class DesktopControl : IDisposable
             {
                 if (command == ControllerCommand.StopAll)
                 {
-                    trigger.CancelPending(); screenshotTrigger.CancelPending();
+                    trigger.CancelPending(); foreach (var extra in ExtraKeys) extra.Trigger.CancelPending();
                     foreach (var macro in macroTriggers.Values) macro.Latch.CancelPending();
                     StopRequested?.Invoke("Stopped with the controller.");
                     return true;
@@ -460,7 +468,7 @@ public sealed class DesktopControl : IDisposable
                 int key = ShortcutKeys.MouseKey(shortcut);
                 bool down = message is 0x201 or 0x204 or 0x207 or 0x20B;
                 if (key == stopKey && down)
-                { trigger.CancelPending(); screenshotTrigger.CancelPending(); foreach (var item in macroTriggers.Values) item.Latch.CancelPending(); StopRequested?.Invoke("Stopped with mouse shortcut."); }
+                { trigger.CancelPending(); foreach (var extra in ExtraKeys) extra.Trigger.CancelPending(); foreach (var item in macroTriggers.Values) item.Latch.CancelPending(); StopRequested?.Invoke("Stopped with mouse shortcut."); }
                 ShortcutEdge(key, down);
             }
             if ((evt.Flags & 1) == 0)

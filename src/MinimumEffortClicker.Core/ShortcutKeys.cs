@@ -7,6 +7,8 @@ public static class ShortcutKeys
     public const int DefaultStartKey = 0x77, DefaultStopKey = 0x78, DefaultRecordKey = 0x79;
     /// <summary>F7 takes a screenshot (User, 2026-10-17).</summary>
     public const int DefaultScreenshotKey = 0x76;
+    /// <summary>F6 pauses and goes on with the Action List (User asked for a Pause key, 2026-10-18; F7 is the screenshot key).</summary>
+    public const int DefaultPauseKey = 0x75;
     public static bool IsMouse(int key) => key is 1 or 2 or 4 or 5 or 6;
     public static bool Supported(int key) => IsMouse(key) || key is 8 or 9 or 12 or 13 or 19 or 20 or 27
         or >= 0x20 and <= 0x28 or 0x2C or 0x2D or 0x2E or >= 0x30 and <= 0x39

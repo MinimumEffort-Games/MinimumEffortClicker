@@ -62,6 +62,7 @@ public partial class MainWindow : Window
         runtime.Changed += RuntimeChanged;
         runtime.Control.RecordingRequested += QuickRecordHotkey;
         runtime.Control.ScreenshotRequested += ScreenshotHotkey;
+        runtime.Control.PauseRequested += PauseHotkey;
         runtime.Control.StopRequested += CancelScreenshot;
         runtime.StopIssued += CancelPowerSchedule;
         runtime.QuickStartRequested += () =>
@@ -134,6 +135,7 @@ public partial class MainWindow : Window
             OverlayAnchorPicture.Show(overlayOptions.AnchorX, overlayOptions.AnchorY); overlaySettingsLoaded = true;
             Topmost = false; // The removed main-window topmost preference must not remain active invisibly.
             selectedRecordKey = settings.RecordKey; QuickRecordKeyBox.Content = ShortcutKeys.Label(selectedRecordKey);
+            selectedPauseKey = settings.PauseKey; PauseKeyBox.Content = ShortcutKeys.Label(selectedPauseKey);
             EmergencyStopBox.SelectedIndex = (int)settings.EmergencyStop; runtime.EmergencyStop = settings.EmergencyStop; EmergencyStop_Changed(this, null!);
             appliedClickLimit = 20; appliedKeepAwake = settings.KeepAwake;
             KeepAwakeBox.IsChecked = appliedKeepAwake;
@@ -158,6 +160,7 @@ public partial class MainWindow : Window
             StartControllers();
             await LoadControllerBinds();
             await ConfigureScreenshotHotkey();
+            await ConfigurePauseHotkey();
             settingsLoaded = true;
             }
             catch (Exception ex) { if (!allowClose) ReasonLabel.Text = "Startup settings could not be loaded: " + ex.Message; }
@@ -203,6 +206,7 @@ public partial class MainWindow : Window
             runtime.Control.RecordingRequested -= QuickRecordHotkey;
             screenshotCancellation?.Cancel();
             runtime.Control.ScreenshotRequested -= ScreenshotHotkey;
+            runtime.Control.PauseRequested -= PauseHotkey;
             runtime.Control.StopRequested -= CancelScreenshot;
             runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Close();
         };
@@ -246,7 +250,7 @@ public partial class MainWindow : Window
         FailureDetailLabel.Visibility = snapshot.CleanupPending || snapshot.State is "Could not continue" or "Not started" or "Cleanup pending" ? Visibility.Visible : Visibility.Collapsed;
         FailureDetailLabel.Text = snapshot.Reason;
         PausePlaybackButton.IsEnabled = !quickOperation && (snapshot.PlaybackActive || runtime.CanResume);
-        PausePlaybackButton.Content = runtime.CanResume ? $"Unpause {StartHint}" : "Pause";
+        PausePlaybackButton.Content = runtime.CanResume ? $"Unpause {PauseHint}" : $"Pause {PauseHint}";
         var status = (snapshot.State, snapshot.Reason);
         if (lastRuntimeStatus != status)
         {
@@ -313,12 +317,12 @@ public partial class MainWindow : Window
     private bool actionsStartPending;
     private async void Run_Click(object sender, RoutedEventArgs e)
     {
-        if (runtime is not null && (runtime.Snapshot.ActionsActive || actionsStartPending))
+        // F8 is Start / Stop: it also stops a paused run; the Pause key and button go on with it.
+        if (runtime is not null && (runtime.Snapshot.ActionsActive || actionsStartPending || runtime.CanResume))
         {
             CancelScreenshot("Actions stopped."); quickCancellation?.Cancel(); runtime.StopActions(); return;
         }
         if (runtime is null || screenshotBusy || quickOperation || macroFileBusy || ioBusy) return;
-        if (runtime.CanResume) { await ResumeActionsAsync(); return; }
         if (!TryQuickSequence(out var definition, out var plan, out var error)) { ReasonLabel.Text = error; return; }
         TestResultLabel.Text = "";
         StepAside? away = null;
@@ -441,6 +445,7 @@ public partial class MainWindow : Window
         if (bindingBusy) { ReasonLabel.Text = "Wait for the current binding change."; return; }
         if (runtime.Snapshot.Busy) { runtime.Stop("Stopped before changing global controls."); ReasonLabel.Text = "Wait for cleanup, then apply controls again."; return; }
         if (selectedStartKey == selectedStopKey || selectedStartKey == selectedRecordKey || selectedStopKey == selectedRecordKey
+            || appliedPauseKey == selectedStartKey || appliedPauseKey == selectedStopKey || appliedPauseKey == selectedRecordKey
             || screenshotSettings.HotkeyEnabled && (selectedStartKey == screenshotSettings.Hotkey || selectedStopKey == screenshotSettings.Hotkey))
         {
             selectedStartKey = appliedToggleKey; selectedStopKey = appliedStopKey;
@@ -465,12 +470,13 @@ public partial class MainWindow : Window
             }
             await SetQuickRecordKey();
             await ConfigureScreenshotHotkey();
+            await ConfigurePauseHotkey();
             if (!success)
             {
                 string error = runtime.Control.Error ?? "That key is unavailable. The previous keys were restored.";
                 selectedStartKey = appliedToggleKey; selectedStopKey = appliedStopKey;
                 await runtime.Control.ConfigureAsync(appliedToggleKey, appliedStopKey);
-                await SetQuickRecordKey(); await ConfigureScreenshotHotkey();
+                await SetQuickRecordKey(); await ConfigureScreenshotHotkey(); await ConfigurePauseHotkey();
                 ReasonLabel.Text = error;
             }
             ToggleKeyBox.Content = ShortcutKeys.Label(appliedToggleKey);
@@ -495,7 +501,7 @@ public partial class MainWindow : Window
             CloseToTrayBox.IsChecked == true, trayNoticeShown, screenshotSettings, appliedRecordKey, ChosenEmergencyStop, showInputAccessNotice,
             Actions: new(LoopBox.IsChecked == true, MinimizeOnStartBox.IsChecked == true, RecordDelaysBox.IsChecked == true,
                 MinimizeOnRecordBox.IsChecked == true, RecordMovementBox.IsChecked == true),
-            ActiveToggles: rememberedToggles, Controller: controllerControls);
+            ActiveToggles: rememberedToggles, Controller: controllerControls, PauseKey: appliedPauseKey);
         if (preferencesBusy) return;
         preferencesBusy = true;
         try
