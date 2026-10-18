@@ -30,6 +30,8 @@ public sealed class BugReportTests
         StringAssert.StartsWith(BugReport.LastError(log)!, "2026-10-18 10:03:00.000  Unexpected error in a background thread:");
         StringAssert.EndsWith(BugReport.LastError(log)!, "   at C.D()");
         Assert.IsNull(BugReport.LastError("2026-10-18 10:00:00.000  Start: fine"));
+        Assert.IsNull(BugReport.LastError(log, new DateTime(2026, 10, 18, 10, 5, 0)), "an error before the limit does not count");
+        Assert.IsNotNull(BugReport.LastError(log, new DateTime(2026, 10, 18, 10, 2, 0)));
         Assert.AreEqual("2026-10-18 10:04:00.000  Controllers: none connected", BugReport.Tail(log, 1));
     }
 

@@ -47,8 +47,8 @@ public partial class BugReportWindow : Window
         text.AppendLine("**What happened**").AppendLine(HappenedBox.Text.Trim()).AppendLine();
         if (ExpectedBox.Text.Trim() is { Length: > 0 } expected) text.AppendLine("**What I expected**").AppendLine(expected).AppendLine();
         if (SystemBox.IsChecked == true) text.AppendLine("**App and system**").AppendLine(parts.Details).AppendLine();
-        // Only an error in the part of the log the report carries; an old one from days ago would mislead.
-        if (LogBox.IsChecked == true && BugReport.LastError(BugReport.Tail(parts.Log)) is { } error)
+        // Only an error from the last day; an old one from days ago would point at the wrong problem.
+        if (LogBox.IsChecked == true && BugReport.LastError(BugReport.Tail(parts.Log), DateTime.Now.AddDays(-1)) is { } error)
             text.AppendLine("**Last error**").AppendLine("```").AppendLine(error).AppendLine("```").AppendLine();
         return parts.Redact(text.ToString().TrimEnd());
     }

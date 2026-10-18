@@ -32,12 +32,15 @@ public static class BugReport
         return string.Join(Environment.NewLine, lines.Skip(Math.Max(0, lines.Length - count)));
     }
 
-    /// <summary>The last unexpected error in a log, with its trace, or null when there is none.</summary>
-    public static string? LastError(string log)
+    /// <summary>The last unexpected error in a log, with its trace, or null when there is none. With <paramref name="notBefore"/>,
+    /// an older error does not count: one from days ago would point the report at the wrong problem.</summary>
+    public static string? LastError(string log, DateTime? notBefore = null)
     {
         var lines = log.Replace("\r\n", "\n").Split('\n');
         int start = Array.FindLastIndex(lines, l => l.Contains("Unexpected error in ", StringComparison.Ordinal));
         if (start < 0) return null;
+        if (notBefore is { } limit && (lines[start].Length < 23 || !DateTime.TryParseExact(lines[start][..23], "yyyy-MM-dd HH:mm:ss.fff",
+            System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var at) || at < limit)) return null;
         // The trace runs until the next timestamped log line.
         int end = start + 1;
         while (end < lines.Length && !(lines[end].Length > 4 && char.IsDigit(lines[end][0]) && lines[end][4] == '-')) end++;
