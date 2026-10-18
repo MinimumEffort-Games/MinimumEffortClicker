@@ -21,7 +21,7 @@ public partial class MainWindow
         try
         {
             trayIcon = new(
-                () => Dispatcher.BeginInvoke(RestoreFromTray),
+                () => Dispatcher.BeginInvoke(BringToFront),
                 () => { CancelScreenshot("Stopped from notification area"); runtime?.Stop("Stopped from the notification area."); },
                 () => Dispatcher.BeginInvoke(ExitApplication));
         }

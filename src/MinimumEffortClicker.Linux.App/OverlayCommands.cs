@@ -22,8 +22,8 @@ public partial class MainWindow
         overlay.Dropped += (x, y) => { overlayOptions = overlayOptions with { FreeX = x, FreeY = y }; RefreshStatus(); PersistPreferences(); };
     }
 
-    /// <summary>The overlay's square and a second launch of the app: show the clicker in front, also when GNOME would only
-    /// say it "is ready".</summary>
+    /// <summary>The overlay's square, the tray icon's Open and a second launch of the app: show the clicker in front, also
+    /// when GNOME would only say it "is ready" or keep the focus on the window that had it.</summary>
     internal void BringToFront()
     {
         RestoreFromTray();
