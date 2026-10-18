@@ -60,17 +60,20 @@ public partial class MainWindow
     private void RestoreLastTarget()
     {
         if (runtime is null || lastTarget is not { } remembered) return;
+        string? restored = null;
         try
         {
             var windows = runtime.ListTargets();
             int pick = remembered.Pick(windows.Select(w => (ProgramOf(w.ProcessId), w.Title)).ToArray());
             if (pick < 0) return;
             runtime.SelectTarget(windows[pick]);
-            ReasonLabel.Text = $"Click target from last time selected: {windows[pick].Title}.";
+            restored = windows[pick].Title;
         }
         // The window closed meanwhile, or the desktop helper did not answer: Desktop stays, as without a remembered target.
         catch (Exception ex) when (ex is InvalidOperationException or HelperException or ArgumentException) { }
         finally { RefreshTargetChoices(); RefreshStatus(); }
+        // After RefreshStatus, which shows the runtime's own "Click target selected" line once and would replace this.
+        if (restored is not null) ReasonLabel.Text = $"Click target from last time selected: {restored}.";
     }
 
     private void ClickTarget_Changed(object sender, SelectionChangedEventArgs e)
