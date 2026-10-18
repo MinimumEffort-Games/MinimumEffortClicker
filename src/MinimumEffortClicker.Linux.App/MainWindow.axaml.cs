@@ -412,12 +412,15 @@ public partial class MainWindow : Window
         // Appearance can follow the desktop, which may have switched since; the outline shows what is showing now.
         if (page == 3) ShowThemeChoice();
         for (int i = 0; i < Pages.Children.Count; i++) Pages.Children[i].Visibility = i == page ? Visibility.Visible : Visibility.Collapsed;
-        // The first layout of Settings scrolls its chosen list items into view, which left the page opened half-way
-        // down; once that layout is done it starts at the top.
-        if (page == 3 && !settingsShown)
+        // The first layout of Settings scrolls its chosen list items into view, which left the page opened part-way
+        // down (sometimes still after a reset at Background priority). Those requests are ignored until the app is idle
+        // again, and then the page starts at the top.
+        if (page == 3 && !settingsShown && SettingsScroll.Content is Control content)
         {
             settingsShown = true;
-            Dispatcher.UIThread.Post(() => SettingsScroll.Offset = default, DispatcherPriority.Background);
+            EventHandler<RequestBringIntoViewEventArgs> ignore = (_, e) => e.Handled = true;
+            content.AddHandler(RequestBringIntoViewEvent, ignore);
+            Dispatcher.UIThread.Post(() => { content.RemoveHandler(RequestBringIntoViewEvent, ignore); SettingsScroll.Offset = default; }, DispatcherPriority.ApplicationIdle);
         }
     }
     private void Navigate(int page)
