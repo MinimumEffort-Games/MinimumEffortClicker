@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The unlocked overlay stays where you dropped it on the screen and no longer follows the Click target; locking it
+  pins it to the window where it is. Picking a spot on the Overlay Anchor Point picture locks it there.
+- Minimize on Start and Minimize on record minimize with any Click target and any way of starting; a window target
+  still comes to the front. While paused, Start is off and the Pause button reads "Unpause F8".
 - Workshop: key presses from a Workshop macro never go to a terminal or command line (cmd, PowerShell, Windows Terminal
   and others). With one as Click target the list does not start.
 - Steam Deck: the controller shortcuts default to the back buttons (L4 start/stop, L5 stop all, R4 record, R5

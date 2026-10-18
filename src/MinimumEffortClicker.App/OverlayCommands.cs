@@ -11,7 +11,7 @@ public partial class MainWindow
         overlay.ShowRequested += RestoreFromTray;
         overlay.ExitRequested += ExitApplication;
         overlay.LockToggled += () => SetOverlayUnlocked(!overlayOptions.Unlocked);
-        overlay.AnchorDragged += (x, y) => SetOverlayAnchor(x, y);
+        overlay.Dropped += (x, y) => { overlayOptions = overlayOptions with { FreeX = x, FreeY = y }; PersistPreferences(); };
     }
     private void DisplaysChanged(object? sender, EventArgs e)
     {
@@ -30,15 +30,26 @@ public partial class MainWindow
     /// <summary>A click on the Settings picture: the overlay goes to that point on the Click target's edge.</summary>
     private void OverlayAnchor_Chosen(double x, double y) { if (initialized) SetOverlayAnchor(x, y); }
     /// <summary>The overlay's padlock: unlocked, the overlay can be dragged.</summary>
+    /// <summary>
+    /// The overlay's padlock. Unlocking keeps the overlay where it is on the screen, and it stays there while the Click
+    /// target moves; locking turns where it is now into its anchor on the target. Either way it does not jump.
+    /// </summary>
     private void SetOverlayUnlocked(bool unlocked)
     {
         if (overlayOptions.Unlocked == unlocked) return;
+        if (unlocked && overlay?.CurrentPosition() is { } at) overlayOptions = overlayOptions with { FreeX = at.X, FreeY = at.Y };
+        if (!unlocked && overlay?.CurrentAnchor() is { } anchor)
+        {
+            overlayOptions = overlayOptions with { AnchorX = anchor.X, AnchorY = anchor.Y };
+            OverlayAnchorPicture.Show(anchor.X, anchor.Y);
+        }
         overlayOptions = overlayOptions with { Unlocked = unlocked };
         RefreshStatus(); PersistPreferences();
     }
+    /// <summary>A spot picked on the Settings picture: the overlay goes there on the Click target, locked.</summary>
     private void SetOverlayAnchor(double x, double y)
     {
-        overlayOptions = overlayOptions with { AnchorX = x, AnchorY = y };
+        overlayOptions = overlayOptions with { AnchorX = x, AnchorY = y, Unlocked = false };
         OverlayAnchorPicture.Show(x, y); RefreshStatus(); PersistPreferences();
     }
 }

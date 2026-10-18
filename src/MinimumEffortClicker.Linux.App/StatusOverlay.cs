@@ -57,8 +57,8 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     public event Action? ExitRequested;
     /// <summary>The overlay's padlock: lock it to its anchor, or unlock it to drag it.</summary>
     public event Action? LockToggled;
-    /// <summary>The unlocked overlay was dropped: the anchor that keeps it there relative to the Click target.</summary>
-    public event Action<double, double>? AnchorDragged;
+    /// <summary>The unlocked overlay was dropped here: its top-left corner in screen pixels.</summary>
+    public event Action<int, int>? Dropped;
 
     public StatusOverlay()
     {
@@ -124,7 +124,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private void ShowLock()
     {
         lockPicture.Source = UiArt.Lock(!options.Unlocked);
-        ToolTip.SetTip(lockButton, options.Unlocked ? "Unlocked: drag the overlay anywhere. Click to lock it there" : "Locked to its anchor point. Click to unlock it and drag it anywhere");
+        ToolTip.SetTip(lockButton, options.Unlocked ? "Unlocked: drag the overlay anywhere; it stays put on the screen. Click to lock it to the window where it is" : "Locked to its anchor point. Click to unlock it and drag it anywhere");
         Avalonia.Automation.AutomationProperties.SetName(lockButton, options.Unlocked ? "Lock the overlay" : "Unlock the overlay");
         frame.Cursor = options.Unlocked ? new Cursor(StandardCursorType.SizeAll) : null;
         clickable = []; if (IsVisible) UpdateClickable();
@@ -133,11 +133,19 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     private void EndDrag()
     {
         dragging = false;
-        if (target is not { } on || Position == placed) return;
-        var size = PixelFrame;
-        var anchor = OverlayAnchor.From(on.Left, on.Top, on.Width, on.Height, size.Width, size.Height, Position.X, Position.Y, options.AnchorX, options.AnchorY);
+        if (Position == placed) return;
         placed = Position;
-        AnchorDragged?.Invoke(anchor.X, anchor.Y);
+        Dropped?.Invoke(Position.X, Position.Y);
+    }
+    /// <summary>Where the overlay is now: its top-left corner in screen pixels.</summary>
+    public (int X, int Y)? CurrentPosition() => (Position.X, Position.Y);
+    /// <summary>The anchor that keeps the overlay where it is now on the Click target it was last placed on; locking uses it,
+    /// so the overlay does not jump.</summary>
+    public (double X, double Y)? CurrentAnchor()
+    {
+        if (target is not { } on) return null;
+        var size = PixelFrame;
+        return OverlayAnchor.From(on.Left, on.Top, on.Width, on.Height, size.Width, size.Height, Position.X, Position.Y, options.AnchorX, options.AnchorY);
     }
 
     /// <summary>Locked, clicks reach only the buttons and the rest of the overlay stays click-through; unlocked, all of it
@@ -240,12 +248,14 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         }
     }
 
-    /// <summary>Places the overlay on the Click target (screen pixels) at its anchor, kept on the monitor's work area.</summary>
+    /// <summary>Places the overlay at its anchor on the Click target (screen pixels), or, while unlocked and dropped somewhere,
+    /// at that place on the screen: then it does not follow the target. Either way it is kept on the monitor's work area.</summary>
     public void PlaceOn(double left, double top, double width, double height)
     {
         target = (left, top, width, height);
         if (dragging) return; // The drag owns the position until it settles.
         var size = PixelFrame;
+        if (options.FreePlace is { } free) { PlaceWithinMonitor(free.X, free.Y, size.Width, size.Height); return; }
         var (x, y) = OverlayAnchor.Place(left, top, width, height, size.Width, size.Height, options.AnchorX, options.AnchorY);
         PlaceWithinMonitor((int)Math.Round(x), (int)Math.Round(y), size.Width, size.Height);
     }

@@ -46,6 +46,16 @@ public sealed class OverlayAnchorTests
     }
 
     [TestMethod]
+    public void AnUnlockedOverlayKeepsItsScreenPlace()
+    {
+        var free = new OverlayOptions(Unlocked: true, FreeX: -2400, FreeY: 300);
+        Assert.AreEqual((-2400, 300), free.FreePlace);
+        Assert.IsNull((free with { Unlocked = false }).FreePlace, "Locked, it follows the Click target again.");
+        Assert.IsNull(new OverlayOptions(Unlocked: true).FreePlace, "Unlocked but never dropped: it stays at its anchor.");
+        Assert.IsFalse(new OverlayOptions(FreeX: 5_000_000).Valid);
+    }
+
+    [TestMethod]
     public void OverlayAnchorIsSavedAndOlderPreferencesGetTheTopRight()
     {
         string directory = Path.Combine(Path.GetTempPath(), "mec-anchor-" + Guid.NewGuid().ToString("N"));
@@ -60,6 +70,7 @@ public sealed class OverlayAnchorTests
             File.WriteAllText(Path.Combine(directory, "preferences.json"), "{\"SchemaVersion\":1,\"Appearance\":0,\"ToggleKey\":119,\"StopKey\":120,\"HoldTrigger\":false,\"Overlay\":true,\"OverlayOptions\":{\"Expanded\":false,\"KeepIdle\":true,\"Opacity\":0.8,\"Scale\":1}}");
             var loaded = store.Load().OverlayOptions!;
             Assert.AreEqual((1.0, 0.0, false), (loaded.AnchorX, loaded.AnchorY, loaded.Unlocked));
+            Assert.IsNull(loaded.FreePlace);
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
