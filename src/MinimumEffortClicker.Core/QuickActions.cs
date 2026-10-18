@@ -5,6 +5,9 @@ public enum QuickClickKind { Single, Double, Hold }
 public enum ScrollDirection { Up, Down, Left, Right }
 /// <summary>A scroll action as the editor shows it. Gap is the time between notches.</summary>
 public sealed record QuickScroll(ScrollDirection Direction, int Notches, TimeSpan Gap, ClientPoint? Position, TimeSpan After);
+/// <summary>A recorded Look action as the editor shows it: how many steps, how long the movement lasts, how far it turns in
+/// total (mouse counts) and the pause after it.</summary>
+public sealed record QuickLook(int Moves, TimeSpan Length, int TotalX, int TotalY, TimeSpan After);
 
 /// <summary>Quick authoring produces ordinary sequence steps; playback uses the shared compiler.</summary>
 public static class QuickActions
@@ -144,7 +147,32 @@ public static class QuickActions
         return result;
     }
 
+    /// <summary>Reads a step back as a Look action when it is one: relative mouse movement and nothing else.</summary>
+    public static QuickLook? ReadLook(SequenceStep step)
+    {
+        IReadOnlyList<TimedAction> parts = step.Kind == StepKind.Input && step.Control is { } control
+            ? [new TimedAction(step.Id, TimeSpan.Zero, control, step.Duration)]
+            : step.Kind == StepKind.TimedGroup ? step.Children ?? [] : [];
+        if (parts.Count == 0 || parts.Any(p => p.Control.Kind != InputKind.Look)) return null;
+        var end = parts.Max(p => p.Offset);
+        return new(parts.Count, end, parts.Sum(p => p.Control.LookStep.X), parts.Sum(p => p.Control.LookStep.Y), step.Duration - end);
+    }
+    /// <summary>The same Look movement with a new pause after it. The movement itself is changed by recording it again.</summary>
+    public static SequenceStep WithLookPause(SequenceStep step, TimeSpan after)
+    {
+        var look = ReadLook(step) ?? throw new ArgumentException("This is not a Look action.");
+        if (after < TimeSpan.Zero || after > TimeSpan.FromDays(1)) throw new ArgumentException("Delay after an action must be zero to one day.");
+        // A single step is an instant input; a pause after it needs the group form.
+        var grouped = step.Kind == StepKind.Input
+            ? step with { Kind = StepKind.TimedGroup, Control = null, Children = [new TimedAction(Guid.NewGuid(), TimeSpan.Zero, step.Control!.Value, TimeSpan.Zero)] }
+            : step;
+        var result = grouped with { Duration = look.Length + after };
+        SequenceCompiler.Compile(new([result]));
+        return result;
+    }
+
     public static SequenceStep Pause(TimeSpan duration)
+
     {
         if (duration <= TimeSpan.Zero) throw new ArgumentException("Pause must be longer than zero.");
         var step = SequenceStep.Wait(duration) with { Name = "Pause" };

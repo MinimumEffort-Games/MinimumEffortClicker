@@ -475,7 +475,7 @@ public sealed partial class ClickExecutor(IInputSink sink, IClock wallClock, IWa
                         else
                         {
                             AcceptedClick(item.Control);
-                            if (item.Control.Kind is not (InputKind.Scroll or InputKind.HorizontalScroll or InputKind.PointerMove)) owned.Add(item.Control);
+                            if (item.Control.Kind is not (InputKind.Scroll or InputKind.HorizontalScroll or InputKind.PointerMove or InputKind.Look)) owned.Add(item.Control);
                             run.Sent++;
                         }
                     }

@@ -53,6 +53,7 @@ public partial class MainWindow
             "Record (F10) starts recording right away. Click and type in your target, then press F10 again. Your clicks, keys and scrolls appear in the list as you go; a quick run of wheel notches becomes one Scroll action.",
             "With Minimize on record on, the clicker minimises first, also with F10; turn it off to keep the clicker where it is.",
             "With Record pauses on, the time between them is kept as pauses you can edit. When you start with F10, the time before your first click or key is kept too. The pause after your last action is kept as well, so a loop waits before it starts again.",
+            "Look: in first- and third-person games that hold the cursor, Record also keeps your mouse movement as Look actions (mouse icon), so playback turns the camera the same way. A rest of a quarter second starts a new Look; clicks made while turning stay in it and land where the game has the cursor. Keep the game's mouse sensitivity the same between recording and playback. Some games with anti-cheat ignore movement from other programs.",
             "With Simulate mouse movement on, the pointer travels to the next click during the pause before it instead of jumping. With Loop on, the pause at the end of the list is used for the trip back to the first click.",
             "Shutdown PC after… (below the list): choose After X loops, After X minutes of running or At set time, fill in the number or time, and press Enable shutdown… to arm it.",
             "",

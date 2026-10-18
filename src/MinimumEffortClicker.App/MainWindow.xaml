@@ -147,6 +147,11 @@
                               <ToggleButton x:Name="AltBox" Style="{StaticResource KeycapToggle}" ToolTip="Alt: held with the key" AutomationProperties.Name="Alt"><Image Source="Assets/Ui/keys/left-alt.png" Width="36" Height="36"/></ToggleButton>
                             </WrapPanel>
                           </StackPanel>
+                          <StackPanel x:Name="LookFields" Visibility="Collapsed">
+                            <TextBlock Text="Look" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="LookLabel" TextWrapping="Wrap" Margin="0,2,0,4"/>
+                            <TextBlock Text="Mouse movement recorded while the game held the cursor. Playback turns the camera the same way, as long as the game's mouse sensitivity is the same. Record it again to change the movement." Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                          </StackPanel>
                           <StackPanel x:Name="PressFields" Visibility="Collapsed"><TextBlock x:Name="PressLabel" Text="Press duration (ms)"/><TextBox x:Name="PressBox" Style="{StaticResource NumberBox}" Width="{Binding ActualWidth, ElementName=RandomTimingBox}" HorizontalAlignment="Left" app:Spin.Step="10" app:Spin.Minimum="0" app:Spin.Maximum="3600000" Text="20" AutomationProperties.Name="Press duration in milliseconds"/></StackPanel>
                           <StackPanel x:Name="DoubleFields" Visibility="Collapsed"><TextBlock Text="Gap between the two clicks (ms)"/><TextBox x:Name="DoubleGapBox" Style="{StaticResource NumberBox}" Width="{Binding ActualWidth, ElementName=RandomTimingBox}" HorizontalAlignment="Left" app:Spin.Step="10" app:Spin.Minimum="0" app:Spin.Maximum="60000" Text="80" AutomationProperties.Name="Double click gap"/></StackPanel>
                           <StackPanel x:Name="AfterFields" Visibility="Collapsed"><TextBlock x:Name="AfterLabel" Text="Pause after this action (ms)"/><TextBox x:Name="AfterBox" Style="{StaticResource NumberBox}" HorizontalAlignment="Left" app:Spin.Step="10" app:Spin.Minimum="0" app:Spin.Maximum="3600000" Text="20" AutomationProperties.Name="Pause after action"/></StackPanel>

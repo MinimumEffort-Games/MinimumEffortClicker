@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Windows: Look recording for first- and third-person games. While a game holds the cursor, Record keeps the mouse
+  movement as Look actions (relative movement, about 60 steps a second), so playback turns the camera the same way.
+  Clicks made then keep no screen spot, so they never move the cursor. Selecting a Look shows its length and turn;
+  its pause after and name can be changed.
 - Each click or key press in the Action List has a "× times" field: it runs that many times in a row (1–9,999)
   each time the list gets to it, so a thousand clicks are one row. Once / Repeating still decides the later loops.
 - The Click target chosen last is selected again at the next start when its window is open. Choosing a Click

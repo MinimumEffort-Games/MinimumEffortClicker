@@ -364,7 +364,7 @@ public static class SequenceCompiler
         var owned = new HashSet<InputControl>();
         foreach (var item in ordered)
         {
-            if (item.Control.Kind is InputKind.Scroll or InputKind.HorizontalScroll or InputKind.PointerMove) continue;
+            if (item.Control.Kind is InputKind.Scroll or InputKind.HorizontalScroll or InputKind.PointerMove or InputKind.Look) continue;
             if (item.Down && item.Motion is not null && owned.Count != 0)
                 throw new ArgumentException("Movement and position variation cannot overlap another input action.");
             if (item.Down && item.LeaveCursorFree && owned.Count != 0)
@@ -393,13 +393,15 @@ public static class SequenceCompiler
         void Add(Guid id, InputControl input, TimeSpan at, TimeSpan duration, ClientPoint? position, ClientPoint? endPosition, string name, int clickCount = 1)
         {
             if (clickCount is < 1 or > 2 || clickCount == 2 && input.Kind != InputKind.MouseButton) throw new ArgumentException("Invalid click count.");
-            bool instant = input.Kind is InputKind.Scroll or InputKind.HorizontalScroll or InputKind.PointerMove;
+            bool instant = input.Kind is InputKind.Scroll or InputKind.HorizontalScroll or InputKind.PointerMove or InputKind.Look;
             var validation = new HelperPlan(input, input.Kind == InputKind.Scroll ? HelperMode.Scroll : HelperMode.Repeat,
                 TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(20), 1).Validate();
             bool validControl = input.Kind switch
             {
                 InputKind.PointerMove => input.Code == 0 && position is not null,
                 InputKind.Scroll or InputKind.HorizontalScroll => input.Code is >= -12000 and <= 12000 && input.Code != 0,
+                // Relative movement goes wherever the game has the cursor; it never has a saved spot.
+                InputKind.Look => input.Code != 0 && position is null && endPosition is null,
                 InputKind.ScanCode => SequenceKeys.Supported.Values.Contains(input.Code),
                 _ => validation.Count == 0
             };

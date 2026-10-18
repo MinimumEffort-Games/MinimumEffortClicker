@@ -439,7 +439,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             {
                 inputRejection = null;
                 cursorFreeActive = request.LeaveCursorFree;
-                if (request.Sequence?.Inputs.Any(i => (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true)) == true)
+                if (request.Sequence?.Inputs.Any(i => i.Control.Kind == InputKind.Look || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true)) == true)
                     controls = controls.Append(new InputControl(InputKind.PointerMove, 0)).Distinct().ToArray();
                 cancellation = new();
                 playbackControl = new(); executor.Playback = playbackControl; runningRequest = request;
@@ -993,7 +993,7 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                     // A finishing action must not replace the explicit Stop All reason or state.
                     if (stop.IsCancellationRequested) return;
                     activeLayout = started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.ScanCode) ? action.Plan.KeyboardLayout : null;
-                    SetActiveControls(started && action.Plan.Inputs.Any(i => i.Control.Kind == InputKind.PointerMove || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true))
+                    SetActiveControls(started && action.Plan.Inputs.Any(i => i.Control.Kind is InputKind.PointerMove or InputKind.Look || (i.Motion?.MoveDuration > TimeSpan.Zero || i.Motion?.UsePreviousPause == true))
                         ? [new(InputKind.PointerMove, 0)] : []);
                     if (started && !CoordinatesAvailable(action.Plan)) throw new InvalidOperationException("Recalibrate the action positions before playback.");
                     // Only a toggle that is still held makes the rest of the run "Toggles"; otherwise the run stays named after the

@@ -1,11 +1,22 @@
 namespace MinimumEffortClicker.Core;
 
 /// <summary>Numeric values are stored in profile files; keep them stable when members change.</summary>
-public enum InputKind { MouseButton = 0, ScanCode = 1, Scroll = 2, PointerMove = 3, HorizontalScroll = 6 }
+/// <remarks>Look is relative mouse movement, the way first- and third-person games read the mouse while they hold the cursor
+/// (User, 2026-10-18): its Code packs the horizontal step in the high 16 bits and the vertical step in the low 16.</remarks>
+public enum InputKind { MouseButton = 0, ScanCode = 1, Scroll = 2, PointerMove = 3, HorizontalScroll = 6, Look = 7 }
 public readonly record struct InputControl(InputKind Kind, int Code)
 {
     public static InputControl Mouse(PointerButton button) => new(InputKind.MouseButton, (int)button);
     public static InputControl Key(int scanCode) => new(InputKind.ScanCode, scanCode);
+    /// <summary>One relative mouse step of <paramref name="dx"/>, <paramref name="dy"/> counts (each -32,768 to 32,767, not both zero).</summary>
+    public static InputControl Look(int dx, int dy)
+    {
+        if (dx is < short.MinValue or > short.MaxValue || dy is < short.MinValue or > short.MaxValue || dx == 0 && dy == 0)
+            throw new ArgumentOutOfRangeException(nameof(dx), "A look step is -32,768 to 32,767 counts each way and moves.");
+        return new(InputKind.Look, dx << 16 | (ushort)dy);
+    }
+    /// <summary>The horizontal and vertical counts of a Look step.</summary>
+    public (int X, int Y) LookStep => (Code >> 16, (short)(Code & 0xFFFF));
 }
 public enum HelperMode { Repeat, Hold, Scroll }
 
@@ -21,7 +32,7 @@ public sealed record HelperPlan(InputControl Control, HelperMode Mode, TimeSpan 
     public IReadOnlyList<string> Validate()
     {
         var errors = new List<string>();
-        if (!Enum.IsDefined(Mode) || !Enum.IsDefined(Control.Kind) || Control.Kind == InputKind.PointerMove) errors.Add("Choose a supported action.");
+        if (!Enum.IsDefined(Mode) || !Enum.IsDefined(Control.Kind) || Control.Kind is InputKind.PointerMove or InputKind.Look) errors.Add("Choose a supported action.");
         if (Control.Kind == InputKind.MouseButton && !Enum.IsDefined((PointerButton)Control.Code)) errors.Add("Choose a mouse button.");
         if (Control.Kind == InputKind.ScanCode && !SequenceKeys.Supported.Values.Contains(Control.Code)) errors.Add("Choose a supported key.");
         if ((Mode == HelperMode.Scroll) != (Control.Kind is InputKind.Scroll or InputKind.HorizontalScroll) ||
