@@ -13,12 +13,27 @@ to check, so expect rough edges and please report them. Windows may show a Smart
 
 Dark and light mode, switched in Settings.
 
-| | Dark | Light |
-| --- | --- | --- |
-| **Actions** | ![Actions page, dark](docs/screenshots/actions.png) | ![Actions page, light](docs/screenshots/actions-light.png) |
-| **Toggles** | ![Toggles page, dark](docs/screenshots/toggles.png) | ![Toggles page, light](docs/screenshots/toggles-light.png) |
-| **Screenshot** | ![Screenshot page, dark](docs/screenshots/screenshot.png) | ![Screenshot page, light](docs/screenshots/screenshot-light.png) |
-| **Settings** | ![Settings page, dark](docs/screenshots/settings.png) | ![Settings page, light](docs/screenshots/settings-light.png) |
+**Actions:** a click, a Wait Until a colour, and a key press
+
+![Actions page with a click action, dark and light](docs/screenshots/1-actions-click.png)
+![Actions page with a Wait Until colour action, dark and light](docs/screenshots/2-actions-wait-until.png)
+![Actions page with a key press action, dark and light](docs/screenshots/3-actions-key-press.png)
+
+**Toggles**
+
+![Toggles page, dark and light](docs/screenshots/4-toggles.png)
+
+**Controller to Key**
+
+![Controller to Key page, dark and light](docs/screenshots/5-controller-to-key.png)
+
+**Screenshot**
+
+![Screenshot page, dark and light](docs/screenshots/6-screenshot.png)
+
+**Settings**
+
+![Settings page, dark and light](docs/screenshots/7-settings.png)
 
 ## Download and run
 
