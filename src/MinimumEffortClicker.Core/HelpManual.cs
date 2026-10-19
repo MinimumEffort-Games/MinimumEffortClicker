@@ -174,7 +174,7 @@ public static class HelpManual
         ]));
         sections.Add(new("Bug report and if something is stuck",
         [
-            "- Bug report (next to Help): describe what happened and choose what to include: app and system details, the end of the log, a picture of the clicker, the Action List. Your user name and computer name are replaced. Create report saves a zip and opens a new GitHub issue with your text; drag the zip into it and submit. The clicker sends nothing itself. After a close that was not normal, the next start offers a report.",
+            "- Bug report (next to Help): describe what happened and choose what to include: app and system details, the end of the log, a picture of the clicker, the Action List. Your user name and computer name are replaced. Create report saves a zip and opens a new e-mail to bugs@minimumeffort.eu with your text; attach the zip and send it. No mail app? Copy the address and send the zip from your webmail. The clicker sends nothing itself. After a close that was not normal, the next start offers a report.",
             "- Cleanup pending: the clicker could not let go of a key or button because you held the same one. Let go of it and press Release stuck input.",
             linux
                 ? "- Closing the app normally stops and releases everything. If it crashes or is killed, the desktop helper lets go of anything it was holding."

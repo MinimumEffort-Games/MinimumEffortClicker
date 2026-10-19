@@ -12,8 +12,8 @@ namespace MinimumEffortClicker.App;
 internal sealed record BugReportParts(string Details, string Log, byte[]? Screenshot, Action<string>? SaveActionList, Func<string, string> Redact);
 
 /// <summary>
-/// Report a bug (User, 2026-10-18): the user's text plus chosen parts go into one zip, and a GitHub issue opens with
-/// the text filled in. Nothing is sent by the app.
+/// Report a bug (User, 2026-10-18): the user's text plus chosen parts go into one zip, and a new e-mail to
+/// <see cref="BugReport.Address"/> opens with the text filled in (User, 2026-10-19). Nothing is sent by the app.
 /// </summary>
 internal sealed class BugReportWindow : DialogWindow
 {
@@ -27,11 +27,11 @@ internal sealed class BugReportWindow : DialogWindow
     private readonly ToggleButton actionList = Choice("Current Action List", false, "The list as a macro file. It may hold colours and image areas captured from your screen.");
     private readonly TextBox preview = new() { IsReadOnly = true, Height = 180, TextWrapping = TextWrapping.Wrap, FontFamily = new FontFamily("monospace"), FontSize = 12, Margin = new Thickness(0, 6, 0, 0) };
     private readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) };
-    private readonly Button create = new() { Content = "Create report and open GitHub", HorizontalAlignment = HorizontalAlignment.Right, IsDefault = true, IsEnabled = false };
+    private readonly Button create = new() { Content = "Create report and open e-mail", HorizontalAlignment = HorizontalAlignment.Right, IsDefault = true, IsEnabled = false };
     /// <summary>The zip that was written, once Create succeeded.</summary>
     public string? ZipPath { get; private set; }
-    /// <summary>The prefilled GitHub issue for the browser.</summary>
-    public string? IssueLink { get; private set; }
+    /// <summary>The prefilled new e-mail for the mail app.</summary>
+    public string? MailLink { get; private set; }
 
     public BugReportWindow(Window owner, BugReportParts parts, string folder, string? text = null)
     {
@@ -40,7 +40,20 @@ internal sealed class BugReportWindow : DialogWindow
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false; FontSize = 14;
         var panel = new StackPanel { Margin = new Thickness(20, 20, 20, 0) };
         panel.Children.Add(new TextBlock { Text = "Report a bug", FontSize = 20, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
-        panel.Children.Add(Secondary("This saves a report as a zip file and opens a new GitHub issue with your text filled in. Drag the zip into the issue before you submit it. The clicker itself sends nothing.", new Thickness(0, 0, 0, 12)));
+        panel.Children.Add(Secondary("This saves a report as a zip file and opens a new e-mail with your text filled in. Attach the zip to the e-mail, then send it. The clicker itself sends nothing.", new Thickness(0, 0, 0, 8)));
+        // For webmail users, whose browser may not open mailto links: the address to copy.
+        var address = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
+        var copy = new Button { Content = "Copy address", Margin = new Thickness(8, 0, 0, 0) };
+        copy.Click += async (_, _) =>
+        {
+            if (Clipboard is not { } clipboard) return;
+            await Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(clipboard, BugReport.Address);
+            status.Text = "Address copied.";
+        };
+        DockPanel.SetDock(copy, Dock.Right); address.Children.Add(copy);
+        address.Children.Add(new TextBlock { Text = "Send to:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
+        address.Children.Add(new SelectableTextBlock { Text = BugReport.Address, VerticalAlignment = VerticalAlignment.Center });
+        panel.Children.Add(address);
         var body = new StackPanel();
         body.Children.Add(new TextBlock { Text = "What happened?" }); body.Children.Add(happened);
         body.Children.Add(new TextBlock { Text = "What did you expect? (optional)" }); body.Children.Add(expected);
@@ -48,7 +61,7 @@ internal sealed class BugReportWindow : DialogWindow
         var include = new WrapPanel();
         foreach (var toggle in new[] { system, log, screenshot, actionList }) { include.Children.Add(toggle); toggle.IsCheckedChanged += (_, _) => RefreshPreview(); }
         body.Children.Add(include);
-        body.Children.Add(Secondary("Your user name, home folder and computer name are replaced with neutral words. GitHub issues are public: check the preview and the zip before you submit.", new Thickness(0, 4, 0, 8)));
+        body.Children.Add(Secondary("Your user name, home folder and computer name are replaced with neutral words. Only the developer reads reports; still, check the preview and the zip before you send.", new Thickness(0, 4, 0, 8)));
         body.Children.Add(new Expander { Header = "Preview of the text in the report", Content = preview, HorizontalAlignment = HorizontalAlignment.Stretch });
         var card = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), Padding = new Thickness(12), Child = body };
         card.SetResourceReference(Border.BackgroundProperty, "Surface"); card.SetResourceReference(Border.BorderBrushProperty, "Border");
@@ -91,18 +104,9 @@ internal sealed class BugReportWindow : DialogWindow
 
     private void RefreshPreview() => preview.Text = ReportText();
 
-    /// <summary>The report as GitHub markdown: the user's text, the details and a recent error, redacted.</summary>
-    private string ReportText()
-    {
-        var text = new System.Text.StringBuilder();
-        text.AppendLine("**What happened**").AppendLine((happened.Text ?? "").Trim()).AppendLine();
-        if ((expected.Text ?? "").Trim() is { Length: > 0 } wanted) text.AppendLine("**What I expected**").AppendLine(wanted).AppendLine();
-        if (system.IsChecked == true) text.AppendLine("**App and system**").AppendLine(parts.Details).AppendLine();
-        // Only an error from the last day; an old one from days ago would point at the wrong problem.
-        if (log.IsChecked == true && BugReport.LastError(BugReport.Tail(parts.Log), DateTime.Now.AddDays(-1)) is { } error)
-            text.AppendLine("**Last error**").AppendLine("```").AppendLine(error).AppendLine("```").AppendLine();
-        return parts.Redact(text.ToString().TrimEnd());
-    }
+    /// <summary>The report text, redacted. Only an error from the last day counts: an old one would point at the wrong problem.</summary>
+    private string ReportText() => parts.Redact(BugReport.Text(happened.Text ?? "", expected.Text ?? "", system.IsChecked == true ? parts.Details : null,
+        log.IsChecked == true ? BugReport.LastError(BugReport.Tail(parts.Log), DateTime.Now.AddDays(-1)) : null));
 
     private void Create()
     {
@@ -116,7 +120,7 @@ internal sealed class BugReportWindow : DialogWindow
             using (var zip = ZipFile.Open(path, ZipArchiveMode.Create))
             {
                 void Text(string name, string content) { using var writer = new StreamWriter(zip.CreateEntry(name).Open()); writer.Write(content); }
-                Text("report.md", report);
+                Text("report.txt", report);
                 if (log.IsChecked == true) Text("log.txt", parts.Redact(BugReport.Tail(parts.Log)));
                 if (screenshot.IsChecked == true && parts.Screenshot is { } png) { using var stream = zip.CreateEntry("clicker.png").Open(); stream.Write(png); }
                 if (actionList.IsChecked == true && parts.SaveActionList is { } save)
@@ -126,10 +130,9 @@ internal sealed class BugReportWindow : DialogWindow
                     finally { File.Delete(temporary); }
                 }
             }
-            string firstLine = what.Split('\n')[0].Trim();
-            string title = parts.Redact(firstLine.Length > 80 ? firstLine[..80] + "…" : firstLine);
             ZipPath = path;
-            IssueLink = BugReport.IssueLink(title, report + Environment.NewLine + Environment.NewLine + "_Report zip attached._");
+            MailLink = BugReport.MailLink(parts.Redact(BugReport.Subject(what)),
+                report + Environment.NewLine + Environment.NewLine + $"Report zip: {Path.GetFileName(path)} (attached)");
             DialogResult = true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)

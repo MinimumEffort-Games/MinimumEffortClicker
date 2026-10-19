@@ -9,12 +9,12 @@
   In Front"); toggles need a window as Click target.
 - After a screenshot the clicker comes back exactly as it was (maximised stays maximised, minimised stays minimised).
 - The controller button picker closes by itself after 30 s, so a hidden picker can never lock the clicker.
-- Linux: the startup notice starts with a Steam Deck section (limits, freeing the back buttons from Steam's desktop
-  layout), then input access. log.txt names controller presses and where a slow start waits.
+- Linux: the startup notice explains input access, then on a Steam Deck its limits and how to free the back buttons
+  from Steam's desktop layout. log.txt names controller presses and where a slow start waits, from the first moment.
 - Report a bug, next to Help. It saves a zip (your text, app and system details, the end of the log, and
   optionally a picture of the clicker and the Action List; user name and computer name replaced) and opens a new
-  GitHub issue with the text filled in. The app sends nothing itself. After a close that was not normal, the next
-  start offers a report.
+  e-mail to bugs@minimumeffort.eu with the text filled in, so no account is needed; the address can be copied for
+  webmail. The app sends nothing itself. After a close that was not normal, the next start offers a report.
 - Look recording for first- and third-person games. While a game holds the cursor, Record keeps the mouse
   movement as Look actions (relative movement, about 60 steps a second), so playback turns the camera the same way.
   Clicks made then keep no screen spot, so they never move the cursor. Selecting a Look shows its length and turn;

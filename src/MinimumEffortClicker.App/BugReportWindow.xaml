@@ -14,7 +14,7 @@
                 <Button Content="Cancel" IsCancel="True" MinWidth="90" HorizontalAlignment="Left"
                         Style="{StaticResource StandardButton}" Background="{DynamicResource StopFill}"
                         BorderBrush="{DynamicResource StopBorder}" Foreground="{DynamicResource ColourButtonText}"/>
-                <Button x:Name="CreateButton" Content="Create report and open GitHub" Click="Create_Click" IsDefault="True" IsEnabled="False" Padding="12,5" HorizontalAlignment="Right"
+                <Button x:Name="CreateButton" Content="Create report and open e-mail" Click="Create_Click" IsDefault="True" IsEnabled="False" Padding="12,5" HorizontalAlignment="Right"
                         Style="{StaticResource StandardButton}" Background="{DynamicResource SuccessFill}"
                         BorderBrush="{DynamicResource SuccessBorder}" Foreground="{DynamicResource ColourButtonText}"/>
             </Grid>
@@ -22,7 +22,13 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="20,20,20,0">
                 <TextBlock Text="Report a bug" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                <TextBlock Text="This saves a report as a zip file and opens a new GitHub issue with your text filled in. Drag the zip into the issue before you submit it. The clicker itself sends nothing." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,12"/>
+                <TextBlock Text="This saves a report as a zip file and opens a new e-mail with your text filled in. Attach the zip to the e-mail, then send it. The clicker itself sends nothing." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/>
+                <!-- For webmail users, whose browser may not open mailto links: the address to copy. -->
+                <DockPanel Margin="0,0,0,12">
+                    <Button Content="Copy address" Click="CopyAddress_Click" DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource StandardButton}" AutomationProperties.Name="Copy the e-mail address"/>
+                    <TextBlock Text="Send to:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBox x:Name="AddressBox" IsReadOnly="True" VerticalAlignment="Center" AutomationProperties.Name="Bug report e-mail address"/>
+                </DockPanel>
                 <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="1" CornerRadius="8" Padding="12">
                     <StackPanel>
                         <TextBlock Text="What happened?"/>
@@ -36,7 +42,7 @@
                             <ToggleButton x:Name="ScreenshotBox" Style="{StaticResource ChoiceToggle}" Content="Screenshot of the clicker" Margin="0,0,6,6" Checked="Include_Changed" Unchecked="Include_Changed" ToolTip="A picture of the clicker window only, as it is now."/>
                             <ToggleButton x:Name="ActionListBox" Style="{StaticResource ChoiceToggle}" Content="Current Action List" Margin="0,0,6,6" Checked="Include_Changed" Unchecked="Include_Changed" ToolTip="The list as a macro file. It may hold colours and image areas captured from your screen."/>
                         </WrapPanel>
-                        <TextBlock Text="Your user name, home folder and computer name are replaced with neutral words. GitHub issues are public: check the preview and the zip before you submit." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,4,0,8"/>
+                        <TextBlock Text="Your user name, home folder and computer name are replaced with neutral words. Only the developer reads reports; still, check the preview and the zip before you send." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,4,0,8"/>
                         <Expander Header="Preview of the text in the report" Foreground="{DynamicResource TextPrimary}">
                             <TextBox x:Name="PreviewBox" IsReadOnly="True" Height="180" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Margin="0,6,0,0" AutomationProperties.Name="Report preview"/>
                         </Expander>

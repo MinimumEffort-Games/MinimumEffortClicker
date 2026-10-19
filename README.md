@@ -101,6 +101,7 @@ MIT does not grant rights to the Minimum Effort trademarks or imply endorsement
 of forks. Historical pixel artwork/font with unknown redistribution rights is
 excluded from this public repository and release.
 
-Bug reports and pull requests are welcome. Include the version, Windows version,
-steps and expected/actual behavior. Do not post private recordings, screenshots,
-credentials, or personal data in issues. See [contributing](CONTRIBUTING.md).
+Bug reports go by e-mail to bugs@minimumeffort.eu: Bug report, next to Help in the
+app, fills one in with the version and system details. Pull requests are welcome.
+Do not post private recordings, screenshots, credentials, or personal data in
+issues. See [contributing](CONTRIBUTING.md).

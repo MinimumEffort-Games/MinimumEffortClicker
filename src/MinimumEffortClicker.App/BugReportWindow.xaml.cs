@@ -10,8 +10,8 @@ namespace MinimumEffortClicker.App;
 internal sealed record BugReportParts(string Details, string Log, byte[]? Screenshot, Action<string>? SaveActionList, Func<string, string> Redact);
 
 /// <summary>
-/// Report a bug (User, 2026-10-18): the user's text plus chosen parts go into one zip, and a GitHub issue opens with
-/// the text filled in. Nothing is sent by the app.
+/// Report a bug (User, 2026-10-18): the user's text plus chosen parts go into one zip, and a new e-mail to
+/// <see cref="BugReport.Address"/> opens with the text filled in (User, 2026-10-19). Nothing is sent by the app.
 /// </summary>
 public partial class BugReportWindow : Window
 {
@@ -19,8 +19,8 @@ public partial class BugReportWindow : Window
     private readonly string folder;
     /// <summary>The zip that was written, once Create succeeded.</summary>
     public string? ZipPath { get; private set; }
-    /// <summary>The prefilled GitHub issue for the browser.</summary>
-    public string? IssueLink { get; private set; }
+    /// <summary>The prefilled new e-mail for the mail app.</summary>
+    public string? MailLink { get; private set; }
 
     internal BugReportWindow(BugReportParts parts, string folder, string? happened = null)
     {
@@ -31,6 +31,7 @@ public partial class BugReportWindow : Window
         ScreenshotBox.IsEnabled = parts.Screenshot is not null;
         ActionListBox.IsEnabled = parts.SaveActionList is not null;
         HappenedBox.Text = happened ?? "";
+        AddressBox.Text = BugReport.Address;
         Loaded += (_, _) => { RefreshPreview(); HappenedBox.Focus(); HappenedBox.CaretIndex = HappenedBox.Text.Length; };
     }
 
@@ -42,17 +43,14 @@ public partial class BugReportWindow : Window
     private void Include_Changed(object sender, RoutedEventArgs e) { if (IsLoaded) RefreshPreview(); }
     private void RefreshPreview() => PreviewBox.Text = ReportText();
 
-    /// <summary>The report as GitHub markdown: the user's text, the details and the last error, redacted.</summary>
-    private string ReportText()
+    /// <summary>The report text, redacted. Only an error from the last day counts: an old one would point at the wrong problem.</summary>
+    private string ReportText() => parts.Redact(BugReport.Text(HappenedBox.Text, ExpectedBox.Text, SystemBox.IsChecked == true ? parts.Details : null,
+        LogBox.IsChecked == true ? BugReport.LastError(BugReport.Tail(parts.Log), DateTime.Now.AddDays(-1)) : null));
+
+    private void CopyAddress_Click(object sender, RoutedEventArgs e)
     {
-        var text = new System.Text.StringBuilder();
-        text.AppendLine("**What happened**").AppendLine(HappenedBox.Text.Trim()).AppendLine();
-        if (ExpectedBox.Text.Trim() is { Length: > 0 } expected) text.AppendLine("**What I expected**").AppendLine(expected).AppendLine();
-        if (SystemBox.IsChecked == true) text.AppendLine("**App and system**").AppendLine(parts.Details).AppendLine();
-        // Only an error from the last day; an old one from days ago would point at the wrong problem.
-        if (LogBox.IsChecked == true && BugReport.LastError(BugReport.Tail(parts.Log), DateTime.Now.AddDays(-1)) is { } error)
-            text.AppendLine("**Last error**").AppendLine("```").AppendLine(error).AppendLine("```").AppendLine();
-        return parts.Redact(text.ToString().TrimEnd());
+        try { Clipboard.SetText(BugReport.Address); StatusText.Text = "Address copied."; }
+        catch (System.Runtime.InteropServices.ExternalException) { AddressBox.Focus(); AddressBox.SelectAll(); }
     }
 
     private void Create_Click(object sender, RoutedEventArgs e)
@@ -66,7 +64,7 @@ public partial class BugReportWindow : Window
             using (var zip = ZipFile.Open(path, ZipArchiveMode.Create))
             {
                 void Text(string name, string content) { using var writer = new StreamWriter(zip.CreateEntry(name).Open()); writer.Write(content); }
-                Text("report.md", report);
+                Text("report.txt", report);
                 if (LogBox.IsChecked == true) Text("log.txt", parts.Redact(BugReport.Tail(parts.Log)));
                 if (ScreenshotBox.IsChecked == true && parts.Screenshot is { } png) { using var stream = zip.CreateEntry("clicker.png").Open(); stream.Write(png); }
                 if (ActionListBox.IsChecked == true && parts.SaveActionList is { } save)
@@ -76,10 +74,9 @@ public partial class BugReportWindow : Window
                     finally { File.Delete(temporary); }
                 }
             }
-            string firstLine = HappenedBox.Text.Trim().Split('\n')[0].Trim();
-            string title = parts.Redact(firstLine.Length > 80 ? firstLine[..80] + "…" : firstLine);
             ZipPath = path;
-            IssueLink = BugReport.IssueLink(title, report + Environment.NewLine + Environment.NewLine + "_Report zip attached._");
+            MailLink = BugReport.MailLink(parts.Redact(BugReport.Subject(HappenedBox.Text)),
+                report + Environment.NewLine + Environment.NewLine + $"Report zip: {Path.GetFileName(path)} (attached)");
             DialogResult = true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)

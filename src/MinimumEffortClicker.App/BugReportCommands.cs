@@ -20,22 +20,22 @@ public partial class MainWindow
 
     private void BugReport_Click(object sender, RoutedEventArgs e) => OpenBugReport(null);
 
-    /// <summary>Report a bug, next to Help (User, 2026-10-18): saves a zip and opens a prefilled GitHub issue.</summary>
+    /// <summary>Report a bug, next to Help (User, 2026-10-18): saves a zip and opens a prefilled e-mail (User, 2026-10-19).</summary>
     private void OpenBugReport(string? happened)
     {
         // The picture is taken now, before the report window covers the clicker.
         var parts = new BugReportParts(SystemDetails(), ReadLog(), ClickerPicture(), ActionListSaver(), RedactPersonal);
         var window = new BugReportWindow(parts, ReportsFolder, happened) { Owner = this };
-        if (window.ShowDialog() != true || window.ZipPath is not { } zip || window.IssueLink is not { } link) return;
+        if (window.ShowDialog() != true || window.ZipPath is not { } zip || window.MailLink is not { } link) return;
         try { Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{zip}\"") { UseShellExecute = true }); }
-        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* The browser step below still names the file. */ }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* The e-mail step below still names the file. */ }
         try
         {
             Process.Start(new ProcessStartInfo(link) { UseShellExecute = true });
-            ReasonLabel.Text = "Report saved. Drag the zip into the GitHub issue, then submit it.";
+            ReasonLabel.Text = $"Report saved. Attach the zip to the e-mail and send it to {BugReport.Address}.";
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
-        { AppDialog.Show(this, $"Could not open your browser: {ex.Message}\n\nThe report is saved as {zip}. Open {BugReport.IssuesUrl} to post it."); }
+        { AppDialog.Show(this, $"Could not open your mail app: {ex.Message}\n\nThe report is saved as {zip}. Send it from your webmail to {BugReport.Address}."); }
     }
 
     private static string RedactPersonal(string text) => BugReport.Redact(text, [
