@@ -98,6 +98,7 @@ public partial class MainWindow : Window
             InitializeTray();
             StartupStep("reading Linux setup");
             RefreshLinuxSetup();
+            _ = ReportCaptureCheckAsync();
             bool settingsLoaded = false;
             try
             {

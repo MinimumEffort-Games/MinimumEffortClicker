@@ -15,8 +15,7 @@ internal static class KWinCapture
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
     private const int MaxPixels = 32 * 1024 * 1024;
 
-    /// <param name="timeout">How long to wait for KWin; 10 s when null.</param>
-    public static HelperImage Area(DBusConnection connection, int x, int y, int width, int height, TimeSpan? timeout = null)
+    public static HelperImage Area(DBusConnection connection, int x, int y, int width, int height)
     {
         if (width < 1 || height < 1 || (long)width * height > MaxPixels) throw new HelperException("Capture area is empty or too large.");
         return Capture(connection, "CaptureArea", "iiuua{sv}h", (ref MessageWriter w, SafeHandle pipe) =>
@@ -24,7 +23,7 @@ internal static class KWinCapture
             w.WriteInt32(x); w.WriteInt32(y); w.WriteUInt32((uint)width); w.WriteUInt32((uint)height);
             WriteOptions(ref w, window: false);
             w.WriteHandle(pipe);
-        }, timeout ?? Timeout);
+        });
     }
 
     /// <summary>The window's whole client area, its own pixels (windows above it do not show).</summary>
@@ -34,7 +33,7 @@ internal static class KWinCapture
             w.WriteString(windowId);
             WriteOptions(ref w, window: true);
             w.WriteHandle(pipe);
-        }, Timeout);
+        });
 
     private delegate void WriteCall(ref MessageWriter writer, SafeHandle pipe);
 
@@ -51,7 +50,7 @@ internal static class KWinCapture
         w.WriteDictionaryEnd(options);
     }
 
-    private static HelperImage Capture(DBusConnection connection, string member, string signature, WriteCall write, TimeSpan timeout)
+    private static HelperImage Capture(DBusConnection connection, string member, string signature, WriteCall write)
     {
         var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
         // Read while KWin writes, so a large picture never fills the pipe and stalls it. The reader owns the pipe and
@@ -68,10 +67,10 @@ internal static class KWinCapture
         {
             var writePipe = pipe.ClientSafePipeHandle;
             info = KdeHelper.Call(connection, "org.kde.KWin", "/org/kde/KWin/ScreenShot2", Interface, member, signature,
-                (ref MessageWriter w) => write(ref w, writePipe), (m, _) => m.GetBodyReader().ReadDictionaryOfStringToVariantValue(), timeout);
+                (ref MessageWriter w) => write(ref w, writePipe), (m, _) => m.GetBodyReader().ReadDictionaryOfStringToVariantValue(), Timeout);
         }
         finally { pipe.DisposeLocalCopyOfClientHandle(); } // KWin holds its own copy; ours must close for the read to end.
-        if (!read.Wait(timeout)) throw new HelperException("KWin did not finish the capture in time.");
+        if (!read.Wait(Timeout)) throw new HelperException("KWin did not finish the capture in time.");
         return ToImage(info, read.Result);
     }
 

@@ -11,11 +11,13 @@ public partial class MainWindow
         LinuxSessionLabel.Text = LinuxSetup.SessionSummary;
         var control = runtime?.Control;
         HelperHeading.Text = LinuxSetup.HelperName[..1].ToUpperInvariant() + LinuxSetup.HelperName[1..];
-        HelperStatusLabel.Text = control?.Helper is not null
+        bool captureDenied = control?.Helper is MinimumEffortClicker.Linux.Kde.KdeHelper { CaptureDenied: true };
+        HelperStatusLabel.Text = captureDenied ? "KDE does not allow this copy of the app to capture the screen, so colour waits and screenshots fail. Choose Allow this copy of the app."
+            : control?.Helper is not null
             ? (LinuxSetup.IsKde ? "Ready. Clicks, keys, window targets and screen capture go through KWin." : "Ready. Clicks, keys, window targets and screen capture go through the helper.")
             : (control?.HelperError ?? "Not checked yet.") + (LinuxSetup.IsGnome || LinuxSetup.IsKde ? "" : " The helper needs GNOME or KDE Plasma; other desktops are not supported yet.");
         // KDE has nothing to install: the button only lets this copy of the app use KWin.
-        InstallHelperButton.IsVisible = !LinuxSetup.IsKde || control?.Helper is null;
+        InstallHelperButton.IsVisible = !LinuxSetup.IsKde || control?.Helper is null || captureDenied;
         InstallHelperButton.Content = LinuxSetup.IsKde ? "Allow this copy of the app"
             : control?.Helper is not null ? "Reinstall GNOME helper" : control?.HelperAccessDenied == true ? "Allow this copy of the app" : "Install GNOME helper";
         bool ours = LinuxSetup.InputRuleInstalled;
@@ -34,6 +36,15 @@ public partial class MainWindow
         // Shown while the rule is installed, so people see how to undo it.
         InputAccessRemoveCommand.Text = LinuxSetup.InputAccessRemoveCommand ?? "";
         InputAccessScope.IsVisible = InputAccessRemoveCommand.IsVisible = CopyRemoveCommandButton.IsVisible = ours && LinuxSetup.InputAccessRemoveCommand is not null;
+    }
+
+    /// <summary>The KDE capture check runs beside the start; its answer goes to log.txt and Settings when it comes.</summary>
+    private async Task ReportCaptureCheckAsync()
+    {
+        if (runtime?.Control.Helper is not MinimumEffortClicker.Linux.Kde.KdeHelper kde) return;
+        string result = await kde.CaptureCheck;
+        AppLog.Note("KDE", "screen capture check: " + result);
+        if (!allowClose && !closing) RefreshLinuxSetup();
     }
 
     private async void InstallHelper_Click(object? sender, RoutedEventArgs e)
