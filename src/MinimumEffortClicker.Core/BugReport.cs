@@ -1,9 +1,8 @@
 namespace MinimumEffortClicker.Core;
 
 /// <summary>
-/// The text side of a bug report. Reports go by e-mail to one address (User, 2026-10-19: no account needed, and every
-/// report in one place). The app never sends anything itself: it saves a zip and opens a new e-mail with the text
-/// filled in, and the user attaches the zip there.
+/// The text and zip of a bug report. Every report ends up in one inbox, <see cref="Address"/> (User, 2026-10-19): Send
+/// report posts it through <see cref="BugReportSender"/>, and when that fails the report can go as an e-mail instead.
 /// </summary>
 public static class BugReport
 {
@@ -60,6 +59,26 @@ public static class BugReport
         if (details is not null) text.AppendLine("App and system:").AppendLine(details).AppendLine();
         if (error is not null) text.AppendLine("Last error:").AppendLine(error).AppendLine();
         return text.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// Writes the report zip: report.txt, and the chosen parts (the end of the log, a picture of the clicker, the Action
+    /// List as a macro file). An older zip at the same path is replaced.
+    /// </summary>
+    public static void WriteZip(string path, string report, string? log, byte[]? picture, Action<string>? saveActionList)
+    {
+        if (File.Exists(path)) File.Delete(path);
+        using var zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create);
+        void Text(string name, string content) { using var writer = new StreamWriter(zip.CreateEntry(name).Open()); writer.Write(content); }
+        Text("report.txt", report);
+        if (log is not null) Text("log.txt", log);
+        if (picture is not null) { using var stream = zip.CreateEntry("clicker.png").Open(); stream.Write(picture); }
+        if (saveActionList is not null)
+        {
+            string temporary = Path.Combine(Path.GetTempPath(), $"mec-report-{Guid.NewGuid():N}.mecprofile");
+            try { saveActionList(temporary); System.IO.Compression.ZipFileExtensions.CreateEntryFromFile(zip, temporary, "action-list.mecprofile"); }
+            finally { File.Delete(temporary); }
+        }
     }
 
     /// <summary>The subject line: the app's name and the first line of what happened, shortened.</summary>

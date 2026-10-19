@@ -26,7 +26,7 @@
                         </Border>
                     </Button>
                     <Button Content="Help" Click="Help_Click" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Help" />
-                    <Button Content="Bug report" Click="BugReport_Click" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip.Tip="Saves a report as a zip and opens a new e-mail with it filled in." AutomationProperties.Name="Report a bug" />
+                    <Button Content="Bug report" Click="BugReport_Click" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip.Tip="Sends a bug report to the developer, with the details you choose." AutomationProperties.Name="Report a bug" />
                 </StackPanel>
                 <ToggleButton Grid.Column="1" x:Name="OverlayBox" Classes="choice" Content="Show overlay" IsChecked="True" VerticalAlignment="Center" IsCheckedChanged="Overlay_Changed" Margin="16,0,0,0" ToolTip.Tip="The small status window that shows what the clicker is doing." />
             </Grid>

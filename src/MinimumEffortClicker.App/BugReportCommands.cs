@@ -20,13 +20,16 @@ public partial class MainWindow
 
     private void BugReport_Click(object sender, RoutedEventArgs e) => OpenBugReport(null);
 
-    /// <summary>Report a bug, next to Help (User, 2026-10-18): saves a zip and opens a prefilled e-mail (User, 2026-10-19).</summary>
+    /// <summary>Report a bug, next to Help (User, 2026-10-18): Send report posts it; the e-mail route is the fallback (User, 2026-10-19).</summary>
     private void OpenBugReport(string? happened)
     {
         // The picture is taken now, before the report window covers the clicker.
-        var parts = new BugReportParts(SystemDetails(), ReadLog(), ClickerPicture(), ActionListSaver(), RedactPersonal);
+        var parts = new BugReportParts($"Minimum Effort Clicker {AppVersion} (Windows, {(SteamMode.Enabled ? "Steam" : "portable")})",
+            SystemDetails(), ReadLog(), ClickerPicture(), ActionListSaver(), RedactPersonal);
         var window = new BugReportWindow(parts, ReportsFolder, happened) { Owner = this };
-        if (window.ShowDialog() != true || window.ZipPath is not { } zip || window.MailLink is not { } link) return;
+        if (window.ShowDialog() != true) return;
+        if (window.Sent) { ReasonLabel.Text = "Bug report sent. Thank you!"; return; }
+        if (window.ZipPath is not { } zip || window.MailLink is not { } link) return;
         try { Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{zip}\"") { UseShellExecute = true }); }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* The e-mail step below still names the file. */ }
         try
@@ -37,6 +40,8 @@ public partial class MainWindow
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         { AppDialog.Show(this, $"Could not open your mail app: {ex.Message}\n\nThe report is saved as {zip}. Send it from your webmail to {BugReport.Address}."); }
     }
+
+    private static string AppVersion => typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 
     private static string RedactPersonal(string text) => BugReport.Redact(text, [
         (Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "%USERPROFILE%"),
@@ -84,7 +89,7 @@ public partial class MainWindow
     /// <summary>What a developer needs to reproduce a problem. No window titles: they can be personal.</summary>
     private string SystemDetails()
     {
-        string version = typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+
         string monitors;
         try { monitors = string.Join("; ", DesktopMonitor.List()); }
         catch (Exception ex) when (ex is InvalidOperationException or Win32Exception) { monitors = "unknown"; }
@@ -94,7 +99,7 @@ public partial class MainWindow
         string controllers = gamepads?.Connected is { Count: > 0 } pads ? string.Join(", ", pads) : "none";
         string screenshotKey = screenshotSettings.HotkeyEnabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "none";
         return string.Join(Environment.NewLine,
-            $"- App: Minimum Effort Clicker {version} ({(SteamMode.Enabled ? "Steam" : "portable")})",
+            $"- App: Minimum Effort Clicker {AppVersion} ({(SteamMode.Enabled ? "Steam" : "portable")})",
             $"- System: {RuntimeInformation.OSDescription}, {RuntimeInformation.OSArchitecture}",
             $"- Monitors: {monitors}; clicker scaling {VisualTreeHelper.GetDpi(this).DpiScaleX * 100:0} %",
             $"- Click target: {target}",

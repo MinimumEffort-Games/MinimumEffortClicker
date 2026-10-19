@@ -152,7 +152,7 @@ public static class HelpManual
             "- Share on Workshop (under Save Macro) uploads the macro with a title, description and who can see it. Sharing it again updates the item. Captured image areas are pictures of your screen; everyone who can see the item can see them.",
             "- Browse Workshop opens the Workshop in Steam. Subscribed macros appear in the Workshop folder that Load Macro opens and update when their author updates them.",
             "- A Workshop macro was made by someone else: read every action before you press Start. For your safety a macro that presses a system shortcut is never added, and Workshop key presses only go to a selected window, never to Desktop and never into a terminal.",
-            "- The clicker only goes online through Steam: when you share, and when Steam downloads macros you subscribed to.",
+            "- Steam is how the clicker goes online for the Workshop: when you share, and when Steam downloads macros you subscribed to.",
         ]));
         if (linux) sections.Add(new("Linux setup",
         [
@@ -174,7 +174,7 @@ public static class HelpManual
         ]));
         sections.Add(new("Bug report and if something is stuck",
         [
-            "- Bug report (next to Help): describe what happened and choose what to include: app and system details, the end of the log, a picture of the clicker, the Action List. Your user name and computer name are replaced. Create report saves a zip and opens a new e-mail to bugs@minimumeffort.eu with your text; attach the zip and send it. No mail app? Copy the address and send the zip from your webmail. The clicker sends nothing itself. After a close that was not normal, the next start offers a report.",
+            "- Bug report (next to Help): describe what happened and choose what to include: app and system details, the end of the log, a picture of the clicker, the Action List. Your user name and computer name are replaced. You can add your e-mail if we may ask you about it. Send report sends it straight to the developer; nothing is sent before you press it. If sending fails (no internet), E-mail it instead saves the zip and opens an e-mail to bugs@minimumeffort.eu. After a close that was not normal, the next start offers a report.",
             "- Cleanup pending: the clicker could not let go of a key or button because you held the same one. Let go of it and press Release stuck input.",
             linux
                 ? "- Closing the app normally stops and releases everything. If it crashes or is killed, the desktop helper lets go of anything it was holding."
@@ -186,7 +186,7 @@ public static class HelpManual
             linux
                 ? "- Settings, macros and log.txt are in the Data folder beside the app."
                 : "- With a portable.mode file next to the app, settings, macros and log.txt are in the Data folder beside it; otherwise in your local app data folder.",
-            "- No account and no tracking. " + (steam ? "The clicker only goes online through Steam, when you share or subscribe." : "The clicker never goes online.")
+            "- No account and no tracking. The clicker goes online only when you press Send report" + (steam ? ", and through Steam when you share or subscribe." : ".")
                 + (linux || steam ? "" : " The GitHub build is not signed, so Windows may warn the first time it runs."),
             "- log.txt records what went wrong and stays on your PC; Bug report can include its end.",
         ]));

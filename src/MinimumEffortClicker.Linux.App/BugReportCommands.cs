@@ -20,13 +20,16 @@ public partial class MainWindow
 
     private void BugReport_Click(object sender, RoutedEventArgs e) => OpenBugReport(null);
 
-    /// <summary>Report a bug, next to Help (User, 2026-10-18): saves a zip and opens a prefilled e-mail (User, 2026-10-19).</summary>
+    /// <summary>Report a bug, next to Help (User, 2026-10-18): Send report posts it; the e-mail route is the fallback (User, 2026-10-19).</summary>
     private void OpenBugReport(string? happened)
     {
         // The picture is taken now, before the report window covers the clicker.
-        var parts = new BugReportParts(SystemDetails(), ReadLog(), ClickerPicture(), ActionListSaver(), RedactPersonal);
+        var parts = new BugReportParts($"Minimum Effort Clicker {AppVersion} (Linux, {LinuxSetup.SessionSummary})",
+            SystemDetails(), ReadLog(), ClickerPicture(), ActionListSaver(), RedactPersonal);
         var window = new BugReportWindow(this, parts, ReportsFolder, happened);
-        if (window.ShowDialog() != true || window.ZipPath is not { } zip || window.MailLink is not { } link) return;
+        if (window.ShowDialog() != true) return;
+        if (window.Sent) { ReasonLabel.Text = "Bug report sent. Thank you!"; return; }
+        if (window.ZipPath is not { } zip || window.MailLink is not { } link) return;
         try { Process.Start(new ProcessStartInfo("xdg-open", [ReportsFolder]) { UseShellExecute = false }); }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* The e-mail step below still names the file. */ }
         // A Steam Deck has no mail app, and xdg-open then does nothing visible: hand over the address for webmail instead.
@@ -61,6 +64,8 @@ public partial class MainWindow
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or AggregateException) { return true; }
     }
+
+    private static string AppVersion => typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 
     private static string RedactPersonal(string text) => BugReport.Redact(text, [
         (Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "~"),
@@ -118,7 +123,7 @@ public partial class MainWindow
     /// <summary>What a developer needs to reproduce a problem. No window titles: they can be personal.</summary>
     private string SystemDetails()
     {
-        string version = typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+
         string monitors = string.Join("; ", Screens.All.Select((s, i) => $"Monitor {i + 1}{(s.IsPrimary ? " (main)" : "")} · {s.Bounds.Width} × {s.Bounds.Height} at {s.Scaling * 100:0} %"));
         string target = runtime is null || runtime.IsDesktopMode ? "Desktop"
             // A remembered target whose window closed has no program any more.
@@ -127,7 +132,7 @@ public partial class MainWindow
         string screenshotKey = screenshotSettings.HotkeyEnabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "none";
         string helper = runtime?.Control.Helper is null ? $"{LinuxSetup.HelperName} not connected" : $"{LinuxSetup.HelperName} connected";
         return string.Join(Environment.NewLine,
-            $"- App: Minimum Effort Clicker {version} (Linux)",
+            $"- App: Minimum Effort Clicker {AppVersion} (Linux)",
             $"- System: {Distribution()}, {Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP") ?? "unknown desktop"} on {Environment.GetEnvironmentVariable("XDG_SESSION_TYPE") ?? "unknown session"}, kernel {Environment.OSVersion.Version}{(LinuxSetup.IsSteamDeck ? ", Steam Deck" : "")}",
             $"- Input access: {(runtime?.Control.PhysicalInputAvailable == true ? "on" : "off")}; {helper}",
             $"- Monitors: {monitors}; X11 pixels per desktop unit {DesktopPixels.Factor:0.##}",
