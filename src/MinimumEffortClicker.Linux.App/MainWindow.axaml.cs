@@ -47,7 +47,7 @@ public partial class MainWindow : Window
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MinimumEffortClicker"));
         preferences = new(store.DirectoryPath);
         bindingsStore = new(store.DirectoryPath);
-        if (!previewOnly) AppLog.Initialize(store.DirectoryPath);
+        if (!previewOnly) { AppLog.Initialize(store.DirectoryPath); StartStartupWatch(); }
         InitializeComponent();
         AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, EditingWindow_PointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         OverlayAnchorPicture.AnchorChosen += OverlayAnchor_Chosen;
@@ -56,7 +56,9 @@ public partial class MainWindow : Window
         ShowHeldInput(); ShowToggleShortcut();
         ToggleKeyBox.Content = ShortcutKeys.Label(ShortcutKeys.DefaultStartKey); StopKeyBox.Content = ShortcutKeys.Label(ShortcutKeys.DefaultStopKey);
         if (previewOnly) return;
+        StartupStep("connecting to the desktop");
         runtime = new DesktopRuntime();
+        StartupStep("building the window");
         runtime.CaptureScreenshot = stop => Dispatcher.InvokeAsync(() => TakeScreenshotAsync(fromAction: true, stop));
         StartupMeasurement.Mark("Native controls and scheduler ready");
         runtime.Changed += RuntimeChanged;
@@ -92,12 +94,14 @@ public partial class MainWindow : Window
             startupLoaded = true;
             Pages.IsEnabled = false;
             // The top bar icon exists from the start, so closing while settings load asks to wait instead of quitting.
+            StartupStep("creating the top-bar icon");
             InitializeTray();
+            StartupStep("reading Linux setup");
             RefreshLinuxSetup();
             bool settingsLoaded = false;
             try
             {
-            StartStartupWatch();
+            StartupStep("loading profiles");
             var loaded = await Task.Run(store.Load);
             StartupMeasurement.Mark("Profiles loaded");
             if (allowClose || closing) return;
@@ -232,6 +236,7 @@ public partial class MainWindow : Window
             runtime.Control.StopRequested -= CancelScreenshot;
             runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Close();
         };
+        StartupStep("showing the window");
     }
 
     private readonly SessionWatcher sessionWatcher = new();
@@ -522,17 +527,19 @@ public partial class MainWindow : Window
     }
     // Startup watchdog (User, 2026-10-19: a Steam Deck start stalled before the controllers with nothing in log.txt).
     // Each step names itself; while one takes 5 s or longer, log.txt says which, every 5 s, also when the window is stuck.
-    private volatile string startupStep = "loading profiles";
+    // It starts right after the log opens, so a stall while connecting to the desktop or showing the window is named too.
+    private volatile string startupStep = "starting";
     private long startupStepAt = Environment.TickCount64;
     private System.Threading.Timer? startupWatch;
     private void StartupStep(string step) { startupStep = step; Interlocked.Exchange(ref startupStepAt, Environment.TickCount64); }
     private void StartStartupWatch()
     {
-        StartupStep("loading profiles");
+        StartupStep("starting");
         startupWatch = new System.Threading.Timer(_ =>
         {
             long waited = Environment.TickCount64 - Interlocked.Read(ref startupStepAt);
-            if (waited >= 5000) AppLog.Note("Startup", $"still {startupStep} after {waited / 1000} s");
+            string? kde = MinimumEffortClicker.Linux.Kde.KdeHelper.ConnectStage;
+            if (waited >= 5000) AppLog.Note("Startup", $"still {startupStep}{(kde is null ? "" : " (KDE: " + kde + ")")} after {waited / 1000} s");
         }, null, 5000, 5000);
     }
     private void EndStartupWatch() { startupWatch?.Dispose(); startupWatch = null; }
