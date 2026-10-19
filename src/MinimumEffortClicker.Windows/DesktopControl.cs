@@ -464,7 +464,9 @@ public sealed class DesktopControl : IDisposable
                     return true;
                 }
                 if (!Available || bindingsSuspended) return false;
-                if (command == ControllerCommand.StartStop) DispatchTrigger(trigger.RegisteredHotkey(HoldTrigger));
+                // A controller press is a whole tap. The key latch only fires after a physical key-down of the Start key, so
+                // it would drop every controller press (L4 on a Steam Deck did nothing, 2026-10-19).
+                if (command == ControllerCommand.StartStop) { trigger.CancelPending(); DispatchTrigger(TriggerCommand.Toggle); }
                 else if (command == ControllerCommand.Record) RecordingRequested?.Invoke();
                 else if (command == ControllerCommand.Screenshot) ScreenshotRequested?.Invoke();
                 else if (command == ControllerCommand.Pause) PauseRequested?.Invoke();

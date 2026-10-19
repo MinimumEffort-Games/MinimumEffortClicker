@@ -369,7 +369,9 @@ public sealed class DesktopControl : IDisposable
         lock (gate)
         {
             if (!Available || bindingsSuspended) return;
-            if (command == ControllerCommand.StartStop) toggle = trigger.RegisteredHotkey(HoldTrigger);
+            // A controller press is a whole tap. The key latch only fires after a physical key-down of the Start key, so it
+            // would drop every controller press (L4 on a Steam Deck did nothing, 2026-10-19).
+            if (command == ControllerCommand.StartStop) { trigger.CancelPending(); toggle = TriggerCommand.Toggle; }
         }
         if (toggle == TriggerCommand.Toggle) ToggleRequested?.Invoke();
         else if (toggle == TriggerCommand.Stop) ActionStopRequested?.Invoke();
