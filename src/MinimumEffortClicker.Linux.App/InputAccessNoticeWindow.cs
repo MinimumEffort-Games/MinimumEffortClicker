@@ -6,9 +6,9 @@ using Avalonia.Media;
 namespace MinimumEffortClicker.App;
 
 /// <summary>
-/// Startup notice. On a Steam Deck it starts with the Deck: what works and what does not, then Steam's desktop buttons
-/// (User, 2026-10-19). Then, while physical input access is off, why Record and Stop on my input do not work yet, that
-/// everything else does, and a button that turns access on through the system password window.
+/// Startup notice. First Linux input access: while it is off, why Record and Stop on my input do not work yet, that
+/// everything else does, and a button that turns access on through the system password window. On a Steam Deck the Deck
+/// follows: what works and what does not, then Steam's desktop buttons (User, 2026-10-19).
 /// DialogResult true means "Turn on".
 /// </summary>
 public sealed class InputAccessNoticeWindow : DialogWindow
@@ -20,15 +20,10 @@ public sealed class InputAccessNoticeWindow : DialogWindow
     public InputAccessNoticeWindow(string needs, bool accessOff, bool canAskForPassword, string terminalCommand, (string Limits, string DesktopButtons)? deck = null)
     {
         showAtStartup.Classes.Add("choice");
-        Title = deck is not null ? "Steam Deck: good to know" : "Input access is off"; Width = 560; SizeToContent = SizeToContent.Height; CanResize = false;
+        Title = deck is not null ? "Input access and Steam Deck" : "Input access is off"; Width = 560; SizeToContent = SizeToContent.Height; CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false; FontSize = 14;
         var panel = new StackPanel { Margin = new Thickness(20) };
-        if (deck is { } d)
-        {
-            panel.Children.Add(Heading("Steam Deck"));
-            panel.Children.Add(Card(Text(d.Limits), Subheading("Steam's desktop buttons"), Text(d.DesktopButtons)));
-        }
-        panel.Children.Add(Heading("Linux input access", top: deck is null ? 0 : 18));
+        panel.Children.Add(Heading("Linux input access"));
         if (accessOff)
         {
             var body = new List<Control>
@@ -43,6 +38,11 @@ public sealed class InputAccessNoticeWindow : DialogWindow
             panel.Children.Add(Card([.. body]));
         }
         else panel.Children.Add(Card(Text("On. Recording, Stop on my input, mouse-button shortcuts and hotkeys that work in every app are available.")));
+        if (deck is { } d)
+        {
+            panel.Children.Add(Heading("Steam Deck", top: 18));
+            panel.Children.Add(Card(Text(d.Limits), Subheading("Steam's desktop buttons"), Text(d.DesktopButtons)));
+        }
         panel.Children.Add(showAtStartup);
         var buttons = new Grid { Margin = new Thickness(0, 18, 0, 0) };
         var later = new Button { Content = accessOff ? "Later" : "OK", MinWidth = 90, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0) };
