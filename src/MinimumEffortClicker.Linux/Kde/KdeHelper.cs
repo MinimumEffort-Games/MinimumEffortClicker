@@ -91,9 +91,12 @@ public sealed class KdeHelper : IDesktopHelper
         connectStage = "asking KWin for the focus";
         Interlocked.CompareExchange(ref deliveredFocus, (long)ids.For((string?)script.Ask("focus") ?? ""), 0);
         connectStage = "the screen capture check";
-        try { KWinCapture.Area(connection, 0, 0, 1, 1); }
+        // Only a refusal counts: KWin refuses at once, but may hold a capture until it next paints (seen on a Steam Deck),
+        // so a slow answer is left alone instead of holding up the start.
+        try { KWinCapture.Area(connection, 0, 0, 1, 1, TimeSpan.FromSeconds(2)); }
         catch (HelperException ex) when (ex.AccessDenied)
         { throw new HelperException("KDE does not allow this copy of the app to capture the screen. Choose Allow this copy of the app in Settings.", ex) { AccessDenied = true }; }
+        catch (HelperException) { /* Slow or busy: real captures report their own problems. */ }
         connectStage = "starting the input guard";
         input = new KdeInput();
         input.Start();
