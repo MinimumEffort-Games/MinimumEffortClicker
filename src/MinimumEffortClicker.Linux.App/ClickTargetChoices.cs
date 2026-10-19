@@ -48,8 +48,14 @@ public partial class MainWindow
 
     // The Click target chosen last; saved with the preferences and picked again at the next start.
     private RememberedTarget? lastTarget;
+    /// <summary>
+    /// The program's short name from /proc (for example "brave"). .NET's ProcessName can return a whole command line with its
+    /// flags on Linux, because browsers rewrite it; that would never match the same program after a restart.
+    /// </summary>
     private static string ProgramOf(int processId)
     {
+        try { return File.ReadAllText($"/proc/{processId}/comm").Trim(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         try { using var process = System.Diagnostics.Process.GetProcessById(processId); return process.ProcessName; }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { return ""; }
     }
@@ -70,7 +76,8 @@ public partial class MainWindow
             restored = windows[pick].Title;
         }
         // The window closed meanwhile, or the desktop helper did not answer: Desktop stays, as without a remembered target.
-        catch (Exception ex) when (ex is InvalidOperationException or HelperException or ArgumentException) { }
+        // Never more than a missed convenience: whatever goes wrong here must not stop the rest of the start (controllers, keys).
+        catch (Exception ex) { AppLog.Failure("Selecting the Click target from last time", ex); }
         finally { RefreshTargetChoices(); RefreshStatus(); }
         // After RefreshStatus, which shows the runtime's own "Click target selected" line once and would replace this.
         if (restored is not null) ReasonLabel.Text = $"Click target from last time selected: {restored}.";

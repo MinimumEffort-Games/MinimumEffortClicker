@@ -55,14 +55,27 @@ internal sealed class ControllerCaptureWindow : Window
         }
         panel.Children.Add(extras);
 
+        panel.Children.Add(countdown);
         var cancel = new Button { Content = "Cancel", IsCancel = true, HorizontalAlignment = HorizontalAlignment.Right };
         cancel.Click += (_, _) => DialogResult = false;
         panel.Children.Add(cancel);
+        // A window nobody can reach (hidden, no keyboard) must not hold the main window forever (User, 2026-10-19).
+        timer.Tick += (_, _) => { if (--secondsLeft <= 0) DialogResult = false; else ShowCountdown(); };
+        Loaded += (_, _) => { ShowCountdown(); timer.Start(); };
+        Closed += (_, _) => timer.Stop();
     }
+
+    /// <summary>How long the window waits for a choice before it closes by itself, in seconds.</summary>
+    private const int WaitSeconds = 30;
+    private int secondsLeft = WaitSeconds;
+    private readonly System.Windows.Threading.DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly TextBlock countdown = new() { Opacity = 0.7, FontSize = 12, Margin = new Thickness(0, 0, 0, 8) };
+    private void ShowCountdown() => countdown.Text = $"Closes by itself in {secondsLeft} s if nothing is chosen.";
 
     /// <summary>A controller button was pressed or clicked (UI thread). Takes it, or says why not and keeps waiting.</summary>
     public void Press(ControllerButton button)
     {
+        secondsLeft = WaitSeconds; ShowCountdown();
         if (taken(button) is { } why)
         {
             hint.Text = why;

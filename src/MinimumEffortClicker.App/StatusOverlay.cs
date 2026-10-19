@@ -12,7 +12,7 @@ namespace MinimumEffortClicker.App;
 
 internal interface IOverlayPresenter
 {
-    void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false);
+    void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false, string? alert = null);
     void Configure(OverlayOptions options);
 }
 
@@ -213,8 +213,10 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         body.LayoutTransform = new ScaleTransform(value.Scale, value.Scale);
         ShowLock();
     }
-    public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false)
+    /// <param name="alert">A short red line shown above the rest, for example why a toggle did not switch on; null for none.</param>
+    public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false, string? alert = null)
     {
+        alertLine = alert;
         bool capturing = state.Recording;
         bool running = state.PlaybackActive && !state.CleanupPending;
         if (capturing != recording || running != active) { recording = capturing; active = running; ApplyContrast(); }
@@ -234,11 +236,13 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         ShowLines(state.ActionsActive || !togglesActive ? $"{state.State} · {(state.Activity is "Minimum Effort" or "Named points" ? "Actions" : OverlayHints.Activity(state.Activity))}" : null, toggles);
     }
     /// <summary>The heading line, then one line per toggle with its state word coloured: "On" blue, the rest white.</summary>
+    private string? alertLine;
     private void ShowLines(string? heading, IReadOnlyList<OverlayToggle> toggles)
     {
         activityLabel.Inlines.Clear();
         var plain = new List<string>();
-        if (heading is not null) { activityLabel.Inlines.Add(new Run(heading)); plain.Add(heading); }
+        if (alertLine is not null) { activityLabel.Inlines.Add(new Run(alertLine) { Foreground = SystemParameters.HighContrast ? SystemColors.WindowTextBrush : StopRed, FontWeight = FontWeights.SemiBold }); plain.Add(alertLine); }
+        if (heading is not null) { if (plain.Count > 0) activityLabel.Inlines.Add(new LineBreak()); activityLabel.Inlines.Add(new Run(heading)); plain.Add(heading); }
         foreach (var toggle in toggles)
         {
             if (plain.Count > 0) activityLabel.Inlines.Add(new LineBreak());

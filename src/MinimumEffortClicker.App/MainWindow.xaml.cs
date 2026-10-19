@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         runtime.Control.RecordingRequested += QuickRecordHotkey;
         runtime.Control.ScreenshotRequested += ScreenshotHotkey;
         runtime.Control.PauseRequested += PauseHotkey;
+        runtime.ToggleRefused += ToggleRefused;
         runtime.Control.StopRequested += CancelScreenshot;
         runtime.StopIssued += CancelPowerSchedule;
         runtime.QuickStartRequested += () =>
@@ -148,7 +149,7 @@ public partial class MainWindow : Window
             runtime.Control.HoldTrigger = false; stopKey = ShortcutKeys.Label(settings.StopKey);
             initialized = true; Config_Changed(this, new RoutedEventArgs()); RefreshStatus();
             if (loaded.Warning is not null) ReasonLabel.Text = loaded.Warning;
-            RefreshTargetChoices(); RestoreLastTarget();
+            RefreshTargetChoices();
             await SetQuickRecordKey();
             await MakeSavedMacrosAvailable();
             await RestoreActiveToggles();
@@ -158,10 +159,12 @@ public partial class MainWindow : Window
             SyncWorkshopMacros();
             await ConfigureScreenshotHotkey();
             await ConfigurePauseHotkey();
+            // Last, so selecting the remembered target can never hold up the controllers, keys or binds above.
+            RestoreLastTarget();
             settingsLoaded = true;
             CheckLastSession();
             }
-            catch (Exception ex) { if (!allowClose) ReasonLabel.Text = "Startup settings could not be loaded: " + ex.Message; }
+            catch (Exception ex) { AppLog.Crash("startup", ex); if (!allowClose) ReasonLabel.Text = "Startup settings could not be loaded: " + ex.Message; }
             finally
             {
                 if (!allowClose)
@@ -202,6 +205,7 @@ public partial class MainWindow : Window
             screenshotCancellation?.Cancel();
             runtime.Control.ScreenshotRequested -= ScreenshotHotkey;
             runtime.Control.PauseRequested -= PauseHotkey;
+            runtime.ToggleRefused -= ToggleRefused;
             runtime.Control.StopRequested -= CancelScreenshot;
             runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Close();
         };
@@ -260,11 +264,11 @@ public partial class MainWindow : Window
         HotkeyStatus.Text = runtime.Control.Available ? "" : runtime.Control.Error;
         timer.Interval = TimeSpan.FromMilliseconds(snapshot.Busy ? 100 : 1000);
         if (snapshot.Busy || shutdownSchedule.Armed) timer.Start(); else timer.Stop();
-        if (overlaySettingsLoaded && !operations.Has(Operation.Screenshot) && (snapshot.Recording || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
+        if (overlaySettingsLoaded && !operations.Has(Operation.Screenshot) && (snapshot.Recording || OverlayBox.IsChecked == true && OverlayAlert is not null || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
-            overlay.Update(snapshot, StopHint, StartHint, ToggleOverlayLines(snapshot), RecordHint, !quickHistory.Current.Steps.Any());
+            overlay.Update(snapshot, StopHint, StartHint, ToggleOverlayLines(snapshot), RecordHint, !quickHistory.Current.Steps.Any(), OverlayAlert);
             bool newlyShown = !overlay.IsVisible;
             if (newlyShown) overlay.Show();
             PositionOverlay(newlyShown);

@@ -165,6 +165,9 @@ public partial class MainWindow
         var settings = fromAction ? screenshotSettings with { Mode = 0 } : screenshotSettings;
         string? targetTitle = runtime.SelectedTargetTitle;
         bool wasVisible = IsVisible, reactivate = IsVisible && ProbeNative.GetForegroundWindow() == new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        // The window comes back exactly as it was (User, 2026-10-19): maximised or normal and in front again, while a
+        // minimised clicker or one behind other windows stays where it was.
+        var stateBefore = WindowState;
         bool hidden = false;
         operations.Begin(Operation.Screenshot); TakeScreenshotButton.IsEnabled = false;
         ScreenshotStatus.Text = settings.Mode == 1 ? "Preparing area selection…" : "Taking screenshot…";
@@ -236,6 +239,7 @@ public partial class MainWindow
             {
                 bool activate = ShowActivated;
                 ShowActivated = reactivate; Show(); ShowActivated = activate;
+                if (WindowState != stateBefore) WindowState = stateBefore;
                 if (reactivate) Activate();
             }
             RefreshStatus();

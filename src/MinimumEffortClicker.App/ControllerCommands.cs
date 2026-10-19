@@ -28,6 +28,8 @@ public partial class MainWindow
     private ControllerCaptureWindow? controllerCapture;
     private volatile bool capturingButton;
     private string? loggedControllerState;
+    // Buttons pressed since the start; only touched on the controller thread.
+    private readonly HashSet<ControllerButton> seenButtons = [];
 
     private string StartHint => controllerHints && controllerControls.StartStop is { } b ? ControllerButtons.Label(b) : MacroBindings.KeyLabel(appliedToggleKey);
     private string StopHint => controllerHints && controllerControls.StopAll is { } b ? ControllerButtons.Label(b) : stopKey;
@@ -51,7 +53,14 @@ public partial class MainWindow
         if (down && !controllerHints) { controllerHints = true; RefreshHints(); }
         // While a button is being chosen, the press chooses and does nothing else.
         if (down && capturingButton) { Dispatcher.BeginInvoke(() => controllerCapture?.Press(button)); return; }
-        if (down && controllerControls.CommandFor(button) is { } command) runtime?.Control.RunControllerCommand(command);
+        // log.txt names the first press of each button and every global control a button runs, so a report shows which
+        // buttons reach the clicker (a Steam Deck layout can turn a back button or the trackpad into something else).
+        if (down && seenButtons.Add(button)) AppLog.Note("Controllers", $"first press of {ControllerButtons.Label(button)}");
+        if (down && controllerControls.CommandFor(button) is { } command)
+        {
+            AppLog.Note("Controllers", $"{ControllerButtons.Label(button)} runs {ControlName(command)}");
+            runtime?.Control.RunControllerCommand(command);
+        }
         // A toggle's controller button does what tapping its shortcut does.
         if (down && armedToggleButtons.TryGetValue(button, out var toggle)) runtime?.TriggerToggle(toggle);
         RouteControllerButton(button, down);
