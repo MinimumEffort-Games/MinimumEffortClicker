@@ -39,4 +39,4 @@ next to it and a `build-manifest.json` inside with the source commit and a hash 
 - **Not code-signed:** Windows may show a SmartScreen warning the first time. Do not turn off Windows protections;
   check the SHA-256 instead.
 - Some games forbid macros. Check a game's rules before using a clicker in it.
-- This is a preview: please report anything that does not work as the Help text says, on GitHub Issues.
+- This is a preview: please report anything that does not work as the Help text says with Bug report (next to Help), or by e-mail to bugs@minimumeffort.eu.

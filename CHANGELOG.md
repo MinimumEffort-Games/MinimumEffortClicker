@@ -2,10 +2,24 @@
 
 ## Unreleased
 
+- Help is a full manual with a clickable contents list: getting started, targets, actions, recording and Look, colour
+  waits, macros, toggles, Controller to Key, screenshots, keys and controller, overlay, settings, Steam, Linux setup,
+  Steam Deck, bug reports and your data. Windows and Linux share one text.
+- A toggle press that cannot switch on shows why in red on the overlay ("No Click Target Selected", "Click Target Not
+  In Front"); toggles need a window as Click target.
+- After a screenshot the clicker comes back exactly as it was (maximised stays maximised, minimised stays minimised).
+- The controller button picker closes by itself after 30 s, so a hidden picker can never lock the clicker.
+- Linux: the startup notice explains input access, then on a Steam Deck its limits and how to free the back buttons
+  from Steam's desktop layout. log.txt names controller presses and where a slow start waits, from the first moment.
 - Report a bug, next to Help. It saves a zip (your text, app and system details, the end of the log, and
-  optionally a picture of the clicker and the Action List; user name and computer name replaced) and opens a new
-  GitHub issue with the text filled in. The app sends nothing itself. After a close that was not normal, the next
-  start offers a report.
+  optionally a picture of the clicker and the Action List; user name and computer name replaced) and Send report
+  sends it straight to the developer in one press: no mail app or account needed, and an e-mail address only if you
+  want an answer. This is the only time the app goes online outside Steam, and only when you press it. If sending
+  fails, E-mail it instead opens an e-mail to bugs@minimumeffort.eu. After a close that was not normal, the next start
+  offers a report.
+- Controller Start / Stop works without pressing the keyboard Start key first (L4 on a Steam Deck did nothing).
+- KDE and Steam Deck: the start can no longer hang for minutes on KWin's screen capture; a log-out no longer counts as
+  a crash.
 - Look recording for first- and third-person games. While a game holds the cursor, Record keeps the mouse
   movement as Look actions (relative movement, about 60 steps a second), so playback turns the camera the same way.
   Clicks made then keep no screen spot, so they never move the cursor. Selecting a Look shows its length and turn;

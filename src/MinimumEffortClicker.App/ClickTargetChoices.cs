@@ -64,7 +64,8 @@ public partial class MainWindow
             runtime.SelectTarget(windows[pick]);
             restored = windows[pick].Title;
         }
-        catch (InvalidOperationException) { /* The window closed meanwhile: Desktop stays, as without a remembered target. */ }
+        // Never more than a missed convenience: whatever goes wrong here must not stop the rest of the start (controllers, keys).
+        catch (Exception ex) { AppLog.Failure("Selecting the Click target from last time", ex); }
         finally { RefreshTargetChoices(); RefreshStatus(); }
         // After RefreshStatus, which shows the runtime's own "Click target selected" line once and would replace this.
         if (restored is not null) ReasonLabel.Text = $"Click target from last time selected: {restored}.";

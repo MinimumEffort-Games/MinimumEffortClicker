@@ -56,12 +56,27 @@ internal sealed class ControllerCaptureWindow : DialogWindow
         }
         panel.Children.Add(extras);
 
+        panel.Children.Add(countdown);
         var cancel = CancelButton(); cancel.HorizontalAlignment = HorizontalAlignment.Right; panel.Children.Add(cancel);
+        // On a Steam Deck without a keyboard a window that ended up hidden could not be closed, and the main window waits for
+        // it (User, 2026-10-19: a forced restart). It stays on top, takes the focus, and gives up by itself.
+        Topmost = true;
+        timer.Tick += (_, _) => { if (--secondsLeft <= 0) DialogResult = false; else ShowCountdown(); };
+        Opened += (_, _) => { ShowCountdown(); timer.Start(); Activate(); X11Windows.SetKeepAbove(this, true); };
+        Closed += (_, _) => timer.Stop();
     }
+
+    /// <summary>How long the window waits for a choice before it closes by itself, in seconds.</summary>
+    private const int WaitSeconds = 30;
+    private int secondsLeft = WaitSeconds;
+    private readonly Avalonia.Threading.DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly TextBlock countdown = new() { Opacity = 0.7, FontSize = 12, Margin = new Thickness(0, 0, 0, 8) };
+    private void ShowCountdown() => countdown.Text = $"Closes by itself in {secondsLeft} s if nothing is chosen.";
 
     /// <summary>A controller button was pressed or clicked (UI thread). Takes it, or says why not and keeps waiting.</summary>
     public void Press(ControllerButton button)
     {
+        secondsLeft = WaitSeconds; ShowCountdown();
         if (taken(button) is { } why)
         {
             hint.Text = why;

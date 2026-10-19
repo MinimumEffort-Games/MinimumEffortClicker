@@ -54,35 +54,50 @@ public sealed class KdeHelper : IDesktopHelper
         KdeHelper? helper = null;
         try
         {
+            connectStage = "the session bus";
             if (!Task.Run(() => connection.ConnectAsync().AsTask()).Wait(CallTimeout)) throw new HelperException("The desktop session bus did not respond.");
             helper = new KdeHelper(connection);
             helper.Start();
             return helper;
         }
         catch (AggregateException ex) when (ex.InnerException is not null)
-        { helper?.Dispose(); connection.Dispose(); throw Translate(ex.InnerException); }
-        catch { helper?.Dispose(); connection.Dispose(); throw; }
+        { connectStage = "cleaning up after a failed connect"; helper?.Dispose(); connection.Dispose(); throw Translate(ex.InnerException); }
+        catch { connectStage = "cleaning up after a failed connect"; helper?.Dispose(); connection.Dispose(); throw; }
+        finally { connectStage = null; }
     }
+
+    // Which part of connecting is under way, for the app's startup log: a Steam Deck start stalled with nothing logged (2026-10-19).
+    private static volatile string? connectStage;
+    /// <summary>The part of <see cref="Connect"/> under way, or null while no connect runs.</summary>
+    public static string? ConnectStage => connectStage;
 
     private void Start()
     {
+        connectStage = "the screen lock state";
         if (ScreenLocked(connection) is not { } isLocked)
             throw new HelperException("KWin's screen lock service is not answering; this does not look like a KDE Plasma session.") { NotInstalled = true };
         locked = isLocked;
+        connectStage = "following the screen lock";
         var watch = Task.Run(() => connection.WatchSignalAsync(null, null, "org.freedesktop.ScreenSaver", "ActiveChanged",
             (m, _) => m.GetBodyReader().ReadBool(), (Notification<bool> n) => { if (n.HasValue) locked = n.Value; }, ObserverFlags.None, false, null).AsTask());
         if (!watch.Wait(CallTimeout)) throw new HelperException("Could not follow the screen lock.");
         subscriptions.Add(watch.Result);
+        connectStage = "removing old shortcuts";
         KdeShortcuts.RemoveAll(connection); // Left behind by a clicker that could not clean up.
+        connectStage = "loading the KWin window script";
         script = new KWinScript(connection, OnScriptEvent);
         script.Load();
         // Focus events start arriving now; until the first one, the focus is what KWin says at this moment.
+        connectStage = "asking KWin for the focus";
         Interlocked.CompareExchange(ref deliveredFocus, (long)ids.For((string?)script.Ask("focus") ?? ""), 0);
-        try { KWinCapture.Area(connection, 0, 0, 1, 1); }
-        catch (HelperException ex) when (ex.AccessDenied)
-        { throw new HelperException("KDE does not allow this copy of the app to capture the screen. Choose Allow this copy of the app in Settings.", ex) { AccessDenied = true }; }
+        // The capture permission check runs beside the start, never in its way: KWin may hold a capture until it next
+        // paints, and at start nothing may paint until the clicker's own window shows (a Steam Deck start hung for
+        // minutes on that, 2026-10-19).
+        CaptureCheck = Task.Factory.StartNew(CheckCapture, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        connectStage = "starting the input guard";
         input = new KdeInput();
         input.Start();
+        connectStage = "following KDE shortcuts";
         shortcuts = new KdeShortcuts(connection, Dispatch);
         shortcuts.Changed += (action, pressed) => AcceleratorChanged?.Invoke(action, pressed);
     }
@@ -200,15 +215,38 @@ public sealed class KdeHelper : IDesktopHelper
         _ => throw new HelperException("Unsupported pointer button.")
     };
 
-    public HelperImage CaptureRaw(int x, int y, int width, int height) => KWinCapture.Area(connection, x, y, width, height);
+    public HelperImage CaptureRaw(int x, int y, int width, int height) => Captured(() => KWinCapture.Area(connection, x, y, width, height));
 
     public HelperImage CaptureWindowRaw(ulong id, int x, int y, int width, int height)
     {
         var window = GetWindow(id);
         if (!window.Exists || window.Minimized || ids.Name(id) is not { } name) throw new HelperException("The window is closed or minimized.");
-        var image = KWinCapture.Window(connection, name);
+        var image = Captured(() => KWinCapture.Window(connection, name));
         double scaleX = (double)image.Width / Math.Max(1, window.Width), scaleY = (double)image.Height / Math.Max(1, window.Height);
         return KWinCapture.Crop(image, (int)Math.Round(x * scaleX), (int)Math.Round(y * scaleY), (int)Math.Round(width * scaleX), (int)Math.Round(height * scaleY));
+    }
+
+    private volatile bool captureDenied;
+    /// <summary>KDE refused this copy of the app a screen capture; Settings then offers Allow this copy of the app.</summary>
+    public bool CaptureDenied => captureDenied;
+    /// <summary>The start-up capture check, for log.txt: "allowed (N ms)", "not allowed" or "no answer (…)".</summary>
+    public Task<string> CaptureCheck { get; private set; } = Task.FromResult("not run");
+
+    private string CheckCapture()
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        try { CaptureRaw(0, 0, 1, 1); return $"allowed ({watch.ElapsedMilliseconds} ms)"; }
+        catch (HelperException ex) when (ex.AccessDenied) { return "not allowed"; }
+        // A check cut short by the app closing or KWin going away says so in the log and changes nothing.
+        catch (Exception ex) { return $"no answer ({ex.Message}, {watch.ElapsedMilliseconds} ms)"; }
+    }
+
+    private HelperImage Captured(Func<HelperImage> capture)
+    {
+        const string denied = "KDE does not allow this copy of the app to capture the screen. Choose Allow this copy of the app in Settings.";
+        if (captureDenied) throw new HelperException(denied) { AccessDenied = true };
+        try { return capture(); }
+        catch (HelperException ex) when (ex.AccessDenied) { captureDenied = true; throw new HelperException(denied, ex) { AccessDenied = true }; }
     }
 
     public uint GrabAccelerator(string accelerator) => (shortcuts ?? throw new ObjectDisposedException(nameof(KdeHelper))).Grab(accelerator);

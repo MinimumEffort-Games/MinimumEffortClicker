@@ -5,7 +5,8 @@ normal user and installs no driver or service. It never asks for administrator r
 is the Linux **Turn on / Turn off input access** button, which asks for your password in the system's own window
 (pkexec) to add or remove one input-access rule, and only when you press it.
 
-The portable builds make no network connections. The Steam build goes online only through the Steam client: when you
+The portable builds make one network connection, and only when you press Send report in Bug report: the report you
+see goes to minimumeffort.games, which e-mails it to the developer. The Steam build also goes online through the Steam client: when you
 share a macro on the Workshop, and when Steam downloads macros you subscribed to. Settings and macros stay in the
 `Data` folder beside the app (portable build) or in your local application data.
 

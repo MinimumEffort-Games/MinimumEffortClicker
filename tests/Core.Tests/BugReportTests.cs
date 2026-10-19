@@ -36,12 +36,21 @@ public sealed class BugReportTests
     }
 
     [TestMethod]
-    public void TheIssueLinkIsEscapedAndBounded()
+    public void TheMailLinkIsEscapedAndBounded()
     {
-        string link = BugReport.IssueLink("Look & feel #2", "line one\nline two");
-        StringAssert.StartsWith(link, BugReport.IssuesUrl + "?labels=bug&title=Look%20%26%20feel%20%232&body=line%20one%0Aline%20two");
-        string longLink = BugReport.IssueLink("t", new string('x', BugReport.MaximumBodyLength + 500));
+        string link = BugReport.MailLink("Look & feel #2", "line one\nline two");
+        Assert.AreEqual("mailto:bugs@minimumeffort.eu?subject=Look%20%26%20feel%20%232&body=line%20one%0D%0Aline%20two", link);
+        string longLink = BugReport.MailLink("t", new string('x', BugReport.MaximumBodyLength + 500));
         StringAssert.Contains(Uri.UnescapeDataString(longLink), "the rest is in the attached zip");
         Assert.IsTrue(longLink.Length < BugReport.MaximumBodyLength + 300);
+    }
+
+    [TestMethod]
+    public void TheReportTextAndSubjectAreBuilt()
+    {
+        Assert.AreEqual("What happened:\r\nIt froze.", BugReport.Text(" It froze. ", " ", null, null).ReplaceLineEndings("\r\n"));
+        StringAssert.Contains(BugReport.Text("a", "b", "- App: x", "error").ReplaceLineEndings("\n"), "What I expected:\nb\n\nApp and system:\n- App: x\n\nLast error:\nerror");
+        Assert.AreEqual("Minimum Effort Clicker bug: first", BugReport.Subject("first\r\nsecond"));
+        Assert.AreEqual("Minimum Effort Clicker bug: " + new string('y', 80) + "…", BugReport.Subject(new string('y', 90)));
     }
 }

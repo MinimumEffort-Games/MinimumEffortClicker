@@ -12,7 +12,7 @@ namespace MinimumEffortClicker.App;
 
 internal interface IOverlayPresenter
 {
-    void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false);
+    void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false, string? alert = null);
     void Configure(OverlayOptions options);
 }
 
@@ -192,8 +192,10 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         ShowLock();
     }
 
-    public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false)
+    /// <param name="alert">A short red line shown above the rest, for example why a toggle did not switch on; null for none.</param>
+    public void Update(RuntimeSnapshot state, string stopKey, string startKey = "F8", IReadOnlyList<OverlayToggle>? toggles = null, string recordKey = "F10", bool actionsEmpty = false, string? alert = null)
     {
+        alertLine = alert;
         bool capturing = state.Busy && state.State.StartsWith("Recording", StringComparison.Ordinal);
         bool running = state.PlaybackActive && !state.CleanupPending;
         if (capturing != recording || running != active) { recording = capturing; active = running; ApplyColours(); }
@@ -214,11 +216,13 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     }
 
     /// <summary>The heading line, then one line per toggle with its state word coloured: "On" blue, the rest white.</summary>
+    private string? alertLine;
     private void ShowLines(string? heading, IReadOnlyList<OverlayToggle> toggles)
     {
         var inlines = new InlineCollection();
         var plain = new List<string>();
-        if (heading is not null) { inlines.Add(new Run(heading)); plain.Add(heading); }
+        if (alertLine is not null) { inlines.Add(new Run(alertLine) { Foreground = StopRed, FontWeight = FontWeight.SemiBold }); plain.Add(alertLine); }
+        if (heading is not null) { if (plain.Count > 0) inlines.Add(new LineBreak()); inlines.Add(new Run(heading)); plain.Add(heading); }
         foreach (var toggle in toggles)
         {
             if (plain.Count > 0) inlines.Add(new LineBreak());

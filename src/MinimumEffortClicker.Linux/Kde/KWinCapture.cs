@@ -52,9 +52,16 @@ internal static class KWinCapture
 
     private static HelperImage Capture(DBusConnection connection, string member, string signature, WriteCall write)
     {
-        using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
-        // Read while KWin writes, so a large picture never fills the pipe and stalls it.
-        var read = Task.Run(() => { using var buffer = new MemoryStream(); pipe.CopyTo(buffer); return buffer.ToArray(); });
+        var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
+        // Read while KWin writes, so a large picture never fills the pipe and stalls it. The reader owns the pipe and
+        // closes it when the read ends: on Linux, closing a pipe while a read is blocked waits until the other end closes,
+        // and KWin can hold its end for minutes without writing (a Steam Deck start hung 6 min 42 s on that, 2026-10-19).
+        // After a timeout the reader is simply left to finish on its own thread.
+        var read = Task.Factory.StartNew(() =>
+        {
+            try { using var buffer = new MemoryStream(); pipe.CopyTo(buffer); return buffer.ToArray(); }
+            finally { pipe.Dispose(); }
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         Dictionary<string, VariantValue> info;
         try
         {

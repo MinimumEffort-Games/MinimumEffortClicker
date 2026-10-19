@@ -14,21 +14,28 @@
                 <Button Content="Cancel" IsCancel="True" MinWidth="90" HorizontalAlignment="Left"
                         Style="{StaticResource StandardButton}" Background="{DynamicResource StopFill}"
                         BorderBrush="{DynamicResource StopBorder}" Foreground="{DynamicResource ColourButtonText}"/>
-                <Button x:Name="CreateButton" Content="Create report and open GitHub" Click="Create_Click" IsDefault="True" IsEnabled="False" Padding="12,5" HorizontalAlignment="Right"
-                        Style="{StaticResource StandardButton}" Background="{DynamicResource SuccessFill}"
-                        BorderBrush="{DynamicResource SuccessBorder}" Foreground="{DynamicResource ColourButtonText}"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <!-- Only after sending failed: the report as an e-mail instead. -->
+                    <Button x:Name="EmailButton" Content="E-mail it instead" Click="Email_Click" Visibility="Collapsed" Padding="12,5" Margin="0,0,8,0"
+                            Style="{StaticResource StandardButton}"/>
+                    <Button x:Name="SendButton" Content="Send report" Click="Send_Click" IsDefault="True" IsEnabled="False" Padding="16,5" MinWidth="120"
+                            Style="{StaticResource StandardButton}" Background="{DynamicResource SuccessFill}"
+                            BorderBrush="{DynamicResource SuccessBorder}" Foreground="{DynamicResource ColourButtonText}"/>
+                </StackPanel>
             </Grid>
         </StackPanel>
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="20,20,20,0">
                 <TextBlock Text="Report a bug" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                <TextBlock Text="This saves a report as a zip file and opens a new GitHub issue with your text filled in. Drag the zip into the issue before you submit it. The clicker itself sends nothing." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,12"/>
+                <TextBlock Text="Send report sends what you write here, with the parts you choose below, straight to the developer. Nothing is sent until you press it." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,12"/>
                 <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Border}" BorderThickness="1" CornerRadius="8" Padding="12">
                     <StackPanel>
                         <TextBlock Text="What happened?"/>
                         <TextBox x:Name="HappenedBox" MaxLength="4000" Height="90" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,4,0,10" TextChanged="Text_Changed" AutomationProperties.Name="What happened"/>
                         <TextBlock Text="What did you expect? (optional)"/>
-                        <TextBox x:Name="ExpectedBox" MaxLength="2000" Height="60" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,4,0,12" AutomationProperties.Name="What did you expect"/>
+                        <TextBox x:Name="ExpectedBox" MaxLength="2000" Height="60" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,4,0,10" AutomationProperties.Name="What did you expect"/>
+                        <TextBlock Text="Your e-mail (optional, only if we may ask you about it)"/>
+                        <TextBox x:Name="ReplyBox" MaxLength="200" Margin="0,4,0,12" AutomationProperties.Name="Your e-mail"/>
                         <TextBlock Text="Include" FontWeight="SemiBold" Margin="0,0,0,6"/>
                         <WrapPanel>
                             <ToggleButton x:Name="SystemBox" Style="{StaticResource ChoiceToggle}" Content="App and system details" IsChecked="True" Margin="0,0,6,6" Checked="Include_Changed" Unchecked="Include_Changed" ToolTip="App version, Windows version, monitors and scaling, controllers, the main settings."/>
@@ -36,7 +43,7 @@
                             <ToggleButton x:Name="ScreenshotBox" Style="{StaticResource ChoiceToggle}" Content="Screenshot of the clicker" Margin="0,0,6,6" Checked="Include_Changed" Unchecked="Include_Changed" ToolTip="A picture of the clicker window only, as it is now."/>
                             <ToggleButton x:Name="ActionListBox" Style="{StaticResource ChoiceToggle}" Content="Current Action List" Margin="0,0,6,6" Checked="Include_Changed" Unchecked="Include_Changed" ToolTip="The list as a macro file. It may hold colours and image areas captured from your screen."/>
                         </WrapPanel>
-                        <TextBlock Text="Your user name, home folder and computer name are replaced with neutral words. GitHub issues are public: check the preview and the zip before you submit." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,4,0,8"/>
+                        <TextBlock Text="Your user name, home folder and computer name are replaced with neutral words. Only the developer reads reports; check the preview before you send." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,4,0,8"/>
                         <Expander Header="Preview of the text in the report" Foreground="{DynamicResource TextPrimary}">
                             <TextBox x:Name="PreviewBox" IsReadOnly="True" Height="180" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Margin="0,6,0,0" AutomationProperties.Name="Report preview"/>
                         </Expander>

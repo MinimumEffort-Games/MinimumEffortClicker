@@ -1,5 +1,4 @@
 using System.IO;
-using System.IO.Compression;
 using System.Windows;
 using System.Windows.Controls;
 using MinimumEffortClicker.Core;
@@ -7,20 +6,24 @@ using MinimumEffortClicker.Core;
 namespace MinimumEffortClicker.App;
 
 /// <summary>What a report holds besides the user's own text; the main window fills it in when the report opens.</summary>
-internal sealed record BugReportParts(string Details, string Log, byte[]? Screenshot, Action<string>? SaveActionList, Func<string, string> Redact);
+internal sealed record BugReportParts(string App, string Details, string Log, byte[]? Screenshot, Action<string>? SaveActionList, Func<string, string> Redact);
 
 /// <summary>
-/// Report a bug (User, 2026-10-18): the user's text plus chosen parts go into one zip, and a GitHub issue opens with
-/// the text filled in. Nothing is sent by the app.
+/// Report a bug (User, 2026-10-18): the user's text plus chosen parts go into one zip. Send report posts it to the
+/// developer in one press (User, 2026-10-19: no mail app or account needed); only when that fails does the window offer
+/// to e-mail it instead. Nothing is sent before Send report is pressed.
 /// </summary>
 public partial class BugReportWindow : Window
 {
     private readonly BugReportParts parts;
     private readonly string folder;
-    /// <summary>The zip that was written, once Create succeeded.</summary>
+    private readonly CancellationTokenSource closed = new();
+    /// <summary>The zip that was written.</summary>
     public string? ZipPath { get; private set; }
-    /// <summary>The prefilled GitHub issue for the browser.</summary>
-    public string? IssueLink { get; private set; }
+    /// <summary>True when the report reached the developer.</summary>
+    public bool Sent { get; private set; }
+    /// <summary>The prefilled new e-mail, when the user chose to e-mail the report instead.</summary>
+    public string? MailLink { get; private set; }
 
     internal BugReportWindow(BugReportParts parts, string folder, string? happened = null)
     {
@@ -32,57 +35,57 @@ public partial class BugReportWindow : Window
         ActionListBox.IsEnabled = parts.SaveActionList is not null;
         HappenedBox.Text = happened ?? "";
         Loaded += (_, _) => { RefreshPreview(); HappenedBox.Focus(); HappenedBox.CaretIndex = HappenedBox.Text.Length; };
+        Closed += (_, _) => closed.Cancel();
     }
 
     private void Text_Changed(object sender, TextChangedEventArgs e)
     {
-        CreateButton.IsEnabled = HappenedBox.Text.Trim().Length > 0;
+        SendButton.IsEnabled = HappenedBox.Text.Trim().Length > 0;
         if (IsLoaded) RefreshPreview();
     }
     private void Include_Changed(object sender, RoutedEventArgs e) { if (IsLoaded) RefreshPreview(); }
     private void RefreshPreview() => PreviewBox.Text = ReportText();
 
-    /// <summary>The report as GitHub markdown: the user's text, the details and the last error, redacted.</summary>
-    private string ReportText()
-    {
-        var text = new System.Text.StringBuilder();
-        text.AppendLine("**What happened**").AppendLine(HappenedBox.Text.Trim()).AppendLine();
-        if (ExpectedBox.Text.Trim() is { Length: > 0 } expected) text.AppendLine("**What I expected**").AppendLine(expected).AppendLine();
-        if (SystemBox.IsChecked == true) text.AppendLine("**App and system**").AppendLine(parts.Details).AppendLine();
-        // Only an error from the last day; an old one from days ago would point at the wrong problem.
-        if (LogBox.IsChecked == true && BugReport.LastError(BugReport.Tail(parts.Log), DateTime.Now.AddDays(-1)) is { } error)
-            text.AppendLine("**Last error**").AppendLine("```").AppendLine(error).AppendLine("```").AppendLine();
-        return parts.Redact(text.ToString().TrimEnd());
-    }
+    /// <summary>The report text, redacted. Only an error from the last day counts: an old one would point at the wrong problem.</summary>
+    private string ReportText() => parts.Redact(BugReport.Text(HappenedBox.Text, ExpectedBox.Text, SystemBox.IsChecked == true ? parts.Details : null,
+        LogBox.IsChecked == true ? BugReport.LastError(BugReport.Tail(parts.Log), DateTime.Now.AddDays(-1)) : null));
+    private string Subject() => parts.Redact(BugReport.Subject(HappenedBox.Text));
 
-    private void Create_Click(object sender, RoutedEventArgs e)
+    /// <summary>Writes the zip as the report reads now; false (with the reason shown) when it could not be saved.</summary>
+    private bool WriteReport()
     {
-        if (HappenedBox.Text.Trim().Length == 0) { HappenedBox.Focus(); return; }
         try
         {
             Directory.CreateDirectory(folder);
-            string path = Path.Combine(folder, $"bug-report-{DateTime.Now:yyyy-MM-dd-HHmmss}.zip");
-            string report = ReportText();
-            using (var zip = ZipFile.Open(path, ZipArchiveMode.Create))
-            {
-                void Text(string name, string content) { using var writer = new StreamWriter(zip.CreateEntry(name).Open()); writer.Write(content); }
-                Text("report.md", report);
-                if (LogBox.IsChecked == true) Text("log.txt", parts.Redact(BugReport.Tail(parts.Log)));
-                if (ScreenshotBox.IsChecked == true && parts.Screenshot is { } png) { using var stream = zip.CreateEntry("clicker.png").Open(); stream.Write(png); }
-                if (ActionListBox.IsChecked == true && parts.SaveActionList is { } save)
-                {
-                    string temporary = Path.Combine(Path.GetTempPath(), $"mec-report-{Guid.NewGuid():N}.mecprofile");
-                    try { save(temporary); zip.CreateEntryFromFile(temporary, "action-list.mecprofile"); }
-                    finally { File.Delete(temporary); }
-                }
-            }
-            string firstLine = HappenedBox.Text.Trim().Split('\n')[0].Trim();
-            string title = parts.Redact(firstLine.Length > 80 ? firstLine[..80] + "…" : firstLine);
+            string path = ZipPath ?? Path.Combine(folder, $"bug-report-{DateTime.Now:yyyy-MM-dd-HHmmss}.zip");
+            BugReport.WriteZip(path, ReportText(), LogBox.IsChecked == true ? parts.Redact(BugReport.Tail(parts.Log)) : null,
+                ScreenshotBox.IsChecked == true ? parts.Screenshot : null, ActionListBox.IsChecked == true ? parts.SaveActionList : null);
             ZipPath = path;
-            IssueLink = BugReport.IssueLink(title, report + Environment.NewLine + Environment.NewLine + "_Report zip attached._");
-            DialogResult = true;
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
-        { StatusText.Text = "The report could not be saved: " + ex.Message; }
+        { StatusText.Text = "The report could not be saved: " + ex.Message; return false; }
+    }
+
+    private async void Send_Click(object sender, RoutedEventArgs e)
+    {
+        if (HappenedBox.Text.Trim().Length == 0) { HappenedBox.Focus(); return; }
+        if (!WriteReport()) return;
+        SendButton.IsEnabled = EmailButton.IsEnabled = false;
+        StatusText.Text = "Sending…";
+        var result = await BugReportSender.SendAsync(Subject(), ReportText(), ReplyBox.Text.Trim(), parts.App, ZipPath!, closed.Token);
+        if (closed.IsCancellationRequested) return;
+        if (result.Sent) { Sent = true; DialogResult = true; return; }
+        StatusText.Text = $"The report could not be sent. {result.Problem} Try again, or e-mail it instead.";
+        SendButton.Content = "Try again";
+        EmailButton.Visibility = Visibility.Visible;
+        SendButton.IsEnabled = EmailButton.IsEnabled = true;
+    }
+
+    private void Email_Click(object sender, RoutedEventArgs e)
+    {
+        if (!WriteReport()) return;
+        MailLink = BugReport.MailLink(Subject(), ReportText() + Environment.NewLine + Environment.NewLine + $"Report zip: {Path.GetFileName(ZipPath)} (attached)");
+        DialogResult = true;
     }
 }

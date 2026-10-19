@@ -88,6 +88,8 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
     private IDesktopHelper Helper => Control.Helper ?? throw new InvalidOperationException(Control.HelperError ?? "The ME Clicker " + LinuxSetup.HelperName + " is not available.");
     public event Action? Changed;
     public event Action? StopIssued;
+    /// <summary>A toggle shortcut was pressed but could not switch the toggle on; the text says why, briefly, for the overlay.</summary>
+    public event Action<string>? ToggleRefused;
     public event Action? QuickStartRequested;
     private long stopVersion;
     public long StopVersion => Interlocked.Read(ref stopVersion);
@@ -507,18 +509,21 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
             if (helper is null) return;
             if (helper.IsToggle && command == TriggerCommand.Toggle && helper.Plan is { } toggleHold)
             {
-                if (!IsDesktopMode && !HasSelectedTarget) { reason = "Select a Click target before using a toggle."; NotifyChanged(); return; }
+                // A toggle that could not switch on says so, also on the overlay (User, 2026-10-19: "why is toggle not working").
+                if (IsDesktopMode || !HasSelectedTarget) { RefuseToggle("No Click Target Selected", "No Click target is selected. Choose one under Pick a target, then press the toggle again."); return; }
                 try
                 {
                     if (actionToggleSession is { } session)
                     {
                         bool alreadyOn = session.ActiveIds.Contains(id);
-                        if (!alreadyOn && (!TargetAvailable || playbackControl?.IsPaused == true || countingDown || ShutdownPending)) return;
+                        if (!alreadyOn && !TargetAvailable) { RefuseToggle("Click Target Not In Front", "Toggles work while the Click target is in front. Bring it forward, then press the toggle again."); return; }
+                        if (!alreadyOn && (playbackControl?.IsPaused == true || countingDown || ShutdownPending)) return;
                         if (!alreadyOn) { if (Control.UsesRegisteredInput(toggleHold.Control)) throw new ArgumentException("The held key is also a registered shortcut. Change that shortcut first."); Control.SampleBeforeRun(toggleHold.Control); if (Control.IsPhysicalDown(toggleHold.Control) || Control.ModifiersDown) throw new ArgumentException("Release physical keys/buttons before enabling this hold."); }
                         if (!session.Toggle(new(id, helper.DisplayName ?? "Toggle", toggleHold))) reason = "The session is finishing. Press the shortcut again once stopped.";
                         NotifyChanged(); return;
                     }
-                    if (!busy) TryStart(new RunRequest(null, null, Label: "Toggles", ToggleHold: new(id, helper.DisplayName ?? "Toggle", toggleHold)), null, default);
+                    if (!busy && !TargetAvailable) RefuseToggle("Click Target Not In Front", "Toggles work while the Click target is in front. Bring it forward, then press the toggle again.");
+                    else if (!busy) TryStart(new RunRequest(null, null, Label: "Toggles", ToggleHold: new(id, helper.DisplayName ?? "Toggle", toggleHold)), null, default);
                     else { reason = "Stop the legacy helper before using this toggle."; NotifyChanged(); }
                 }
                 catch (ArgumentException ex) { reason = ex.Message; NotifyChanged(); }
@@ -545,6 +550,13 @@ public sealed partial class DesktopRuntime : IInputSink, IForegroundTargetProvid
                 else TryStart(helper.Sequence!, macroId: id);
             }
         }
+    }
+
+    /// <summary>Under the gate: the status line gets the full reason, the overlay the short one.</summary>
+    private void RefuseToggle(string brief, string message)
+    {
+        reason = message; NotifyChanged();
+        try { ToggleRefused?.Invoke(brief); } catch (Exception) { /* A display observer must not break the toggle route. */ }
     }
 
     public void Stop(string message = "Stopped by you.")

@@ -10,6 +10,8 @@ namespace MinimumEffortClicker.App;
 public partial class App : Application
 {
     public Appearance Appearance { get; set; } = Appearance.System;
+    // Kept alive for the app's lifetime: a collected registration stops handling its signal.
+    private static readonly List<System.Runtime.InteropServices.PosixSignalRegistration> exitSignals = [];
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -32,6 +34,8 @@ public partial class App : Application
         if (preview) { Dispatcher.UIThread.Post(() => RenderPreviews(window, args[1], desktop), DispatcherPriority.Background); return; }
         Program.ShowRequested += () => Dispatcher.UIThread.Post(window.BringToFront);
         desktop.ShutdownRequested += (_, _) => window.PrepareSessionExit();
+        foreach (var signal in new[] { System.Runtime.InteropServices.PosixSignal.SIGTERM, System.Runtime.InteropServices.PosixSignal.SIGHUP, System.Runtime.InteropServices.PosixSignal.SIGINT })
+            exitSignals.Add(System.Runtime.InteropServices.PosixSignalRegistration.Create(signal, context => { context.Cancel = true; window.ExitOnSignal(); }));
         window.Show();
         StartupMeasurement.Mark("Window shown");
         base.OnFrameworkInitializationCompleted();

@@ -4,7 +4,7 @@ A free, open-source mouse and keyboard automation app for **Windows 11 x64** and
 **Linux** (GNOME and KDE Plasma, see [Linux](docs/LINUX.md)), with the same pages and version on both.
 Repeat clicks and keys, record editable action lists, wait for colours on screen, create hold/spam toggles,
 run it from a game controller (Xbox, PlayStation, Switch, Steam Deck) or turn controller buttons into keys, and save
-screenshots. Runs locally and offline; no account or subscription is needed to use the app.
+screenshots. Runs locally; no account or subscription is needed. It goes online only when you press Send report in Bug report.
 
 **Public preview, not code-signed.** The app is in early testing with more hardware, displays and desktops still
 to check, so expect rough edges and please report them. Windows may show a SmartScreen warning the first time.
@@ -69,7 +69,7 @@ planned separately; see [release status](docs/RELEASE_STATUS.md).
 
 Requires Windows 11 x64 and a **.NET SDK 10.0.4xx** (the build is pinned to
 10.0.401 and accepts newer patches). SDK setup and the first package restore need
-network access; the app itself runs offline.
+network access; the app itself runs offline (except Send report in Bug report).
 
 ```powershell
 .\scripts\Setup-Sdk.ps1 # installs the pinned SDK locally under .tools if you do not have one
@@ -101,6 +101,7 @@ MIT does not grant rights to the Minimum Effort trademarks or imply endorsement
 of forks. Historical pixel artwork/font with unknown redistribution rights is
 excluded from this public repository and release.
 
-Bug reports and pull requests are welcome. Include the version, Windows version,
-steps and expected/actual behavior. Do not post private recordings, screenshots,
-credentials, or personal data in issues. See [contributing](CONTRIBUTING.md).
+Bug reports: press Bug report, next to Help in the app. It sends the report with
+the version and system details; or e-mail bugs@minimumeffort.eu. Pull requests are welcome.
+Do not post private recordings, screenshots, credentials, or personal data in
+issues. See [contributing](CONTRIBUTING.md).

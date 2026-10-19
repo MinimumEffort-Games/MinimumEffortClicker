@@ -123,6 +123,22 @@ public partial class MainWindow
     }
 
 
+    private int exitSignalled;
+    private System.Threading.Timer? signalExitDeadline;
+
+    /// <summary>
+    /// SIGTERM, SIGHUP or SIGINT (log-out, shutdown, kill, Ctrl+C): close the normal way, so an ordinary log-out does
+    /// not leave the crash marker and the next start does not offer a bug report. Called on the signal thread.
+    /// </summary>
+    internal void ExitOnSignal()
+    {
+        if (Interlocked.Exchange(ref exitSignalled, 1) == 1) return;
+        EndSession();
+        Dispatcher.UIThread.Post(() => { PrepareSessionExit(); ExitApplication(); });
+        // The normal close waits up to about 6 s for a run or a save to finish. Past that, or with a stuck window, exit anyway.
+        signalExitDeadline = new System.Threading.Timer(_ => { EndSession(); Environment.Exit(0); }, null, 8000, Timeout.Infinite);
+    }
+
     internal void PrepareSessionExit()
     {
         EndSession();

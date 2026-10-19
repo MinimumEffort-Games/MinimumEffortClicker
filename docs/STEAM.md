@@ -1,7 +1,7 @@
 # Steam build
 
 The Steam build is the Windows app with two extra files beside the exe: `steam.mode`, which switches the Workshop on,
-and Valve's `steam_api64.dll`. The portable ZIP from GitHub has neither, never loads Steam code and stays offline.
+and Valve's `steam_api64.dll`. The portable ZIP from GitHub has neither and never loads Steam code; it goes online only for Send report in Bug report.
 
 The Steam build goes online only through the Steam client: when the user shares a macro, and when Steam downloads
 macros the user subscribed to.

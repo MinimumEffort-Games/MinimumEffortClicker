@@ -14,6 +14,29 @@ public partial class MainWindow
         // The overlay gets its new place at once; without RefreshStatus it kept the old one and the next placement put it back.
         overlay.Dropped += (x, y) => { overlayOptions = overlayOptions with { FreeX = x, FreeY = y }; RefreshStatus(); PersistPreferences(); };
     }
+    // A short red line on the overlay, for example why a toggle did not switch on (User, 2026-10-19: "why is toggle not
+    // working"). It shows for OverlayAlertMilliseconds, also when the overlay would otherwise be hidden.
+    private const int OverlayAlertMilliseconds = 3000;
+    private string? overlayAlert;
+    private long overlayAlertUntil;
+    private System.Windows.Threading.DispatcherTimer? overlayAlertTimer;
+    private string? OverlayAlert => Environment.TickCount64 < overlayAlertUntil ? overlayAlert : null;
+    /// <summary>The runtime refused a toggle press (any thread).</summary>
+    private void ToggleRefused(string brief)
+    {
+        if (Dispatcher.HasShutdownStarted) return;
+        Dispatcher.BeginInvoke(() =>
+        {
+            overlayAlert = brief; overlayAlertUntil = Environment.TickCount64 + OverlayAlertMilliseconds;
+            if (overlayAlertTimer is null)
+            {
+                overlayAlertTimer = new() { Interval = TimeSpan.FromMilliseconds(OverlayAlertMilliseconds + 100) };
+                overlayAlertTimer.Tick += (_, _) => { overlayAlertTimer.Stop(); RefreshStatus(); };
+            }
+            overlayAlertTimer.Stop(); overlayAlertTimer.Start();
+            RefreshStatus();
+        });
+    }
     private void DisplaysChanged(object? sender, EventArgs e)
     {
         CancelScreenshot("Display changed");

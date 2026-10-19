@@ -56,7 +56,7 @@ expression, repository commit and package hash; copied notice files sit under `l
 except the ANGLE package above. The Application Insights and Testing Extensions Telemetry packages are transitive
 test-tooling dependencies only; they are not in either app's runtime graph, and the build scripts set
 `DOTNET_CLI_TELEMETRY_OPTOUT=1` and `TESTINGPLATFORM_TELEMETRY_OPTOUT=1`. The applications contain no telemetry. The portable ZIP and the
-Linux package contain no network client; the Steam build talks to the Steam client only, as described under "Steam
+Linux package make one network call, Send report in Bug report, and only when the user presses it; the Steam build also talks to the Steam client, as described under "Steam
 build". No installer, bundled font, paid library or online service is included.
 
 ## Brand assets

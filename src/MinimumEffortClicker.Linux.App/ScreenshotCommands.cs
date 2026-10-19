@@ -175,6 +175,9 @@ public partial class MainWindow
         var settings = fromAction ? screenshotSettings with { Mode = 0 } : screenshotSettings;
         string? targetTitle = runtime.SelectedTargetTitle;
         bool wasVisible = IsVisible, reactivate = IsVisible && IsActive;
+        // The window comes back exactly as it was (User, 2026-10-19): maximised or normal and in front again, while a
+        // minimised clicker or one behind other windows stays where it was.
+        var stateBefore = WindowState;
         bool hidden = false;
         screenshotBusy = true; TakeScreenshotButton.IsEnabled = false;
         ScreenshotStatus.Text = settings.Mode == 1 ? "Preparing area selection…" : "Taking screenshot…";
@@ -248,7 +251,10 @@ public partial class MainWindow
             {
                 bool activate = ShowActivated;
                 ShowActivated = reactivate; Show(); ShowActivated = activate;
-                if (reactivate) Activate();
+                if (WindowState != stateBefore) WindowState = stateBefore;
+                if (Topmost) X11Windows.SetKeepAbove(this, true);
+                // GNOME and KWin may not raise a window that comes back without focus; the desktop helper can.
+                if (reactivate) { Activate(); runtime?.ActivateOwnWindow(Title ?? ""); }
             }
             RefreshStatus();
         }

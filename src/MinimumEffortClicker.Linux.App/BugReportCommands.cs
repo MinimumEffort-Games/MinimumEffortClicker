@@ -20,23 +20,52 @@ public partial class MainWindow
 
     private void BugReport_Click(object sender, RoutedEventArgs e) => OpenBugReport(null);
 
-    /// <summary>Report a bug, next to Help (User, 2026-10-18): saves a zip and opens a prefilled GitHub issue.</summary>
+    /// <summary>Report a bug, next to Help (User, 2026-10-18): Send report posts it; the e-mail route is the fallback (User, 2026-10-19).</summary>
     private void OpenBugReport(string? happened)
     {
         // The picture is taken now, before the report window covers the clicker.
-        var parts = new BugReportParts(SystemDetails(), ReadLog(), ClickerPicture(), ActionListSaver(), RedactPersonal);
+        var parts = new BugReportParts($"Minimum Effort Clicker {AppVersion} (Linux, {LinuxSetup.SessionSummary})",
+            SystemDetails(), ReadLog(), ClickerPicture(), ActionListSaver(), RedactPersonal);
         var window = new BugReportWindow(this, parts, ReportsFolder, happened);
-        if (window.ShowDialog() != true || window.ZipPath is not { } zip || window.IssueLink is not { } link) return;
+        if (window.ShowDialog() != true) return;
+        if (window.Sent) { ReasonLabel.Text = "Bug report sent. Thank you!"; return; }
+        if (window.ZipPath is not { } zip || window.MailLink is not { } link) return;
         try { Process.Start(new ProcessStartInfo("xdg-open", [ReportsFolder]) { UseShellExecute = false }); }
-        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* The browser step below still names the file. */ }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* The e-mail step below still names the file. */ }
+        // A Steam Deck has no mail app, and xdg-open then does nothing visible: hand over the address for webmail instead.
+        if (!HasMailApp())
+        {
+            if (Clipboard is { } clipboard) _ = Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(clipboard, BugReport.Address);
+            ReasonLabel.Text = $"Report saved as {Path.GetFileName(zip)}. Send it to {BugReport.Address} from your webmail.";
+            AppDialog.Show(this, $"No e-mail app is set up on this computer, so the address {BugReport.Address} is copied for you.\n\n"
+                + $"Write to it from your webmail (Gmail, Outlook.com, …) in the browser, paste what happened, and attach {Path.GetFileName(zip)} from the folder that just opened.", "Report a bug");
+            return;
+        }
         try
         {
-            Process.Start(new ProcessStartInfo(link) { UseShellExecute = true });
-            ReasonLabel.Text = $"Report saved as {Path.GetFileName(zip)}. Drag it into the GitHub issue, then submit it.";
+            Process.Start(new ProcessStartInfo("xdg-open", [link]) { UseShellExecute = false });
+            ReasonLabel.Text = $"Report saved as {Path.GetFileName(zip)}. Attach it to the e-mail and send it to {BugReport.Address}.";
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
-        { AppDialog.Show(this, $"Could not open your browser: {ex.Message}\n\nThe report is saved as {zip}. Open {BugReport.IssuesUrl} to post it."); }
+        { AppDialog.Show(this, $"Could not open your mail app: {ex.Message}\n\nThe report is saved as {zip}. Send it from your webmail to {BugReport.Address}."); }
     }
+
+    /// <summary>Whether the desktop has an app for mailto links. True when it cannot tell, so the normal route is tried.</summary>
+    private static bool HasMailApp()
+    {
+        try
+        {
+            using var query = Process.Start(new ProcessStartInfo("xdg-mime", ["query", "default", "x-scheme-handler/mailto"])
+                { RedirectStandardOutput = true, UseShellExecute = false });
+            if (query is null) return true;
+            var answer = query.StandardOutput.ReadToEndAsync();
+            if (!answer.Wait(TimeSpan.FromSeconds(2))) { try { query.Kill(); } catch (InvalidOperationException) { } return true; }
+            return answer.Result.Trim().Length > 0;
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or AggregateException) { return true; }
+    }
+
+    private static string AppVersion => typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 
     private static string RedactPersonal(string text) => BugReport.Redact(text, [
         (Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "~"),
@@ -94,7 +123,7 @@ public partial class MainWindow
     /// <summary>What a developer needs to reproduce a problem. No window titles: they can be personal.</summary>
     private string SystemDetails()
     {
-        string version = typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+
         string monitors = string.Join("; ", Screens.All.Select((s, i) => $"Monitor {i + 1}{(s.IsPrimary ? " (main)" : "")} · {s.Bounds.Width} × {s.Bounds.Height} at {s.Scaling * 100:0} %"));
         string target = runtime is null || runtime.IsDesktopMode ? "Desktop"
             // A remembered target whose window closed has no program any more.
@@ -103,7 +132,7 @@ public partial class MainWindow
         string screenshotKey = screenshotSettings.HotkeyEnabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "none";
         string helper = runtime?.Control.Helper is null ? $"{LinuxSetup.HelperName} not connected" : $"{LinuxSetup.HelperName} connected";
         return string.Join(Environment.NewLine,
-            $"- App: Minimum Effort Clicker {version} (Linux)",
+            $"- App: Minimum Effort Clicker {AppVersion} (Linux)",
             $"- System: {Distribution()}, {Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP") ?? "unknown desktop"} on {Environment.GetEnvironmentVariable("XDG_SESSION_TYPE") ?? "unknown session"}, kernel {Environment.OSVersion.Version}{(LinuxSetup.IsSteamDeck ? ", Steam Deck" : "")}",
             $"- Input access: {(runtime?.Control.PhysicalInputAvailable == true ? "on" : "off")}; {helper}",
             $"- Monitors: {monitors}; X11 pixels per desktop unit {DesktopPixels.Factor:0.##}",

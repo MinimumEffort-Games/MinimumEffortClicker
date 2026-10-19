@@ -43,7 +43,7 @@ public partial class MainWindow : Window
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MinimumEffortClicker"));
         preferences = new(store.DirectoryPath);
         bindingsStore = new(store.DirectoryPath);
-        if (!previewOnly) AppLog.Initialize(store.DirectoryPath);
+        if (!previewOnly) { AppLog.Initialize(store.DirectoryPath); StartStartupWatch(); }
         InitializeComponent();
         PreviewMouseDown += EditingWindow_PreviewMouseDown;
         StartupMeasurement.Mark("Main XAML initialized");
@@ -51,14 +51,18 @@ public partial class MainWindow : Window
         ShowHeldInput(); ShowToggleShortcut();
         ToggleKeyBox.Content = ShortcutKeys.Label(ShortcutKeys.DefaultStartKey); StopKeyBox.Content = ShortcutKeys.Label(ShortcutKeys.DefaultStopKey);
         if (previewOnly) return;
+        StartupStep("connecting to the desktop");
         runtime = new DesktopRuntime();
+        StartupStep("connecting to Steam");
         InitializeWorkshop();
+        StartupStep("building the window");
         runtime.CaptureScreenshot = stop => Dispatcher.InvokeAsync(() => TakeScreenshotAsync(fromAction: true, stop)).Task.Unwrap();
         StartupMeasurement.Mark("Native controls and scheduler ready");
         runtime.Changed += RuntimeChanged;
         runtime.Control.RecordingRequested += QuickRecordHotkey;
         runtime.Control.ScreenshotRequested += ScreenshotHotkey;
         runtime.Control.PauseRequested += PauseHotkey;
+        runtime.ToggleRefused += ToggleRefused;
         runtime.Control.StopRequested += CancelScreenshot;
         runtime.StopIssued += CancelPowerSchedule;
         runtime.QuickStartRequested += () =>
@@ -86,10 +90,12 @@ public partial class MainWindow : Window
             startupLoaded = true;
             Pages.IsEnabled = false;
             // The tray icon exists from the start, so closing while settings load asks to wait instead of quitting.
+            StartupStep("creating the tray icon");
             InitializeTray();
             bool settingsLoaded = false;
             try
             {
+            StartupStep("loading profiles");
             var loaded = await Task.Run(store.Load);
             StartupMeasurement.Mark("Profiles loaded");
             if (allowClose || closing) return;
@@ -141,6 +147,7 @@ public partial class MainWindow : Window
             rememberedToggles = settings.ActiveToggles ?? []; lastTarget = settings.LastTarget;
             controllerControls = settings.Controller ?? ControllerControls.DefaultFor(OnSteamDeck); ShowControllerButtons();
             runtime.SetClickRateLimit(appliedClickLimit); runtime.KeepAwakeWhileRunning = appliedKeepAwake;
+            StartupStep("registering the Start and Stop keys");
             await runtime.Control.ConfigureAsync(settings.ToggleKey, settings.StopKey);
             if (allowClose || closing) return;
             appliedToggleKey = settings.ToggleKey; appliedStopKey = settings.StopKey; appliedHoldTrigger = false;
@@ -148,20 +155,31 @@ public partial class MainWindow : Window
             runtime.Control.HoldTrigger = false; stopKey = ShortcutKeys.Label(settings.StopKey);
             initialized = true; Config_Changed(this, new RoutedEventArgs()); RefreshStatus();
             if (loaded.Warning is not null) ReasonLabel.Text = loaded.Warning;
-            RefreshTargetChoices(); RestoreLastTarget();
+            StartupStep("listing windows");
+            RefreshTargetChoices();
+            StartupStep("registering the Record key");
             await SetQuickRecordKey();
+            StartupStep("loading saved macros");
             await MakeSavedMacrosAvailable();
+            StartupStep("arming toggles");
             await RestoreActiveToggles();
+            StartupStep("starting controllers");
             StartControllers();
+            StartupStep("loading Controller to Key binds");
             await LoadControllerBinds();
             SettleControllerPause();
             SyncWorkshopMacros();
+            StartupStep("registering the Screenshot key");
             await ConfigureScreenshotHotkey();
+            StartupStep("registering the Pause key");
             await ConfigurePauseHotkey();
-            settingsLoaded = true;
+            // Last, so selecting the remembered target can never hold up the controllers, keys or binds above.
+            StartupStep("selecting the Click target from last time");
+            RestoreLastTarget();
+            settingsLoaded = true; EndStartupWatch();
             CheckLastSession();
             }
-            catch (Exception ex) { if (!allowClose) ReasonLabel.Text = "Startup settings could not be loaded: " + ex.Message; }
+            catch (Exception ex) { EndStartupWatch(); AppLog.Crash("startup", ex); if (!allowClose) ReasonLabel.Text = "Startup settings could not be loaded: " + ex.Message; }
             finally
             {
                 if (!allowClose)
@@ -202,9 +220,11 @@ public partial class MainWindow : Window
             screenshotCancellation?.Cancel();
             runtime.Control.ScreenshotRequested -= ScreenshotHotkey;
             runtime.Control.PauseRequested -= PauseHotkey;
+            runtime.ToggleRefused -= ToggleRefused;
             runtime.Control.StopRequested -= CancelScreenshot;
             runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Close();
         };
+        StartupStep("showing the window");
     }
 
     /// <summary>Called from the unhandled-exception handlers; releases owned input without touching the UI.</summary>
@@ -260,11 +280,11 @@ public partial class MainWindow : Window
         HotkeyStatus.Text = runtime.Control.Available ? "" : runtime.Control.Error;
         timer.Interval = TimeSpan.FromMilliseconds(snapshot.Busy ? 100 : 1000);
         if (snapshot.Busy || shutdownSchedule.Armed) timer.Start(); else timer.Stop();
-        if (overlaySettingsLoaded && !operations.Has(Operation.Screenshot) && (snapshot.Recording || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
+        if (overlaySettingsLoaded && !operations.Has(Operation.Screenshot) && (snapshot.Recording || OverlayBox.IsChecked == true && OverlayAlert is not null || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);
-            overlay.Update(snapshot, StopHint, StartHint, ToggleOverlayLines(snapshot), RecordHint, !quickHistory.Current.Steps.Any());
+            overlay.Update(snapshot, StopHint, StartHint, ToggleOverlayLines(snapshot), RecordHint, !quickHistory.Current.Steps.Any(), OverlayAlert);
             bool newlyShown = !overlay.IsVisible;
             if (newlyShown) overlay.Show();
             PositionOverlay(newlyShown);
@@ -504,6 +524,24 @@ public partial class MainWindow : Window
         PersistPreferences();
         ReasonLabel.Text = "Resize setting saved. It applies the next time you start or test an action.";
     }
+    // Startup watchdog (User, 2026-10-19: a Steam Deck start stalled before the controllers with nothing in log.txt).
+    // Each step names itself; while one takes 5 s or longer, log.txt says which, every 5 s, also when the window is stuck.
+    // It starts right after the log opens, so a stall while connecting to the desktop or showing the window is named too.
+    private volatile string startupStep = "starting";
+    private long startupStepAt = Environment.TickCount64;
+    private System.Threading.Timer? startupWatch;
+    private void StartupStep(string step) { startupStep = step; Interlocked.Exchange(ref startupStepAt, Environment.TickCount64); }
+    private void StartStartupWatch()
+    {
+        StartupStep("starting");
+        startupWatch = new System.Threading.Timer(_ =>
+        {
+            long waited = Environment.TickCount64 - Interlocked.Read(ref startupStepAt);
+            if (waited >= 5000) AppLog.Note("Startup", $"still {startupStep} after {waited / 1000} s");
+        }, null, 5000, 5000);
+    }
+    private void EndStartupWatch() { startupWatch?.Dispose(); startupWatch = null; }
+
     private async void PersistPreferences()
     {
         if (!initialized) return;
