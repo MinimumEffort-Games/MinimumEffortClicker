@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Help is a full manual with a clickable contents list: getting started, targets, actions, recording and Look, colour
+  waits, macros, toggles, Controller to Key, screenshots, keys and controller, overlay, settings, Steam, Linux setup,
+  Steam Deck, bug reports and your data. Windows and Linux share one text.
+- A toggle press that cannot switch on shows why in red on the overlay ("No Click Target Selected", "Click Target Not
+  In Front"); toggles need a window as Click target.
+- After a screenshot the clicker comes back exactly as it was (maximised stays maximised, minimised stays minimised).
+- The controller button picker closes by itself after 30 s, so a hidden picker can never lock the clicker.
+- Linux: the startup notice starts with a Steam Deck section (limits, freeing the back buttons from Steam's desktop
+  layout), then input access. log.txt names controller presses and where a slow start waits.
 - Report a bug, next to Help. It saves a zip (your text, app and system details, the end of the log, and
   optionally a picture of the clicker and the Action List; user name and computer name replaced) and opens a new
   GitHub issue with the text filled in. The app sends nothing itself. After a close that was not normal, the next
