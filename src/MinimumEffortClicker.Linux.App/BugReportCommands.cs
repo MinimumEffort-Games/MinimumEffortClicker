@@ -29,6 +29,15 @@ public partial class MainWindow
         if (window.ShowDialog() != true || window.ZipPath is not { } zip || window.MailLink is not { } link) return;
         try { Process.Start(new ProcessStartInfo("xdg-open", [ReportsFolder]) { UseShellExecute = false }); }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* The e-mail step below still names the file. */ }
+        // A Steam Deck has no mail app, and xdg-open then does nothing visible: hand over the address for webmail instead.
+        if (!HasMailApp())
+        {
+            if (Clipboard is { } clipboard) _ = Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(clipboard, BugReport.Address);
+            ReasonLabel.Text = $"Report saved as {Path.GetFileName(zip)}. Send it to {BugReport.Address} from your webmail.";
+            AppDialog.Show(this, $"No e-mail app is set up on this computer, so the address {BugReport.Address} is copied for you.\n\n"
+                + $"Write to it from your webmail (Gmail, Outlook.com, …) in the browser, paste what happened, and attach {Path.GetFileName(zip)} from the folder that just opened.", "Report a bug");
+            return;
+        }
         try
         {
             Process.Start(new ProcessStartInfo("xdg-open", [link]) { UseShellExecute = false });
@@ -36,6 +45,21 @@ public partial class MainWindow
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         { AppDialog.Show(this, $"Could not open your mail app: {ex.Message}\n\nThe report is saved as {zip}. Send it from your webmail to {BugReport.Address}."); }
+    }
+
+    /// <summary>Whether the desktop has an app for mailto links. True when it cannot tell, so the normal route is tried.</summary>
+    private static bool HasMailApp()
+    {
+        try
+        {
+            using var query = Process.Start(new ProcessStartInfo("xdg-mime", ["query", "default", "x-scheme-handler/mailto"])
+                { RedirectStandardOutput = true, UseShellExecute = false });
+            if (query is null) return true;
+            var answer = query.StandardOutput.ReadToEndAsync();
+            if (!answer.Wait(TimeSpan.FromSeconds(2))) { try { query.Kill(); } catch (InvalidOperationException) { } return true; }
+            return answer.Result.Trim().Length > 0;
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or AggregateException) { return true; }
     }
 
     private static string RedactPersonal(string text) => BugReport.Redact(text, [
