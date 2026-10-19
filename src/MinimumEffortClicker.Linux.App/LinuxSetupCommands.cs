@@ -23,7 +23,7 @@ public partial class MainWindow
             ? (ours ? "Ready." : "Ready: this system already lets you read the keyboard and mouse, so nothing needs turning on.")
                 + " Recording, Stop on my input, mouse-button shortcuts and hotkeys that work in every app are available."
             : "Off. " + InputAccessNeeds + " Turn on asks for your password in the system's own window.";
-        if (LinuxSetup.IsSteamDeck) InputAccessLabel.Text += "\n\n" + DeckNote;
+        if (LinuxSetup.IsSteamDeck) InputAccessLabel.Text += "\n\nSteam Deck: " + DeckLimits + "\n\nSteam's desktop buttons: " + DeckDesktopButtons;
         InputAccessNoticeBox.IsChecked = showInputAccessNotice;
         InputAccessCommand.Text = control?.PhysicalInputAvailable == true ? "" : LinuxSetup.InputAccessCommand;
         InputAccessCommand.IsVisible = CopyInputCommandButton.IsVisible = InputAccessTerminalHint.IsVisible = control?.PhysicalInputAvailable != true;
@@ -31,9 +31,6 @@ public partial class MainWindow
         InputAccessOnButton.IsVisible = control?.PhysicalInputAvailable != true && LinuxSetup.SystemPasswordPrompt is not null;
         // Turn off only removes what Turn on installed; access the system gives by itself is not ours to take away.
         InputAccessOffButton.IsVisible = ours && LinuxSetup.InputAccessRemoveCommand is not null && LinuxSetup.SystemPasswordPrompt is not null;
-        // Green when input access is on, red when it is off.
-        CheckInputAccessButton.Classes.Set("green", control?.PhysicalInputAvailable == true);
-        CheckInputAccessButton.Classes.Set("red", control?.PhysicalInputAvailable != true);
         // Shown while the rule is installed, so people see how to undo it.
         InputAccessRemoveCommand.Text = LinuxSetup.InputAccessRemoveCommand ?? "";
         InputAccessScope.IsVisible = InputAccessRemoveCommand.IsVisible = CopyRemoveCommandButton.IsVisible = ours && LinuxSetup.InputAccessRemoveCommand is not null;
@@ -73,7 +70,10 @@ public partial class MainWindow
     /// What a Steam Deck can and cannot record: Steam reads the Deck's controls itself and types and clicks through the
     /// desktop, where no app may listen, so only an external mouse or keyboard reaches the recorder.
     /// </summary>
-    private const string DeckNote = "On a Steam Deck the Deck's own trackpads, buttons and on-screen keyboard can't be recorded: Steam types and clicks for them in a way no app can see. A USB or Bluetooth mouse or keyboard can be recorded after Turn on. Actions set up by hand (Set Location), toggles, Controller to Key and the back-button shortcuts all work. Steam's desktop layout also puts the back buttons on Shift, Windows, Page Up and Page Down; change that in Steam → Settings → Controller → Desktop layout if it gets in the way.";
+    /// <summary>What a Steam Deck can and cannot do, shown first in the startup notice and in Linux setup (User, 2026-10-19).</summary>
+    private const string DeckLimits = "The Deck's own trackpads, buttons and on-screen keyboard can't be recorded: Steam types and clicks for them in a way no app can see. A USB or Bluetooth mouse or keyboard can be recorded once input access is on. Actions set up by hand (Set Location), toggles, Controller to Key, screenshots and the back-button shortcuts all work.";
+    /// <summary>Steam's desktop controller layout presses keys for the back buttons, which collide with the clicker's shortcuts.</summary>
+    private const string DeckDesktopButtons = "In Desktop Mode, Steam's desktop controller layout presses keys for the back buttons (for example L4 presses the Windows key), so a back button would do two things at once. To give them to the clicker only: Steam → Settings → Controller → Desktop Layout → Edit, and set L4, L5, R4 and R5 to nothing. Not needed if you only use the clicker while a game runs: a running game switches the desktop layout off.";
     private bool showInputAccessNotice = true;
 
     /// <summary>The Settings switch for the startup notice, so a notice turned off there or in the notice can come back.</summary>
@@ -111,12 +111,16 @@ public partial class MainWindow
 
     /// <summary>
     /// At startup, while physical input access is off, explains why Record and Stop on my input do not work yet and that
-    /// the rest of the app does, with a way to turn it on. "Show at startup" turns the notice off for good.
+    /// the rest of the app does, with a way to turn it on. On a Steam Deck it also shows while access is on: the Deck
+    /// section comes first. "Show at startup" turns the notice off for good.
     /// </summary>
     private async Task ShowInputAccessNoticeAsync()
     {
-        if (!showInputAccessNotice || runtime is null || runtime.Control.PhysicalInputAvailable || allowClose || closing) return;
-        var notice = new InputAccessNoticeWindow(InputAccessNeeds, LinuxSetup.SystemPasswordPrompt is not null, LinuxSetup.InputAccessCommand, LinuxSetup.IsSteamDeck ? DeckNote : null) { OwnerWindow = this };
+        if (!showInputAccessNotice || runtime is null || allowClose || closing) return;
+        bool accessOff = !runtime.Control.PhysicalInputAvailable;
+        if (!accessOff && !LinuxSetup.IsSteamDeck) return;
+        var notice = new InputAccessNoticeWindow(InputAccessNeeds, accessOff, LinuxSetup.SystemPasswordPrompt is not null, LinuxSetup.InputAccessCommand,
+            LinuxSetup.IsSteamDeck ? (DeckLimits, DeckDesktopButtons) : null) { OwnerWindow = this };
         bool turnOn = notice.ShowDialog() == true;
         if (notice.ShowAtStartup != showInputAccessNotice) { showInputAccessNotice = notice.ShowAtStartup; InputAccessNoticeBox.IsChecked = showInputAccessNotice; PersistPreferences(); }
         if (turnOn) await SetInputAccessAsync(on: true);
