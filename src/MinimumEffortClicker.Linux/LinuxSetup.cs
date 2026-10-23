@@ -23,6 +23,28 @@ public static class LinuxSetup
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
     }
 
+    /// <summary>
+    /// Steam runs native Linux games in its pressure-vessel sandbox. The desktop's own tools (pkexec, gsettings,
+    /// gnome-extensions) are not inside it; Steam's launch service starts them beside Steam, outside the sandbox.
+    /// </summary>
+    public static bool InSteamSandbox => Environment.GetEnvironmentVariable("container") == "pressure-vessel";
+    private const string SteamLaunchClient = "/usr/bin/steam-runtime-launch-client";
+    private static string? SteamLaunchService => InSteamSandbox && Environment.GetEnvironmentVariable("SRT_LAUNCHER_SERVICE_ALONGSIDE_STEAM") is { Length: > 0 } service
+        && File.Exists(SteamLaunchClient) ? service : null;
+
+    /// <summary>A desktop program by its usual paths, also seen from Steam's sandbox (the desktop's files are under /run/host there).</summary>
+    private static string? DesktopProgram(string name) => new[] { "/usr/bin/" + name, "/bin/" + name }
+        .FirstOrDefault(path => File.Exists(InSteamSandbox ? "/run/host" + path : path)) is { } found && (!InSteamSandbox || SteamLaunchService is not null) ? found : null;
+
+    /// <summary>Starts a desktop program: directly, or from Steam's sandbox through Steam's launch service.</summary>
+    private static ProcessStartInfo DesktopProcess(string program, IEnumerable<string> arguments)
+    {
+        var start = new ProcessStartInfo(SteamLaunchService is null ? program : SteamLaunchClient) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+        if (SteamLaunchService is { } service) { start.ArgumentList.Add("--bus-name=" + service); start.ArgumentList.Add("--"); start.ArgumentList.Add(program); }
+        foreach (var argument in arguments) start.ArgumentList.Add(argument);
+        return start;
+    }
+
     public static string SessionSummary => $"Session: {(SessionType == "wayland" ? "Wayland" : SessionType == "x11" ? "X11" : SessionType)} · Desktop: {Desktop.Replace(':', ' ')}";
 
     /// <summary>The packaged extension next to the app, or the source copy in a development checkout.</summary>
@@ -138,13 +160,13 @@ public static class LinuxSetup
     /// True when the rule setup-input-access.sh installs is there. Some systems (SteamOS) already let the person at the
     /// computer read the keyboard and mouse; there is then nothing of ours to turn off.
     /// </summary>
-    public static bool InputRuleInstalled => File.Exists("/etc/udev/rules.d/70-minimum-effort-clicker-input.rules");
+    public static bool InputRuleInstalled => File.Exists((InSteamSandbox ? "/run/host" : "") + "/etc/udev/rules.d/70-minimum-effort-clicker-input.rules");
 
     /// <summary>
     /// The system's own password window for apps (polkit's pkexec), the one software updates use. Null on a system without
     /// it; the terminal command above still works there.
     /// </summary>
-    public static string? SystemPasswordPrompt => new[] { "/usr/bin/pkexec", "/bin/pkexec" }.FirstOrDefault(File.Exists);
+    public static string? SystemPasswordPrompt => DesktopProgram("pkexec");
 
     /// <summary>
     /// Turns physical input access on or off by running the same script as the terminal command, as administrator through
@@ -155,10 +177,9 @@ public static class LinuxSetup
     {
         if (InputRuleScriptPath is not { } script) return (false, "The input access script is missing from this copy of the app.");
         if (SystemPasswordPrompt is not { } prompt) return (false, "This system has no password window for apps (pkexec). Copy the command and run it in a terminal instead.");
-        var start = new ProcessStartInfo(prompt) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
-        start.ArgumentList.Add("/bin/bash"); start.ArgumentList.Add(script);
-        if (!on) start.ArgumentList.Add("--remove");
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("The password window could not start.");
+        // From Steam's sandbox the desktop's pkexec runs beside Steam; the script sits at the same path outside the sandbox.
+        using var process = Process.Start(DesktopProcess(prompt, on ? ["/bin/bash", script] : ["/bin/bash", script, "--remove"]))
+            ?? throw new InvalidOperationException("The password window could not start.");
         var output = process.StandardOutput.ReadToEndAsync(); var error = process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
         string detail = ((await error).Trim() is { Length: > 0 } text ? text : (await output).Trim()).Split('\n').LastOrDefault() ?? "";
@@ -175,13 +196,13 @@ public static class LinuxSetup
         _ => (false, "The setup script failed: " + detail)
     };
 
+    /// <summary>Runs a desktop tool by name (from Steam's sandbox through Steam's launch service); false when it is missing or fails.</summary>
     private static bool Run(string program, params string[] arguments)
     {
+        if (DesktopProgram(program) is not { } path) return false;
         try
         {
-            var start = new ProcessStartInfo(program) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
-            foreach (var argument in arguments) start.ArgumentList.Add(argument);
-            using var process = Process.Start(start);
+            using var process = Process.Start(DesktopProcess(path, arguments));
             if (process is null) return false;
             process.WaitForExit(5000);
             return process.HasExited && process.ExitCode == 0;
@@ -190,11 +211,10 @@ public static class LinuxSetup
     }
     private static string Read(string program, params string[] arguments)
     {
+        if (DesktopProgram(program) is not { } path) return "";
         try
         {
-            var start = new ProcessStartInfo(program) { UseShellExecute = false, RedirectStandardOutput = true };
-            foreach (var argument in arguments) start.ArgumentList.Add(argument);
-            using var process = Process.Start(start);
+            using var process = Process.Start(DesktopProcess(path, arguments));
             if (process is null) return "";
             string output = process.StandardOutput.ReadToEnd();
             process.WaitForExit(5000);

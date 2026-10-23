@@ -105,3 +105,7 @@ It has no Workshop code: Steam installs, starts and updates it.
 4. Steam Cloud on Linux needs a root override (Cloud > Root overrides: WinAppDataLocal on Linux becomes
    LinuxXdgDataHome). Decide first whether Windows settings should follow to Linux: the preferences hold Windows paths
    such as the screenshot folder.
+5. Steam starts the Linux build inside its pressure-vessel sandbox (Steam Linux Runtime). The desktop's own tools
+   (pkexec, gsettings, gnome-extensions) are not inside it, so the app starts them outside through Steam's
+   launch-alongside service (`steam-runtime-launch-client --bus-name=$SRT_LAUNCHER_SERVICE_ALONGSIDE_STEAM`). Without
+   that service, Settings shows the one terminal command instead of Turn on.
