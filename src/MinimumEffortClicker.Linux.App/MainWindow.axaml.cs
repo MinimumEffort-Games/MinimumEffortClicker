@@ -66,6 +66,7 @@ public partial class MainWindow : Window
         runtime.Control.ScreenshotRequested += ScreenshotHotkey;
         runtime.Control.PauseRequested += PauseHotkey;
         runtime.ToggleRefused += ToggleRefused;
+        DialogWindow.OpenCountChanged += RefreshStatus;
         runtime.Control.StopRequested += CancelScreenshot;
         runtime.StopIssued += CancelPowerSchedule;
         runtime.QuickStartRequested += () =>
@@ -234,6 +235,7 @@ public partial class MainWindow : Window
             runtime.Control.ScreenshotRequested -= ScreenshotHotkey;
             runtime.Control.PauseRequested -= PauseHotkey;
             runtime.ToggleRefused -= ToggleRefused;
+            DialogWindow.OpenCountChanged -= RefreshStatus;
             runtime.Control.StopRequested -= CancelScreenshot;
             runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Close();
         };
@@ -293,7 +295,10 @@ public partial class MainWindow : Window
         timer.Interval = TimeSpan.FromMilliseconds(snapshot.Busy ? 100 : 1000);
         if (snapshot.Busy || shutdownSchedule.Armed) timer.Start(); else timer.Stop();
         bool capturing = snapshot.Busy && snapshot.State.StartsWith("Recording", StringComparison.Ordinal);
-        if (overlaySettingsLoaded && !screenshotBusy && (capturing || OverlayBox.IsChecked == true && OverlayAlert is not null || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
+        // While one of the clicker's own dialogs is open and nothing runs, the always-on-top overlay would cover it
+        // (the first-start setup window, CachyOS 2026-10-23).
+        bool dialogOpen = DialogWindow.OpenCount > 0 && !snapshot.Busy;
+        if (overlaySettingsLoaded && !screenshotBusy && !dialogOpen && (capturing || OverlayBox.IsChecked == true && OverlayAlert is not null || OverlayBox.IsChecked == true && (IsVisible || runtime.IsDesktopMode || runtime.HasSelectedTarget) && (IsVisible || snapshot.Busy || overlayOptions.KeepIdle || enabledToggles.Count > 0)))
         {
             EnsureOverlay();
             overlay!.Configure(!snapshot.Busy ? overlayOptions with { Expanded = false } : overlayOptions);

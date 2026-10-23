@@ -45,8 +45,7 @@ internal sealed class KWinScript : IPathMethodHandler, IDisposable
         kwinOwner = KdeHelper.Call(connection, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetNameOwner", "s",
             (ref MessageWriter w) => w.WriteString("org.kde.KWin"), (m, _) => m.GetBodyReader().ReadString());
         connection.AddMethodHandler(this);
-        string file = System.IO.Path.Combine(Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR") is { Length: > 0 } runtime ? runtime : System.IO.Path.GetTempPath(),
-            $"me-clicker-kwin-{Environment.ProcessId}.js");
+        string file = System.IO.Path.Combine(ScriptFolder(), $"me-clicker-kwin-{Environment.ProcessId}.js");
         File.WriteAllText(file, Source.Replace("%SERVICE%", connection.UniqueName, StringComparison.Ordinal));
         try
         {
@@ -58,6 +57,21 @@ internal sealed class KWinScript : IPathMethodHandler, IDisposable
             Ask("focus"); // Throws when the script never starts asking.
         }
         finally { File.Delete(file); } // KWin has read it by the time it answers.
+    }
+
+    /// <summary>
+    /// Where KWin can read the script file. Inside Steam's sandbox the runtime folder is the sandbox's own, which KWin
+    /// cannot open ("Could not open /run/user/1000/…", CachyOS 2026-10-23); the home folder is shared with the desktop.
+    /// </summary>
+    private static string ScriptFolder()
+    {
+        if (!LinuxSetup.InSteamSandbox && Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR") is { Length: > 0 } runtime) return runtime;
+        if (!LinuxSetup.InSteamSandbox) return System.IO.Path.GetTempPath();
+        string cache = Environment.GetEnvironmentVariable("XDG_CACHE_HOME") is { Length: > 0 } configured ? configured
+            : System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache");
+        string folder = System.IO.Path.Combine(cache, "minimum-effort-clicker");
+        Directory.CreateDirectory(folder);
+        return folder;
     }
 
     public static string Source { get; } = ReadSource();
