@@ -28,7 +28,7 @@ public partial class MainWindow
             SystemDetails(), ReadLog(), ClickerPicture(), ActionListSaver(), RedactPersonal);
         var window = new BugReportWindow(parts, ReportsFolder, happened) { Owner = this };
         if (window.ShowDialog() != true) return;
-        if (window.Sent) { ReasonLabel.Text = "Bug report sent. Thank you!"; return; }
+        if (window.Sent) { AppLog.Note("Bug report", "sent"); ReasonLabel.Text = "Bug report sent. Thank you!"; return; }
         if (window.ZipPath is not { } zip || window.MailLink is not { } link) return;
         try { Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{zip}\"") { UseShellExecute = true }); }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { /* The e-mail step below still names the file. */ }

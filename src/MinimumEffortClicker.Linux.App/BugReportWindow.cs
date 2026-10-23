@@ -132,6 +132,7 @@ internal sealed class BugReportWindow : DialogWindow
         var result = await BugReportSender.SendAsync(Subject(), ReportText(), (reply.Text ?? "").Trim(), parts.App, ZipPath!, closed.Token);
         if (closed.IsCancellationRequested) return;
         if (result.Sent) { Sent = true; DialogResult = true; return; }
+        AppLog.Note("Bug report", "could not be sent: " + result.Problem);
         status.Text = $"The report could not be sent. {result.Problem} Try again, or e-mail it instead.";
         send.Content = "Try again";
         email.IsVisible = true;
