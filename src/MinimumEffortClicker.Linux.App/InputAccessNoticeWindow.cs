@@ -6,9 +6,10 @@ using Avalonia.Media;
 namespace MinimumEffortClicker.App;
 
 /// <summary>
-/// Startup notice. First Linux input access: while it is off, why Record and Stop on my input do not work yet, that
-/// everything else does, and a button that turns access on through the system password window. On a Steam Deck the Deck
-/// follows: what works and what does not, then Steam's desktop buttons (User, 2026-10-19).
+/// Startup notice. First, while the desktop helper is not ready, a one-button setup for it (User, 2026-10-23: a new player
+/// must not have to find it in Settings). Then Linux input access: while it is off, why Record and Stop on my input do
+/// not work yet, that everything else does, and a button that turns access on through the system password window. On a
+/// Steam Deck the Deck follows: what works and what does not, then Steam's desktop buttons (User, 2026-10-19).
 /// DialogResult true means "Turn on".
 /// </summary>
 public sealed class InputAccessNoticeWindow : DialogWindow
@@ -17,13 +18,32 @@ public sealed class InputAccessNoticeWindow : DialogWindow
     public bool ShowAtStartup => showAtStartup.IsChecked == true;
 
     /// <param name="deck">On a Steam Deck: its limits and the note on Steam's desktop buttons; null elsewhere.</param>
-    public InputAccessNoticeWindow(string needs, bool accessOff, bool canAskForPassword, string terminalCommand, (string Limits, string DesktopButtons)? deck = null)
+    /// <param name="helper">While the desktop helper is not ready: what it is for, its button and the setup it runs; null when ready.</param>
+    public InputAccessNoticeWindow(string needs, bool accessOff, bool canAskForPassword, string terminalCommand, (string Limits, string DesktopButtons)? deck = null,
+        (string Explanation, string Button, Func<Task<(bool Ready, string Message)>> SetUp)? helper = null)
     {
         showAtStartup.Classes.Add("choice");
-        Title = deck is not null ? "Input access and Steam Deck" : "Input access is off"; Width = 560; SizeToContent = SizeToContent.Height; CanResize = false;
+        Title = helper is not null ? "Set up Minimum Effort Clicker" : deck is not null ? "Input access and Steam Deck" : "Input access is off";
+        Width = 560; SizeToContent = SizeToContent.Height; CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false; FontSize = 14;
         var panel = new StackPanel { Margin = new Thickness(20) };
-        panel.Children.Add(Heading("Linux input access"));
+        Button? setUp = null;
+        if (helper is { } h)
+        {
+            panel.Children.Add(Heading("Desktop helper"));
+            var status = Text("", 10);
+            setUp = new Button { Content = h.Button, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 10, 0, 0) };
+            setUp.SetButtonStyle("GreenButton");
+            setUp.Click += async (_, _) =>
+            {
+                setUp.IsEnabled = false; status.Text = "Setting up…";
+                var (ready, message) = await h.SetUp();
+                status.Text = message;
+                setUp.IsVisible = !ready; setUp.IsEnabled = true;
+            };
+            panel.Children.Add(Card(Text(h.Explanation), setUp, status));
+        }
+        panel.Children.Add(Heading("Linux input access", top: helper is null ? 0 : 18));
         if (accessOff)
         {
             var body = new List<Control>
@@ -45,7 +65,7 @@ public sealed class InputAccessNoticeWindow : DialogWindow
         }
         panel.Children.Add(showAtStartup);
         var buttons = new Grid { Margin = new Thickness(0, 18, 0, 0) };
-        var later = new Button { Content = accessOff ? "Later" : "OK", MinWidth = 90, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0) };
+        var later = new Button { Content = accessOff || helper is not null ? "Later" : "OK", MinWidth = 90, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0) };
         later.Click += (_, _) => DialogResult = false;
         buttons.Children.Add(later);
         if (accessOff && canAskForPassword)
@@ -56,6 +76,7 @@ public sealed class InputAccessNoticeWindow : DialogWindow
             buttons.Children.Add(turnOn);
             Opened += (_, _) => turnOn.Focus();
         }
+        else if (setUp is not null) Opened += (_, _) => setUp.Focus();
         else Opened += (_, _) => later.Focus();
         panel.Children.Add(buttons);
         // A long Deck notice still fits a 1280×800 screen: the text scrolls, the buttons stay at the bottom.
