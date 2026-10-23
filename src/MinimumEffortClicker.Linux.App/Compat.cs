@@ -66,6 +66,8 @@ public class DialogWindow : Window
     private bool? result;
     /// <summary>Modal dialogs currently open; the WPF build asks ComponentDispatcher.IsThreadModal.</summary>
     public static int OpenCount { get; private set; }
+    /// <summary>A dialog opened or closed; the main window then decides again whether the overlay shows.</summary>
+    public static event Action? OpenCountChanged;
     public Window? OwnerWindow { get; set; }
     public bool? DialogResult
     {
@@ -80,9 +82,9 @@ public class DialogWindow : Window
 
     public bool? ShowDialog()
     {
-        OpenCount++;
+        OpenCount++; OpenCountChanged?.Invoke();
         try { return ShowModal(); }
-        finally { OpenCount--; }
+        finally { OpenCount--; OpenCountChanged?.Invoke(); }
     }
 
     private bool? ShowModal()

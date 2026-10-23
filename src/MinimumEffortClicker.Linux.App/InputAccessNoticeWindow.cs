@@ -27,6 +27,7 @@ public sealed class InputAccessNoticeWindow : DialogWindow
         Width = 560; SizeToContent = SizeToContent.Height; CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false; FontSize = 14;
         var panel = new StackPanel { Margin = new Thickness(20) };
+        var later = new Button { Content = accessOff || helper is not null ? "Later" : "OK", MinWidth = 90, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0) };
         Button? setUp = null;
         if (helper is { } h)
         {
@@ -40,6 +41,8 @@ public sealed class InputAccessNoticeWindow : DialogWindow
                 var (ready, message) = await h.SetUp();
                 status.Text = message;
                 setUp.IsVisible = !ready; setUp.IsEnabled = true;
+                // Set up once and done (User, 2026-10-23): with nothing left to do, the notice says so and stops showing.
+                if (ready && !accessOff) { later.Content = "Done"; showAtStartup.IsChecked = false; later.Focus(); }
             };
             panel.Children.Add(Card(Text(h.Explanation), setUp, status));
         }
@@ -65,7 +68,6 @@ public sealed class InputAccessNoticeWindow : DialogWindow
         }
         panel.Children.Add(showAtStartup);
         var buttons = new Grid { Margin = new Thickness(0, 18, 0, 0) };
-        var later = new Button { Content = accessOff || helper is not null ? "Later" : "OK", MinWidth = 90, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0) };
         later.Click += (_, _) => DialogResult = false;
         buttons.Children.Add(later);
         if (accessOff && canAskForPassword)
