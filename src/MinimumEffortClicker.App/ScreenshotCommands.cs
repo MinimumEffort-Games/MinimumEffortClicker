@@ -45,7 +45,11 @@ public partial class MainWindow
     {
         if (runtime is null) return;
         bool success = await runtime.Control.ConfigureScreenshotAsync(screenshotSettings.HotkeyEnabled ? screenshotSettings.Hotkey : null);
-        if (!success)
+        if (!success && !runtime.Control.Available)
+            // The keys are not ready yet (on Linux the desktop helper or input access is still to be set up): keep the
+            // saved choice, so the key works once they are, instead of switching it off for good.
+            ScreenshotHotkeyStatus.Text = "The screenshot key works once the clicker's keys are ready: " + (runtime.Control.Error ?? "see Settings.");
+        else if (!success)
         {
             screenshotSettings = screenshotSettings with { HotkeyEnabled = false };
             ScreenshotHotkeyBox.IsChecked = false;

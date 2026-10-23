@@ -47,18 +47,41 @@ public partial class MainWindow
         if (!allowClose && !closing) RefreshLinuxSetup();
     }
 
-    private async void InstallHelper_Click(object? sender, RoutedEventArgs e)
+    private async void InstallHelper_Click(object? sender, RoutedEventArgs e) => ReasonLabel.Text = (await SetUpHelperAsync()).Message;
+
+    /// <summary>
+    /// Installs or allows the desktop helper, then connects to it without a restart where the desktop allows that: KWin
+    /// reads the new entry within about two seconds, and a GNOME helper that is already running reads its allow list on
+    /// each call. A newly installed GNOME helper needs one log-out. On success every key is claimed again.
+    /// </summary>
+    private async Task<(bool Ready, string Message)> SetUpHelperAsync()
     {
-        try { ReasonLabel.Text = LinuxSetup.InstallHelper(); }
+        string installed;
+        try { installed = LinuxSetup.InstallHelper(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
-        { ReasonLabel.Text = "Could not set up the " + LinuxSetup.HelperName + ": " + ex.Message; RefreshLinuxSetup(); return; }
+        { RefreshLinuxSetup(); return (false, "Could not set up the " + LinuxSetup.HelperName + ": " + ex.Message); }
         RefreshLinuxSetup();
-        if (!LinuxSetup.IsKde || runtime is null) return;
-        // KWin reads the new entry within about two seconds; then connect without a log-out.
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        if (runtime is null) return (false, installed);
+        await Task.Delay(TimeSpan.FromSeconds(LinuxSetup.IsKde ? 3 : 0.5));
         bool ready = await runtime.Control.RefreshPlatformAsync();
+        if (ready) await ReclaimKeysAsync();
         RefreshLinuxSetup(); RefreshStatus();
-        ReasonLabel.Text = ready ? "Linux input controls are ready." : runtime.Control.Error ?? runtime.Control.PlatformSummary;
+        return ready ? (true, "Linux input controls are ready.") : (false, LinuxSetup.IsKde ? runtime.Control.Error ?? runtime.Control.PlatformSummary : installed);
+    }
+
+    /// <summary>
+    /// After the helper or input access became ready: claims every key again as at startup. Keys that could not be claimed
+    /// while the helper was missing (Record, Screenshot, Pause, toggle shortcuts) otherwise stayed dead until a restart,
+    /// and a dead Record key was recorded and reached the app in front (Ubuntu, 2026-10-23).
+    /// </summary>
+    private async Task ReclaimKeysAsync()
+    {
+        if (runtime is null || !runtime.Control.Available) return;
+        await runtime.Control.ConfigureAsync(appliedToggleKey, appliedStopKey);
+        await SetQuickRecordKey();
+        if (enabledToggles.Count > 0) await ApplyAvailability();
+        await ConfigureScreenshotHotkey();
+        await ConfigurePauseHotkey();
     }
 
     private async void CopyInputCommand_Click(object? sender, RoutedEventArgs e)
@@ -109,7 +132,7 @@ public partial class MainWindow
             if (!done) return false;
             // udev hands out the new access right after the script; give it a moment, then reconnect.
             await Task.Delay(TimeSpan.FromMilliseconds(800));
-            await runtime.Control.RefreshPlatformAsync();
+            if (await runtime.Control.RefreshPlatformAsync()) await ReclaimKeysAsync();
             RefreshStatus();
             bool available = runtime.Control.PhysicalInputAvailable;
             ReasonLabel.Text = on == available ? message : message + " The clicker has not picked it up yet; choose Check again, or restart the clicker.";
@@ -127,20 +150,38 @@ public partial class MainWindow
     /// </summary>
     private async Task ShowInputAccessNoticeAsync()
     {
-        if (!showInputAccessNotice || runtime is null || allowClose || closing) return;
+        if (runtime is null || allowClose || closing) return;
+        // Without the helper the clicker cannot click or see windows at all, so its setup shows even with the notice turned off.
+        var helper = HelperSetup();
         bool accessOff = !runtime.Control.PhysicalInputAvailable;
-        if (!accessOff && !LinuxSetup.IsSteamDeck) return;
+        if (helper is null && (!showInputAccessNotice || !accessOff && !LinuxSetup.IsSteamDeck)) return;
         var notice = new InputAccessNoticeWindow(InputAccessNeeds, accessOff, LinuxSetup.SystemPasswordPrompt is not null, LinuxSetup.InputAccessCommand,
-            LinuxSetup.IsSteamDeck ? (DeckLimits, DeckDesktopButtons) : null) { OwnerWindow = this };
+            LinuxSetup.IsSteamDeck ? (DeckLimits, DeckDesktopButtons) : null, helper) { OwnerWindow = this };
         bool turnOn = notice.ShowDialog() == true;
         if (notice.ShowAtStartup != showInputAccessNotice) { showInputAccessNotice = notice.ShowAtStartup; InputAccessNoticeBox.IsChecked = showInputAccessNotice; PersistPreferences(); }
         if (turnOn) await SetInputAccessAsync(on: true);
+    }
+
+    /// <summary>The startup notice's helper section while the helper is not ready on GNOME or KDE; null when it is, or elsewhere.</summary>
+    private (string Explanation, string Button, Func<Task<(bool Ready, string Message)>> SetUp)? HelperSetup()
+    {
+        var control = runtime?.Control;
+        if (control is null || control.Helper is not null || !(LinuxSetup.IsGnome || LinuxSetup.IsKde)) return null;
+        if (LinuxSetup.IsKde)
+            return ("KDE has to allow this copy of the clicker once before it can click, press keys, see your windows and take screenshots. Nothing is installed.",
+                "Allow this copy of the app", SetUpHelperAsync);
+        return control.HelperAccessDenied
+            ? ("The ME Clicker GNOME helper is installed, but it does not know this copy of the clicker yet (for example the Steam copy). Allow it once.",
+                "Allow this copy of the app", SetUpHelperAsync)
+            : ("On GNOME, the small ME Clicker helper lets the clicker click, press keys, see your windows and take screenshots. Install it once; GNOME then needs one log-out and log-in.",
+                "Install GNOME helper", SetUpHelperAsync);
     }
 
     private async void RefreshPlatform_Click(object? sender, RoutedEventArgs e)
     {
         if (runtime is null) return;
         bool ready = await runtime.Control.RefreshPlatformAsync();
+        if (ready) await ReclaimKeysAsync();
         RefreshLinuxSetup(); RefreshStatus();
         ReasonLabel.Text = ready ? "Linux input controls are ready." : runtime.Control.Error ?? runtime.Control.PlatformSummary;
     }
