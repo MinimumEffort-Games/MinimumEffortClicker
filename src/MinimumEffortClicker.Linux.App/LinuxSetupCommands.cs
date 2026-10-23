@@ -22,9 +22,8 @@ public partial class MainWindow
             : control?.Helper is not null ? "Reinstall GNOME helper" : control?.HelperAccessDenied == true ? "Allow this copy of the app" : "Install GNOME helper";
         bool ours = LinuxSetup.InputRuleInstalled;
         InputAccessLabel.Text = control?.PhysicalInputAvailable == true
-            ? (ours ? "Ready." : "Ready: this system already lets you read the keyboard and mouse, so nothing needs turning on.")
-                + " Recording, Stop on my input, mouse-button shortcuts and hotkeys that work in every app are available."
-            : "Off. " + InputAccessNeeds + " Turn on asks for your password in the system's own window.";
+            ? (ours ? "On." : "On: this system already lets the clicker read the keyboard and mouse, so nothing needs turning on.") + " " + InputAccessOn
+            : "Off. " + InputAccessOptional + " " + InputAccessNeeds + " Turn on asks for your password in the system's own window.";
         if (LinuxSetup.IsSteamDeck) InputAccessLabel.Text += "\n\nSteam Deck: " + DeckLimits + "\n\nSteam's desktop buttons: " + DeckDesktopButtons;
         InputAccessNoticeBox.IsChecked = showInputAccessNotice;
         InputAccessCommand.Text = control?.PhysicalInputAvailable == true ? "" : LinuxSetup.InputAccessCommand;
@@ -99,7 +98,10 @@ public partial class MainWindow
     }
 
     /// <summary>What physical input access unlocks; the Settings card and the startup notice say the same.</summary>
-    private const string InputAccessNeeds = "Recording, Stop on my input, mouse-button shortcuts, hotkeys that work in every app and holding a hotkey to run need read access to your keyboard and mouse. Everything else works without it.";
+    // Input access is optional and only for recording (User, 2026-10-23): the notice and this card say so first.
+    private const string InputAccessOptional = "The clicker works without this. Clicks, key presses, the Action List, toggles, colour waits, screenshots and the F-key shortcuts all work now.";
+    private const string InputAccessNeeds = "Turn it on only if you want to record your own clicks and keys, stop a run by touching the mouse or keyboard, or use mouse buttons and other keys as shortcuts. For that the clicker needs to read your keyboard and mouse.";
+    private const string InputAccessOn = "Recording, Stop on my input and mouse-button shortcuts are available.";
     /// <summary>
     /// What a Steam Deck can and cannot record: Steam reads the Deck's controls itself and types and clicks through the
     /// desktop, where no app may listen, so only an external mouse or keyboard reaches the recorder.
@@ -155,7 +157,7 @@ public partial class MainWindow
         var helper = HelperSetup();
         bool accessOff = !runtime.Control.PhysicalInputAvailable;
         if (helper is null && (!showInputAccessNotice || !accessOff && !LinuxSetup.IsSteamDeck)) return;
-        var notice = new InputAccessNoticeWindow(InputAccessNeeds, accessOff, LinuxSetup.SystemPasswordPrompt is not null, LinuxSetup.InputAccessCommand,
+        var notice = new InputAccessNoticeWindow(InputAccessOptional, InputAccessNeeds, InputAccessOn, accessOff, LinuxSetup.SystemPasswordPrompt is not null, LinuxSetup.InputAccessCommand,
             LinuxSetup.IsSteamDeck ? (DeckLimits, DeckDesktopButtons) : null, helper) { OwnerWindow = this };
         bool turnOn = notice.ShowDialog() == true;
         if (notice.ShowAtStartup != showInputAccessNotice) { showInputAccessNotice = notice.ShowAtStartup; InputAccessNoticeBox.IsChecked = showInputAccessNotice; PersistPreferences(); }

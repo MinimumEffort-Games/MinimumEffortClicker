@@ -396,7 +396,7 @@
                                     <WrapPanel Margin="0,6,0,0">
                                         <Button x:Name="InstallHelperButton" Content="Install GNOME helper" Click="InstallHelper_Click" Classes="green" />
                                     </WrapPanel>
-                                    <TextBlock Text="Physical input access - This is only for the current user" FontWeight="SemiBold" Margin="0,10,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="Recording (optional) - only for the person signed in" FontWeight="SemiBold" Margin="0,10,0,0" TextWrapping="Wrap" />
                                     <TextBlock x:Name="InputAccessLabel" Classes="secondary" />
                                     <Button x:Name="InputAccessOnButton" Content="Turn on" Click="InputAccessOn_Click" Margin="0,6,0,0" Classes="green" ToolTip.Tip="Asks for your password in the system's own window, then turns input access on." />
                                     <TextBlock x:Name="InputAccessTerminalHint" Text="Or run this once in a terminal:" Classes="secondary" Margin="0,8,0,0" TextWrapping="Wrap" />
