@@ -76,6 +76,7 @@ public partial class BugReportWindow : Window
         var result = await BugReportSender.SendAsync(Subject(), ReportText(), ReplyBox.Text.Trim(), parts.App, ZipPath!, closed.Token);
         if (closed.IsCancellationRequested) return;
         if (result.Sent) { Sent = true; DialogResult = true; return; }
+        AppLog.Note("Bug report", "could not be sent: " + result.Problem);
         StatusText.Text = $"The report could not be sent. {result.Problem} Try again, or e-mail it instead.";
         SendButton.Content = "Try again";
         EmailButton.Visibility = Visibility.Visible;

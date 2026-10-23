@@ -89,3 +89,19 @@ the item's page. The app opens that page by itself.
    - SteamCMD asks for the password and Steam Guard code itself.
    - The depot id is on the Steamworks site under SteamPipe > Depots.
    - The script never sets a build live; you do that under SteamPipe > Builds.
+
+### Linux (and Steam Deck)
+
+The Linux Steam build is the Linux app without `portable.mode`, so data lives in `~/.local/share/MinimumEffortClicker`.
+It has no Workshop code: Steam installs, starts and updates it.
+
+1. Build it **on Linux** (a Windows checkout has CRLF shell scripts, and Windows drops the executable bit):
+   `scripts/linux/package.sh --steam <fresh folder>`. It writes the folder and `<folder>.zip` for Web Uploads; the zip
+   entries keep their Linux file modes.
+2. Steamworks, once: SteamPipe > Depots, add a depot for Linux + SteamOS. Installation > General, add a launch option:
+   executable `MinimumEffortClicker`, operating system Linux + SteamOS, 64-bit.
+3. Upload the zip to the Linux depot with SteamPipe > Web Uploads, press Commit after the upload bar, and set the
+   build live under SteamPipe > Builds.
+4. Steam Cloud on Linux needs a root override (Cloud > Root overrides: WinAppDataLocal on Linux becomes
+   LinuxXdgDataHome). Decide first whether Windows settings should follow to Linux: the preferences hold Windows paths
+   such as the screenshot folder.
