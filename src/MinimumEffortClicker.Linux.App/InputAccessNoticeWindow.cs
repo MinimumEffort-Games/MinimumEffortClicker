@@ -19,11 +19,14 @@ public sealed class InputAccessNoticeWindow : DialogWindow
 
     /// <param name="deck">On a Steam Deck: its limits and the note on Steam's desktop buttons; null elsewhere.</param>
     /// <param name="helper">While the desktop helper is not ready: what it is for, its button and the setup it runs; null when ready.</param>
-    public InputAccessNoticeWindow(string needs, bool accessOff, bool canAskForPassword, string terminalCommand, (string Limits, string DesktopButtons)? deck = null,
+    /// <param name="optional">That the clicker works without input access, shown first and bold.</param>
+    /// <param name="needs">What turning it on adds.</param>
+    /// <param name="on">What is available while it is on.</param>
+    public InputAccessNoticeWindow(string optional, string needs, string on, bool accessOff, bool canAskForPassword, string terminalCommand, (string Limits, string DesktopButtons)? deck = null,
         (string Explanation, string Button, Func<Task<(bool Ready, string Message)>> SetUp)? helper = null)
     {
         showAtStartup.Classes.Add("choice");
-        Title = helper is not null ? "Set up Minimum Effort Clicker" : deck is not null ? "Input access and Steam Deck" : "Input access is off";
+        Title = helper is not null ? "Set up Minimum Effort Clicker" : deck is not null ? "Recording and Steam Deck" : "Recording (optional)";
         Width = 560; SizeToContent = SizeToContent.Height; CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false; FontSize = 14;
         var panel = new StackPanel { Margin = new Thickness(20) };
@@ -46,21 +49,22 @@ public sealed class InputAccessNoticeWindow : DialogWindow
             };
             panel.Children.Add(Card(Text(h.Explanation), setUp, status));
         }
-        panel.Children.Add(Heading("Linux input access", top: helper is null ? 0 : 18));
+        panel.Children.Add(Heading("Recording (optional)", top: helper is null ? 0 : 18));
         if (accessOff)
         {
+            var works = Text(optional); works.FontWeight = FontWeight.SemiBold;
             var body = new List<Control>
             {
-                Text(needs),
-                Text("You can use the clicker either way: clicks, keys, the Action List, toggles, colour waits and screenshots all work now.", 10),
+                works,
+                Text(needs, 10),
                 Text(canAskForPassword
-                    ? "Turn on asks for your password in the system's own window and gives read access to keyboards and mice to the person signed in at this computer only. You can turn it on or off, and bring this notice back, any time in Settings → Linux setup."
+                    ? "Turn on asks for your password in the system's own window, and only gives access to the person signed in at this computer. You can turn it off again in Settings → Linux setup."
                     : "This system has no password window for apps, so run this once in a terminal (it asks for your password):", 10)
             };
             if (!canAskForPassword) body.Add(new SelectableTextBlock { Text = terminalCommand, FontFamily = new FontFamily("monospace"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) });
             panel.Children.Add(Card([.. body]));
         }
-        else panel.Children.Add(Card(Text("On. Recording, Stop on my input, mouse-button shortcuts and hotkeys that work in every app are available.")));
+        else panel.Children.Add(Card(Text("On: " + char.ToLowerInvariant(on[0]) + on[1..])));
         if (deck is { } d)
         {
             panel.Children.Add(Heading("Steam Deck", top: 18));
