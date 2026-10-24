@@ -6,8 +6,8 @@ Repeat clicks and keys, record editable action lists, wait for colours on screen
 run it from a game controller (Xbox, PlayStation, Switch, Steam Deck) or turn controller buttons into keys, and save
 screenshots. Runs locally; no account or subscription is needed. It goes online only when you press Send report in Bug report.
 
-**Public preview, not code-signed.** The app is in early testing with more hardware, displays and desktops still
-to check, so expect rough edges and please report them. Windows may show a SmartScreen warning the first time.
+**Version 1.0, not code-signed.** Windows may show a SmartScreen warning the first time; see below. Found a bug?
+Press Bug report next to Help in the app.
 
 ## What it looks like
 
@@ -74,7 +74,7 @@ an external mouse or keyboard, not the Deck's own controls; setting up clicks by
 
 ## Trust and limitations
 
-This preview has **no publisher Authenticode signature**. Windows SmartScreen or
+The app has **no publisher Authenticode signature**. Windows SmartScreen or
 Smart App Control may warn or block it. Do not disable Windows protections to run
 the app. SHA-256 checksums and an internal file manifest detect changed bytes;
 they are not a signing certificate or a safety guarantee. Trusted signing is

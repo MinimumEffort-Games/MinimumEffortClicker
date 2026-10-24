@@ -326,6 +326,7 @@
                   <TextBlock Text="Emergency stop" Style="{StaticResource Heading}" Margin="0,18,0,8"/>
                   <ListBox x:Name="EmergencyStopBox" Style="{StaticResource ChoiceList}" SelectedIndex="0" SelectionChanged="EmergencyStop_Changed" HorizontalAlignment="Left" AutomationProperties.Name="Emergency stop"><ListBoxItem x:Name="StopAllOnlyItem" Content="Stop All F6" Padding="10,6" ToolTip="Only Stop All stops the clicker (default)."/><ListBoxItem Content="Stop All Any Input" Padding="10,6" ToolTip="Any key you press or mouse movement stops the clicker."/></ListBox>
                   <TextBlock x:Name="EmergencyStopHint" Style="{StaticResource Secondary}" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left"/>
+                  <TextBlock x:Name="VersionLabel" Style="{StaticResource Secondary}" Margin="0,24,0,8" AutomationProperties.Name="Version"/>
 
                  </StackPanel></ScrollViewer>
                 </Grid>

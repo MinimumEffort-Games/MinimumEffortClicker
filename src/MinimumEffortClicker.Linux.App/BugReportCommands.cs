@@ -24,7 +24,7 @@ public partial class MainWindow
     private void OpenBugReport(string? happened)
     {
         // The picture is taken now, before the report window covers the clicker.
-        var parts = new BugReportParts($"Minimum Effort Clicker {AppVersion} (Linux, {LinuxSetup.SessionSummary})",
+        var parts = new BugReportParts($"Minimum Effort Clicker {InformationalVersion} (Linux, {LinuxSetup.SessionSummary})",
             SystemDetails(), ReadLog(), ClickerPicture(), ActionListSaver(), RedactPersonal);
         var window = new BugReportWindow(this, parts, ReportsFolder, happened);
         if (window.ShowDialog() != true) return;
@@ -65,7 +65,9 @@ public partial class MainWindow
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or AggregateException) { return true; }
     }
 
-    private static string AppVersion => typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+    private static string InformationalVersion => typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+    /// <summary>"Minimum Effort Clicker 1.0.0 (617701c)", shown in Settings and Help so anyone can see which build runs.</summary>
+    private static string VersionLine => "Minimum Effort Clicker " + Core.AppVersion.Display(InformationalVersion);
 
     private static string RedactPersonal(string text) => BugReport.Redact(text, [
         (Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "~"),
@@ -132,7 +134,7 @@ public partial class MainWindow
         string screenshotKey = screenshotSettings.HotkeyEnabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "none";
         string helper = runtime?.Control.Helper is null ? $"{LinuxSetup.HelperName} not connected" : $"{LinuxSetup.HelperName} connected";
         return string.Join(Environment.NewLine,
-            $"- App: Minimum Effort Clicker {AppVersion} (Linux)",
+            $"- App: Minimum Effort Clicker {InformationalVersion} (Linux)",
             $"- System: {Distribution()}, {Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP") ?? "unknown desktop"} on {Environment.GetEnvironmentVariable("XDG_SESSION_TYPE") ?? "unknown session"}, kernel {Environment.OSVersion.Version}{(LinuxSetup.IsSteamDeck ? ", Steam Deck" : "")}",
             $"- Input access: {(runtime?.Control.PhysicalInputAvailable == true ? "on" : "off")}; {helper}",
             $"- Monitors: {monitors}; X11 pixels per desktop unit {DesktopPixels.Factor:0.##}",

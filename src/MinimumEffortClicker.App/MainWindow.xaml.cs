@@ -45,6 +45,7 @@ public partial class MainWindow : Window
         bindingsStore = new(store.DirectoryPath);
         if (!previewOnly) { AppLog.Initialize(store.DirectoryPath); StartStartupWatch(); }
         InitializeComponent();
+        VersionLabel.Text = VersionLine + (SteamMode.Enabled ? " · Steam" : "");
         PreviewMouseDown += EditingWindow_PreviewMouseDown;
         StartupMeasurement.Mark("Main XAML initialized");
         InitializeQuickBuilder();

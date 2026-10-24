@@ -49,6 +49,7 @@ public partial class MainWindow : Window
         bindingsStore = new(store.DirectoryPath);
         if (!previewOnly) { AppLog.Initialize(store.DirectoryPath); StartStartupWatch(); }
         InitializeComponent();
+        VersionLabel.Text = VersionLine + (Environment.GetEnvironmentVariable("SteamAppId") is { Length: > 0 } ? " · Steam" : "");
         AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, EditingWindow_PointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         OverlayAnchorPicture.AnchorChosen += OverlayAnchor_Chosen;
         StartupMeasurement.Mark("Main XAML initialized");

@@ -24,7 +24,7 @@ public partial class MainWindow
     private void OpenBugReport(string? happened)
     {
         // The picture is taken now, before the report window covers the clicker.
-        var parts = new BugReportParts($"Minimum Effort Clicker {AppVersion} (Windows, {(SteamMode.Enabled ? "Steam" : "portable")})",
+        var parts = new BugReportParts($"Minimum Effort Clicker {InformationalVersion} (Windows, {(SteamMode.Enabled ? "Steam" : "portable")})",
             SystemDetails(), ReadLog(), ClickerPicture(), ActionListSaver(), RedactPersonal);
         var window = new BugReportWindow(parts, ReportsFolder, happened) { Owner = this };
         if (window.ShowDialog() != true) return;
@@ -41,7 +41,9 @@ public partial class MainWindow
         { AppDialog.Show(this, $"Could not open your mail app: {ex.Message}\n\nThe report is saved as {zip}. Send it from your webmail to {BugReport.Address}."); }
     }
 
-    private static string AppVersion => typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+    private static string InformationalVersion => typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+    /// <summary>"Minimum Effort Clicker 1.0.0 (617701c)", shown in Settings and Help so anyone can see which build runs.</summary>
+    private static string VersionLine => "Minimum Effort Clicker " + Core.AppVersion.Display(InformationalVersion);
 
     private static string RedactPersonal(string text) => BugReport.Redact(text, [
         (Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "%USERPROFILE%"),
@@ -99,7 +101,7 @@ public partial class MainWindow
         string controllers = gamepads?.Connected is { Count: > 0 } pads ? string.Join(", ", pads) : "none";
         string screenshotKey = screenshotSettings.HotkeyEnabled ? ShortcutKeys.Label(screenshotSettings.Hotkey) : "none";
         return string.Join(Environment.NewLine,
-            $"- App: Minimum Effort Clicker {AppVersion} ({(SteamMode.Enabled ? "Steam" : "portable")})",
+            $"- App: Minimum Effort Clicker {InformationalVersion} ({(SteamMode.Enabled ? "Steam" : "portable")})",
             $"- System: {RuntimeInformation.OSDescription}, {RuntimeInformation.OSArchitecture}",
             $"- Monitors: {monitors}; clicker scaling {VisualTreeHelper.GetDpi(this).DpiScaleX * 100:0} %",
             $"- Click target: {target}",
