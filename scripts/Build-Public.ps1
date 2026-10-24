@@ -52,7 +52,7 @@ try {
     $runtimeConfig = Get-Content -LiteralPath (Join-Path $packagePath 'MinimumEffortClicker.App.runtimeconfig.json') -Raw | ConvertFrom-Json
     $manifest = [ordered]@{
         buildUtc = [DateTimeOffset]::UtcNow; version = $version; schema = $profileSchema
-        kind = $(if ($Steam) { 'Steam build' } else { 'Unsigned public preview' }); sourceCommit = $sourceCommit
+        kind = $(if ($Steam) { 'Steam build' } else { 'Unsigned release' }); sourceCommit = $sourceCommit
         runtime = @($runtimeConfig.runtimeOptions.includedFrameworks | Select-Object name,version)
         portable = !$Steam; steam = [bool]$Steam; signing = 'Unsigned; no publisher Authenticode certificate'
         files = @(Get-ChildItem -LiteralPath $packagePath -File -Recurse | ForEach-Object {

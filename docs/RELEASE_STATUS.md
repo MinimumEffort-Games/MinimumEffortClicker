@@ -1,10 +1,11 @@
 # Release status
 
-Version: **0.5.0-preview.36**, a public preview for Windows 11 x64 (portable ZIP) and Linux x64 (`tar.gz`, GNOME and
+Version: **1.0.0**, the first full release for Windows 11 x64 (portable ZIP) and Linux x64 (`tar.gz`, GNOME and
 KDE Plasma on Wayland), macro file schema **17**. Older macro files open and are upgraded on load; nothing is reset.
 
-Both builds come from the same source and the same version. They stay previews until more people have used them on
-more hardware, displays and desktops; a 1.0 follows after that and a few updates.
+Both builds come from the same source and the same version, on GitHub and on Steam. Settings and Help show the
+version and the build (for example "1.0.0 (617701c)"). Problems found after release are fixed in updates; Bug report in
+the app sends a report in one press.
 
 ## What is checked for every release
 
@@ -23,13 +24,13 @@ a test.
 
 ## Steam
 
-A Steam version with Steam Cloud and Workshop sharing is prepared (see [STEAM.md](STEAM.md)). The store page is not
-public yet. Steam Deck support is limited: the app runs in Desktop Mode (not Game Mode), and recording sees only an
+The Steam version adds Steam Cloud and Workshop sharing on Windows (see [STEAM.md](STEAM.md)); on Linux and Steam
+Deck, Steam installs and updates the same Linux app. Steam Deck support is limited: the app runs in Desktop Mode (not Game Mode), and recording sees only an
 external mouse or keyboard, not the Deck's own controls (see [LINUX.md](LINUX.md#steam-deck-limited-support)).
 
 ## Signing
 
-The preview is not code-signed, so Windows SmartScreen or Smart App Control may warn. Checksums show that the files
+The app is not code-signed, so Windows SmartScreen or Smart App Control may warn. Checksums show that the files
 are unchanged; they are not a signature. Microsoft explains the trusted provider requirement for Smart App Control:
 https://learn.microsoft.com/windows/apps/develop/smart-app-control/code-signing-for-smart-app-control
 

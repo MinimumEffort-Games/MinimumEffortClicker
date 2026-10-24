@@ -22,7 +22,7 @@ distribution and desktop) and the steps. You will get an acknowledgement within 
 
 Releases are built by the GitHub Actions workflow in this repository from a tagged commit: a Windows ZIP and a Linux
 `tar.gz`. Each carries `build-manifest.json` with the source commit and a SHA-256 for every file, and the archive hash
-is published next to it. The preview releases are not code-signed, so Windows SmartScreen may warn; that warning is
+is published next to it. The releases are not code-signed, so Windows SmartScreen may warn; that warning is
 expected and is not a reason to turn protections off. Verify the hash instead.
 
 ## Scope notes

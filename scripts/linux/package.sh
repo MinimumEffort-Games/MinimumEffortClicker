@@ -31,7 +31,7 @@ fi
 if grep -l $'\r' "$DEST"/*.sh >/dev/null 2>&1; then echo "A shell script has Windows line ends; build on a Linux checkout." >&2; exit 1; fi
 VERSION="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$ROOT/Directory.Build.props")"
 COMMIT="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
-if [[ $STEAM == 1 ]]; then KIND="Steam build"; PORTABLE=false; else KIND="Unsigned public preview"; PORTABLE=true; fi
+if [[ $STEAM == 1 ]]; then KIND="Steam build"; PORTABLE=false; else KIND="Unsigned release"; PORTABLE=true; fi
 (cd "$DEST" && find . -type f ! -name build-manifest.json -print0 | sort -z | xargs -0 sha256sum) > "$DEST/build-manifest.sha256"
 printf '{\n  "buildUtc": "%s",\n  "version": "%s",\n  "kind": "%s",\n  "platform": "linux-x64",\n  "sourceCommit": "%s",\n  "portable": %s\n}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$VERSION" "$KIND" "$COMMIT" "$PORTABLE" > "$DEST/build-manifest.json"

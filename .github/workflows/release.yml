@@ -1,4 +1,4 @@
-name: Build and preview release
+name: Build and release
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
         run: ./scripts/Build-Public.ps1 -Zip
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Windows-x64-unsigned-preview
+          name: Windows-x64-unsigned
           path: |
             artifacts/package/*.zip
             artifacts/package/*.zip.sha256
@@ -47,7 +47,7 @@ jobs:
           scripts/linux/package.sh "$destination"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Linux-x64-unsigned-preview
+          name: Linux-x64-unsigned
           path: |
             artifacts/package/*.tar.gz
             artifacts/package/*.tar.gz.sha256
@@ -65,7 +65,7 @@ jobs:
       # Publish the very bytes the build job tested instead of building a second time.
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: Windows-x64-unsigned-preview
+          name: Windows-x64-unsigned
           path: artifacts/package
       - name: Validate version against the tag
         shell: pwsh
@@ -76,13 +76,13 @@ jobs:
           $package = Join-Path (Get-Location) "artifacts/package/MinimumEffortClicker-$version-win-x64"
           if (!(Test-Path -LiteralPath "$package.zip")) { throw "Expected package $package.zip from the build job." }
           "MEC_PACKAGE=$package" >> $env:GITHUB_ENV
-      - name: Publish unsigned prerelease
+      - name: Publish unsigned release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release create $env:GITHUB_REF_NAME "$env:MEC_PACKAGE.zip" "$env:MEC_PACKAGE.zip.sha256" --verify-tag --prerelease --title "Minimum Effort Clicker $env:GITHUB_REF_NAME (unsigned preview)" --notes-file docs/RELEASE_NOTES.md
+          gh release create $env:GITHUB_REF_NAME "$env:MEC_PACKAGE.zip" "$env:MEC_PACKAGE.zip.sha256" --verify-tag --latest --title "Minimum Effort Clicker $env:GITHUB_REF_NAME" --notes-file docs/RELEASE_NOTES.md
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed.' }
 
   release-linux:
@@ -95,7 +95,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: Linux-x64-unsigned-preview
+          name: Linux-x64-unsigned
           path: linux-package
       - name: Attach the Linux package to the release
         shell: bash

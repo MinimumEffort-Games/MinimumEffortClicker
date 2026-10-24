@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 (2026-10-24)
+
+- First full release, on GitHub and on Steam (Windows and Linux). Settings and Help show the version and build.
+- Linux first start: the setup window leads with the desktop helper (Install GNOME helper, or Allow this copy of the app
+  on KDE and Steam Deck) in one press, and says Done when nothing is left. Input access is shown as optional, for
+  recording only. After setup every key works at once, without a restart.
+- Linux on Steam: the Steam copy works inside Steam's sandbox (KDE allow, Turn on input access, the GNOME helper).
+- The idle overlay no longer covers the clicker's own dialogs.
 
 - Help is a full manual with a clickable contents list: getting started, targets, actions, recording and Look, colour
   waits, macros, toggles, Controller to Key, screenshots, keys and controller, overlay, settings, Steam, Linux setup,

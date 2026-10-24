@@ -34,6 +34,7 @@ public partial class MainWindow
             return link;
         }
 
+        page.Children.Add(new TextBlock { Text = VersionLine, FontSize = 12, Opacity = 0.75, Margin = new Thickness(0, 0, 0, 4) });
         page.Children.Add(new TextBlock { Text = "Contents", FontSize = 18, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 6, 0, 8) });
         var headings = sections.Select(s => new TextBlock { Text = s.Title, FontSize = 18, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 22, 0, 8) }).ToArray();
         for (int i = 0; i < sections.Count; i++)
