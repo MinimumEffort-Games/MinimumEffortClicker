@@ -22,6 +22,8 @@ public partial class MainWindow
     private int screenshotRequestQueued, selectedScreenshotKey;
     private long screenshotFinishedAt = -10000;
     private string? lastScreenshot;
+    // The picture the clipboard serves on request; replaced (and the old one disposed) by the next copy.
+    private Avalonia.Media.Imaging.Bitmap? clipboardImage;
 
     private string DefaultScreenshotFolder => Path.Combine(store.DirectoryPath, "Screenshots");
     /// <summary>Where screenshots go: the folder the user chose, or the default.</summary>
@@ -220,8 +222,16 @@ public partial class MainWindow
             string clipboard = "";
             if (settings.CopyToClipboard && !token.IsCancellationRequested && Clipboard is { } board)
             {
-                try { await Avalonia.Input.Platform.ClipboardExtensions.SetBitmapAsync(board, image); clipboard = " · copied to clipboard"; }
-                catch (Exception ex) when (ex is InvalidOperationException or IOException) { clipboard = " · clipboard busy; file saved"; }
+                // The clipboard keeps its own copy until the next one replaces it: on Linux the desktop asks for the pixels
+                // later (KDE's clipboard history at once), and a picture disposed with this method crashed the app then
+                // (Steam Deck, 2026-10-27).
+                var copy = Imaging.FromBgra(pixels, width, height);
+                try
+                {
+                    await Avalonia.Input.Platform.ClipboardExtensions.SetBitmapAsync(board, copy);
+                    clipboardImage?.Dispose(); clipboardImage = copy; clipboard = " · copied to clipboard";
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or IOException) { copy.Dispose(); clipboard = " · clipboard busy; file saved"; }
             }
             lastScreenshot = path; ScreenshotLastFile.Text = path; ScreenshotOpenFileButton.IsEnabled = true;
             ScreenshotStatus.Text = $"Saved {width} × {height} PNG{clipboard}.";
