@@ -47,6 +47,15 @@ public sealed unsafe class GamepadListener : IDisposable
         try
         {
             SDL_SetHint("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1");
+            // Started from Steam, Steam tells SDL to ignore the real controllers and use its virtual pad, which only gets
+            // input while the clicker's own window is in front, so the back buttons stopped working beside a game (Steam
+            // Deck, 2026-10-27). The clicker reads the real controllers again, as when it is started outside Steam, and
+            // leaves the virtual pad alone so no press counts twice. Reading only: Steam keeps the controllers.
+            if (Environment.GetEnvironmentVariable("SteamAppId") is { Length: > 0 })
+            {
+                SDL_SetHintWithPriority("SDL_GAMECONTROLLER_IGNORE_DEVICES", "", SDL_HintPriority.SDL_HINT_OVERRIDE);
+                SDL_SetHintWithPriority("SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_GAMEPAD", "0", SDL_HintPriority.SDL_HINT_OVERRIDE);
+            }
             if (!SDL_Init(SDL_InitFlags.SDL_INIT_GAMEPAD)) { Error = "Controllers cannot be read: " + SDL_GetError(); DevicesChanged?.Invoke(); return; }
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
