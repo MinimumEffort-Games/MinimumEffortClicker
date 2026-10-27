@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.1 (2026-10-27)
+
+- Steam: closing the clicker with Steam's Stop button no longer fills the log with errors or offers a bug report at the
+  next start. The overlay ignores close requests that do not come from the clicker itself, on Windows and Linux.
+- The Actions page no longer stays greyed out after saving a toggle. A report is only offered when the log holds an
+  error since the previous start, so a kill or a forced log-out stays silent.
+- Steam Deck: the first-start setup window is laid out wide, so it fits the screen. Under Steam the clicker reads the
+  real controller beside a game again, so the back buttons work.
+- Linux: copying a screenshot to the clipboard no longer crashes the app.
+
 ## 1.0.0 (2026-10-24)
 
 - First full release, on GitHub and on Steam (Windows and Linux). Settings and Help show the version and build.
