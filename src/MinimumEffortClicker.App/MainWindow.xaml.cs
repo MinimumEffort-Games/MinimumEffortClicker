@@ -226,7 +226,7 @@ public partial class MainWindow : Window
             runtime.Control.PauseRequested -= PauseHotkey;
             runtime.ToggleRefused -= ToggleRefused;
             runtime.Control.StopRequested -= CancelScreenshot;
-            runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Close();
+            runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Shutdown();
         };
         StartupStep("showing the window");
     }

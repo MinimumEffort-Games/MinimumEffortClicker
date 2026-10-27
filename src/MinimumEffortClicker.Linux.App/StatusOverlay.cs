@@ -60,6 +60,11 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     /// <summary>The unlocked overlay was dropped here: its top-left corner in screen pixels.</summary>
     public event Action<int, int>? Dropped;
 
+    // Only the clicker closes its overlay: a close from the desktop or Steam must not leave the main window refreshing
+    // a dead overlay (the Windows app did exactly that after Steam's Stop button, User, 2026-10-27).
+    private bool shuttingDown;
+    public void Shutdown() { shuttingDown = true; Close(); }
+
     public StatusOverlay()
     {
         Title = DesktopRuntime.OverlayTitle; SizeToContent = SizeToContent.WidthAndHeight; MaxWidth = 580;
@@ -83,6 +88,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         frame = new Border { Background = Idle, BorderBrush = IdleBorder, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(9, 4, 6, 4), Child = body };
         scaler.Child = frame;
         Content = scaler;
+        Closing += (_, e) => e.Cancel = !shuttingDown;
         ShowLock();
         ApplyColours();
         // Unlocked, a press anywhere but on a button drags the overlay.

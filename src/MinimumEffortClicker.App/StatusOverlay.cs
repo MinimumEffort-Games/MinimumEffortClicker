@@ -60,6 +60,11 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
     /// <summary>The unlocked overlay was dropped here: its top-left corner in screen pixels.</summary>
     public event Action<int, int>? Dropped;
 
+    // Only the clicker closes its overlay. Steam's Stop button sends a close to every window of the app: the overlay died
+    // while the main window hid to the tray, and every refresh then failed trying to show it (User, 2026-10-27).
+    private bool shuttingDown;
+    public void Shutdown() { shuttingDown = true; Close(); }
+
     public StatusOverlay()
     {
         Title = "Minimum Effort status"; SizeToContent = SizeToContent.WidthAndHeight; MaxWidth = 580;
@@ -84,6 +89,7 @@ internal sealed class StatusOverlay : Window, IOverlayPresenter
         SystemParameters.StaticPropertyChanged += ContrastChanged;
         pointerWatch.Tick += (_, _) => WatchPointer();
         IsVisibleChanged += (_, _) => { if (IsVisible) pointerWatch.Start(); else { pointerWatch.Stop(); SetClickable(false); } };
+        Closing += (_, e) => e.Cancel = !shuttingDown;
         Closed += (_, _) => { pointerWatch.Stop(); SystemParameters.StaticPropertyChanged -= ContrastChanged; };
         SourceInitialized += (_, _) =>
         {
