@@ -27,14 +27,17 @@ public sealed class InputAccessNoticeWindow : DialogWindow
     {
         showAtStartup.Classes.Add("choice");
         Title = helper is not null ? "Set up Minimum Effort Clicker" : deck is not null ? "Recording and Steam Deck" : "Recording (optional)";
-        Width = 560; SizeToContent = SizeToContent.Height; CanResize = false;
+        // On a Steam Deck (1280×800) the notice is wide instead of tall, so it fits without scrolling (User, 2026-10-27).
+        Width = deck is null ? 560 : 1120; SizeToContent = SizeToContent.Height; CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false; FontSize = 14;
         var panel = new StackPanel { Margin = new Thickness(20) };
+        // The setup sections; on a Steam Deck the Deck section stands beside them.
+        var left = new StackPanel();
         var later = new Button { Content = accessOff || helper is not null ? "Later" : "OK", MinWidth = 90, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0) };
         Button? setUp = null;
         if (helper is { } h)
         {
-            panel.Children.Add(Heading("Desktop helper"));
+            left.Children.Add(Heading("Desktop helper"));
             var status = Text("", 10);
             setUp = new Button { Content = h.Button, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 10, 0, 0) };
             setUp.SetButtonStyle("GreenButton");
@@ -47,9 +50,9 @@ public sealed class InputAccessNoticeWindow : DialogWindow
                 // Set up once and done (User, 2026-10-23): with nothing left to do, the notice says so and stops showing.
                 if (ready && !accessOff) { later.Content = "Done"; showAtStartup.IsChecked = false; later.Focus(); }
             };
-            panel.Children.Add(Card(Text(h.Explanation), setUp, status));
+            left.Children.Add(Card(Text(h.Explanation), setUp, status));
         }
-        panel.Children.Add(Heading("Recording (optional)", top: helper is null ? 0 : 18));
+        left.Children.Add(Heading("Recording (optional)", top: helper is null ? 0 : 18));
         if (accessOff)
         {
             var works = Text(optional); works.FontWeight = FontWeight.SemiBold;
@@ -62,14 +65,20 @@ public sealed class InputAccessNoticeWindow : DialogWindow
                     : "This system has no password window for apps, so run this once in a terminal (it asks for your password):", 10)
             };
             if (!canAskForPassword) body.Add(new SelectableTextBlock { Text = terminalCommand, FontFamily = new FontFamily("monospace"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) });
-            panel.Children.Add(Card([.. body]));
+            left.Children.Add(Card([.. body]));
         }
-        else panel.Children.Add(Card(Text("On: " + char.ToLowerInvariant(on[0]) + on[1..])));
+        else left.Children.Add(Card(Text("On: " + char.ToLowerInvariant(on[0]) + on[1..])));
         if (deck is { } d)
         {
-            panel.Children.Add(Heading("Steam Deck", top: 18));
-            panel.Children.Add(Card(Text(d.Limits), Subheading("Steam's desktop buttons"), Text(d.DesktopButtons)));
+            var right = new StackPanel();
+            right.Children.Add(Heading("Steam Deck"));
+            right.Children.Add(Card(Text(d.Limits), Subheading("Steam's desktop buttons"), Text(d.DesktopButtons)));
+            var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("*,24,*") };
+            Grid.SetColumn(right, 2);
+            columns.Children.Add(left); columns.Children.Add(right);
+            panel.Children.Add(columns);
         }
+        else panel.Children.Add(left);
         panel.Children.Add(showAtStartup);
         var buttons = new Grid { Margin = new Thickness(0, 18, 0, 0) };
         later.Click += (_, _) => DialogResult = false;
