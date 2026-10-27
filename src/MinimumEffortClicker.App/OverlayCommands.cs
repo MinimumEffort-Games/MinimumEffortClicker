@@ -8,6 +8,8 @@ public partial class MainWindow
     {
         if (overlay is not null) return;
         overlay = new();
+        // Should the overlay still go, the next refresh makes a new one instead of failing on the closed window.
+        overlay.Closed += (_, _) => overlay = null;
         overlay.ShowRequested += RestoreFromTray;
         overlay.ExitRequested += ExitApplication;
         overlay.LockToggled += () => SetOverlayUnlocked(!overlayOptions.Unlocked);

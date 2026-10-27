@@ -238,7 +238,7 @@ public partial class MainWindow : Window
             runtime.ToggleRefused -= ToggleRefused;
             DialogWindow.OpenCountChanged -= RefreshStatus;
             runtime.Control.StopRequested -= CancelScreenshot;
-            runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Close();
+            runtime.Changed -= RuntimeChanged; runtime.Dispose(); overlay?.Shutdown();
         };
         StartupStep("showing the window");
     }
