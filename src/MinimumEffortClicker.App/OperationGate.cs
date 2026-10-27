@@ -31,6 +31,8 @@ internal sealed class OperationGate
     public bool Any(Operation mask) => (active & mask) != 0;
     /// <summary>No user-visible work is running: the precondition for starting anything new.</summary>
     public bool Idle => !Any(Operation.Quick | Operation.MacroFile | Operation.Library | Operation.Binding | Operation.Screenshot);
+    /// <summary>An operation ended: the window refreshes its buttons, which a refresh during the operation left disabled.</summary>
+    public event Action? Ended;
     public void Begin(Operation operation) => active |= operation;
-    public void End(Operation operation) => active &= ~operation;
+    public void End(Operation operation) { active &= ~operation; Ended?.Invoke(); }
 }

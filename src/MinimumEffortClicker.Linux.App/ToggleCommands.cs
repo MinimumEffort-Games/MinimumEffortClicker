@@ -262,7 +262,7 @@ public partial class MainWindow
             await runtime.ConfigureHelpersAsync([]);
             ReasonLabel.Text = "Toggles disabled: " + ex.Message;
         }
-        finally { bindingBusy = false; TogglePage.IsEnabled = true; RefreshToggleList(); }
+        finally { bindingBusy = false; TogglePage.IsEnabled = true; RefreshToggleList(); RefreshStatus(); }
     }
     private OverlayToggle[] ToggleOverlayLines(RuntimeSnapshot snapshot)
     {
