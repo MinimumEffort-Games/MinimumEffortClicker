@@ -112,12 +112,23 @@ public partial class MainWindow
     }
 
     /// <summary>At start: a marker left from last time means the clicker did not close normally, so a report is offered.</summary>
+    /// <summary>When the previous run started, from the marker it left behind; null when unreadable.</summary>
+    private DateTime? PreviousStart()
+    {
+        try { return DateTime.TryParse(File.ReadAllText(SessionMarker).Trim(), null, System.Globalization.DateTimeStyles.RoundtripKind, out var at) ? at : null; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
     private void CheckLastSession()
     {
         bool unexpected = File.Exists(SessionMarker);
+        var previousStart = PreviousStart();
         try { File.WriteAllText(SessionMarker, DateTime.Now.ToString("O")); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
         if (!unexpected || StartupMeasurement.Enabled || IdleMeasurement.Destination is not null) return;
+        // Steam's Stop button, Task Manager and a forced log-out end the app with no chance to clean up. Only a crash the
+        // log recorded since the previous start is worth a report (User, 2026-10-27: no report offers after Steam's Stop).
+        if (BugReport.LastError(ReadLog(), previousStart) is null) { AppLog.Note("Start", "the previous run was ended from outside (no normal close, no error logged); no report offered"); return; }
         Dispatcher.BeginInvoke(() =>
         {
             if (allowClose || closing) return;
