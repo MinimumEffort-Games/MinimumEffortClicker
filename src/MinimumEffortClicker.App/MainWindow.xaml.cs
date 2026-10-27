@@ -79,6 +79,9 @@ public partial class MainWindow : Window
         SystemEvents.PowerModeChanged += PowerChanged;
         SystemEvents.DisplaySettingsChanged += DisplaysChanged;
         timer.Tick += (_, _) => RefreshStatus();
+        // A status refresh that ran while a save or binding change was under way left the page disabled, and nothing
+        // refreshed it again after the work ended (toggle saved, Actions page stuck, Steam build 2026-10-27).
+        operations.Ended += RuntimeChanged;
         overlayFollowTimer.Tick += (_, _) => PositionOverlay();
         // Stays false until Loaded has read the saved preferences, so an early click cannot overwrite them with defaults.
         RefreshStatus();

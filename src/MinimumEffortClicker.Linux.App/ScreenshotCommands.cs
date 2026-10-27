@@ -98,7 +98,7 @@ public partial class MainWindow
             await ConfigureScreenshotHotkey(); PersistPreferences();
         }
         catch (Exception ex) { ScreenshotHotkeyStatus.Text = "Could not apply screenshot key: " + ex.Message; }
-        finally { bindingBusy = false; }
+        finally { bindingBusy = false; RefreshStatus(); }
     }
 
     private void ScreenshotOptions_Changed(object sender, RoutedEventArgs e)

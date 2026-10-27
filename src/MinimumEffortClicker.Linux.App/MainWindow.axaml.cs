@@ -579,7 +579,7 @@ public partial class MainWindow : Window
         if (ioBusy) throw new InvalidOperationException("A profile operation is already in progress.");
         ioBusy = true;
         try { await Task.Run(() => store.Save(updated)); profiles = updated; RefreshToggleList(); }
-        finally { ioBusy = false; }
+        finally { ioBusy = false; RefreshStatus(); }
     }
     private async void SaveProfile_Click(object sender, RoutedEventArgs e)
     {
