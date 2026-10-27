@@ -28,6 +28,10 @@ public partial class MainWindow
         // F7 is the screenshot key out of the box. Older versions started without one (0), and Reset keybinds cleared
         // it; a missing key now gets F7 too. A key the user chose stays.
         if (screenshotSettings.Hotkey == 0) screenshotSettings = screenshotSettings with { Hotkey = ShortcutKeys.DefaultScreenshotKey, HotkeyEnabled = true };
+        // Steam Cloud carries the settings between Windows and Linux (User, 2026-10-27): a folder chosen on the other
+        // system is not a path here, so it is read as the default instead of becoming an odd folder under this one.
+        if (screenshotSettings.Folder is { } foreign && !Path.IsPathFullyQualified(foreign))
+            screenshotSettings = screenshotSettings with { Folder = null };
         // The default folder is not saved, so it stays the Screenshots folder beside this copy's data, also when the
         // data is moved or copied. Settings that saved it in full are read back as the default when they point here.
         if (screenshotSettings.Folder is { } saved && string.Equals(Path.GetFullPath(saved), DefaultScreenshotFolder, StringComparison.OrdinalIgnoreCase))
