@@ -8,13 +8,13 @@
       "minimumeffortclicker.engine": {
         "type": "Project",
         "dependencies": {
-          "MinimumEffortClicker.Core": "[0.5.0-preview.34.16, )"
+          "MinimumEffortClicker.Core": "[1.0.2, )"
         }
       },
       "minimumeffortclicker.vision": {
         "type": "Project",
         "dependencies": {
-          "MinimumEffortClicker.Core": "[0.5.0-preview.34.16, )"
+          "MinimumEffortClicker.Core": "[1.0.2, )"
         }
       }
     }
