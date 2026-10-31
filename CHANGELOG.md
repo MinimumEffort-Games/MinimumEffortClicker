@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2 (2026-10-31)
+
+- Security update: the bundled .NET runtime moves from 10.0.12 to 10.0.14, which carries Microsoft's October fixes
+  for the Windows Desktop and core runtimes (remote code execution, information disclosure and denial of service
+  bugs) and the Brotli decoder. No package in the app has a known advisory.
+- A screenshot folder chosen on the other system (Windows path on Linux, or the reverse) reads as the default, so
+  Steam Cloud can carry the settings between a PC and a Steam Deck without creating odd folders.
+
 ## 1.0.1 (2026-10-27)
 
 - Steam: closing the clicker with Steam's Stop button no longer fills the log with errors or offers a bug report at the
