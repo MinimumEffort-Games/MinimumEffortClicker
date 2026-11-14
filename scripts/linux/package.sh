@@ -25,6 +25,11 @@ cp -r "$ROOT/licenses/dotnet" "$ROOT/licenses/nuget" "$ROOT/licenses/native" "$R
 cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$DEST/"
 cp "$ROOT/docs/LINUX.md" "$DEST/START HERE.md"
 cp "$ROOT/docs/RELEASE_STATUS.md" "$DEST/docs/"
+if [[ $STEAM == 1 ]]; then
+  # Steam's default Steam Deck layout; Steamworks points at steam_input/steam_input_manifest.vdf.
+  mkdir -p "$DEST/steam_input"
+  cp "$ROOT/steam/input/steam_input_manifest.vdf" "$ROOT/steam/input/controller_neptune.vdf" "$DEST/steam_input/"
+fi
 if find "$DEST" \( -name Data -o -name .git -o -name '*.pfx' -o -name '*.p12' -o -name '*.pem' -o -name '*.key' -o -name '*.ttf' -o -name steam_appid.txt \) | grep -q .; then
   echo "Unexpected private data, key or font in the package." >&2; exit 1
 fi
@@ -33,8 +38,12 @@ VERSION="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$ROOT/Directory.Build.
 COMMIT="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
 if [[ $STEAM == 1 ]]; then KIND="Steam build"; PORTABLE=false; else KIND="Unsigned release"; PORTABLE=true; fi
 (cd "$DEST" && find . -type f ! -name build-manifest.json -print0 | sort -z | xargs -0 sha256sum) > "$DEST/build-manifest.sha256"
-printf '{\n  "buildUtc": "%s",\n  "version": "%s",\n  "kind": "%s",\n  "platform": "linux-x64",\n  "sourceCommit": "%s",\n  "portable": %s\n}\n' \
-  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$VERSION" "$KIND" "$COMMIT" "$PORTABLE" > "$DEST/build-manifest.json"
+# The bundled .NET runtime versions, as in the Windows manifest, so a security check reads them without unpacking.
+RUNTIME="$(tr -d ' \t\r\n' < "$DEST/MinimumEffortClicker.runtimeconfig.json" | grep -o '"includedFrameworks":\[[^]]*\]' \
+  | grep -o '{[^}]*}' | paste -sd, - | sed 's/,{/, {/g')"
+[[ -n $RUNTIME ]] || { echo "No bundled runtime found in MinimumEffortClicker.runtimeconfig.json." >&2; exit 1; }
+printf '{\n  "buildUtc": "%s",\n  "version": "%s",\n  "kind": "%s",\n  "platform": "linux-x64",\n  "sourceCommit": "%s",\n  "runtime": [%s],\n  "portable": %s\n}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$VERSION" "$KIND" "$COMMIT" "$RUNTIME" "$PORTABLE" > "$DEST/build-manifest.json"
 if [[ $STEAM == 1 ]]; then
   # The files sit at the zip's root, so the Steam launch option is just "MinimumEffortClicker".
   python3 - "$DEST" "$DEST.zip" <<'PY'

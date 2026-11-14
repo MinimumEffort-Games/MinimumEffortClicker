@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.3 (2026-11-14)
+
+- Steam Deck: the clicker now starts on its own Steam layout, based on Steam's Web Browser layout. The trackpads,
+  triggers and touchscreen move and click the mouse, so the clicker's own window works in Game Mode. View, L4, L5, R4
+  and R5 send nothing to the desktop, so the clicker's controller shortcuts on those buttons never count twice. Players
+  can still pick another layout in Steam.
+- Security update: the bundled .NET runtime moves from 10.0.14 to 10.0.15 with Microsoft's November fixes.
+- The Linux package's build manifest lists the bundled .NET runtime, like the Windows one.
+
 ## 1.0.2 (2026-10-31)
 
 - Security update: the bundled .NET runtime moves from 10.0.12 to 10.0.14, which carries Microsoft's October fixes
