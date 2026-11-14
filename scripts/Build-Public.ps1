@@ -29,6 +29,9 @@ try {
     if ($Steam) {
         Set-Content -LiteralPath (Join-Path $packagePath 'steam.mode') -Value 'Steam build: Steam Workshop on; data in %LocalAppData%\MinimumEffortClicker for Steam Cloud.' -Encoding utf8
         Copy-Item -LiteralPath $steamApi -Destination $packagePath
+        # Steam's default Steam Deck layout; Steamworks points at steam_input/steam_input_manifest.vdf.
+        Copy-Item -LiteralPath (Join-Path $ProjectRoot 'steam/input') -Destination (Join-Path $packagePath 'steam_input') -Recurse
+        Remove-Item -LiteralPath (Join-Path $packagePath 'steam_input/README.md')
     } else {
         Set-Content -LiteralPath (Join-Path $packagePath 'portable.mode') -Value 'Store local user data in Data beside these executables.' -Encoding utf8
     }

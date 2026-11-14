@@ -109,3 +109,8 @@ It has no Workshop code: Steam installs, starts and updates it.
    (pkexec, gsettings, gnome-extensions) are not inside it, so the app starts them outside through Steam's
    launch-alongside service (`steam-runtime-launch-client --bus-name=$SRT_LAUNCHER_SERVICE_ALONGSIDE_STEAM`). Without
    that service, Settings shows the one terminal command instead of Turn on.
+6. Steam Input (Steamworks > Application > Steam Input, once): Default Controller Configuration = Custom
+   Configuration with the path `steam_input/steam_input_manifest.vdf`. Both Steam packages carry that folder from
+   `steam/input` (see its README): the Steam Deck starts on the Web Browser layout with View, L4, L5, R4 and R5 free,
+   because the clicker reads those buttons itself. Leave the "Opt controllers into Steam Input" boxes off; the clicker
+   reads other controllers directly.

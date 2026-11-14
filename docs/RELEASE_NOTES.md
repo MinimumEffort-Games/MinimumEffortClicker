@@ -1,8 +1,14 @@
-# Minimum Effort Clicker 1.0.2
+# Minimum Effort Clicker 1.0.3
 
 A free, open-source mouse and keyboard automation app for **Windows 11 x64** and **Linux** (GNOME and KDE Plasma,
 Steam Deck in Desktop Mode), with the same pages and the same version on both. Also on Steam, with Steam Cloud and
 Workshop sharing on Windows.
+
+## What changed in 1.0.3
+
+- Steam Deck: the clicker starts on its own Steam layout (Steam's Web Browser layout with View, L4, L5, R4 and R5
+  free), so the trackpads work as a mouse and the clicker's controller shortcuts never count twice.
+- Security update: the bundled .NET runtime is now 10.0.15 with Microsoft's November fixes.
 
 ## What changed in 1.0.2
 
@@ -21,9 +27,9 @@ Workshop sharing on Windows.
 
 ## Download
 
-- **Windows:** download `MinimumEffortClicker-1.0.2-win-x64.zip`, extract the whole folder and open
+- **Windows:** download `MinimumEffortClicker-1.0.3-win-x64.zip`, extract the whole folder and open
   `MinimumEffortClicker.App.exe`. The .NET runtime is included.
-- **Linux:** download `MinimumEffortClicker-1.0.2-linux-x64.tar.gz`, extract it and run `./install.sh`. On first start
+- **Linux:** download `MinimumEffortClicker-1.0.3-linux-x64.tar.gz`, extract it and run `./install.sh`. On first start
   the clicker sets up its desktop helper in one press (on GNOME, log out and back in once). Recording is optional: press
   **Turn on** when you want it (your password, once). Details: [docs/LINUX.md](https://github.com/MinimumEffort-Games/MinimumEffortClicker/blob/main/docs/LINUX.md).
 
